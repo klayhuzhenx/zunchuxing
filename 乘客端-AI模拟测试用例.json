@@ -1,0 +1,2959 @@
+{
+  "meta": {
+    "title": "尊出行 · 乘客端 AI 模拟测试用例",
+    "version": "V1.0",
+    "date": "2026-06-06",
+    "testFramework": "manual-simulated",
+    "executionMode": "step-by-step AI simulation"
+  },
+  "globalPreconditions": {
+    "environment": "微信小程序（模拟微信环境）",
+    "mockServices": [
+      "三番极验行为验证（可配置通过/失败）",
+      "短信验证码服务（固定验证码 123456）",
+      "微信登录授权（模拟返回 code/openid）",
+      "华为车主数据接口（可配置匹配/不匹配）",
+      "支付接口（模拟支付成功/失败）"
+    ]
+  },
+  "testData": {
+    "validPhoneNumber": "13800138001",
+    "unregisteredPhone": "13800138999",
+    "smsCode": "123456",
+    "expiredSmsCode": "000000",
+    "wrongSmsCode": "111111",
+    "enterpriseName": "和行科技有限公司",
+    "adminName": "张三",
+    "adminPhone": "13800138002",
+    "enterpriseTaxId": "91340100MA2XXXXXX",
+    "employeePhone": "13800138003"
+  },
+  "modules": [
+    {
+      "moduleId": "M01",
+      "moduleName": "注册登录",
+      "pagePath": "/pages/auth/login",
+      "testCases": [
+        {
+          "id": "TC-M01-001",
+          "name": "手机号格式校验 - 正常输入",
+          "priority": "P0",
+          "preconditions": [
+            "用户未登录",
+            "处于登录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "定位手机号输入框，输入 13800138001",
+              "assert": "输入框正确显示 13800138001"
+            },
+            {
+              "seq": 2,
+              "action": "输入满11位后自动失焦",
+              "assert": "获取验证码按钮从灰色禁用变为可点击（主色）"
+            }
+          ],
+          "expectedResults": [
+            "手机号输入无误",
+            "按钮状态正确切换"
+          ]
+        },
+        {
+          "id": "TC-M01-002",
+          "name": "手机号格式校验 - 空值",
+          "priority": "P1",
+          "preconditions": [
+            "用户未登录",
+            "处于登录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "不输入手机号，直接点击获取验证码按钮",
+              "assert": "按钮为灰色禁用状态，不可点击"
+            },
+            {
+              "seq": 2,
+              "action": "直接点击登录按钮",
+              "assert": "按钮灰色禁用，不可点击"
+            }
+          ],
+          "expectedResults": [
+            "空手机号时两个按钮均禁用"
+          ]
+        },
+        {
+          "id": "TC-M01-003",
+          "name": "手机号格式校验 - 格式错误",
+          "priority": "P1",
+          "preconditions": [
+            "用户未登录",
+            "处于登录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入非法手机号 12345678901",
+              "assert": "输入框下方红色提示: 请输入正确的手机号码"
+            },
+            {
+              "seq": 2,
+              "action": "输入11位但非1开头 23800138001",
+              "assert": "红色提示: 请输入正确的手机号码"
+            },
+            {
+              "seq": 3,
+              "action": "输入不足11位 1380013800",
+              "assert": "获取验证码按钮保持灰色禁用"
+            }
+          ],
+          "expectedResults": [
+            "所有非法格式均被拦截",
+            "提示文案正确"
+          ],
+          "edgeCases": [
+            "输入含字符/空格 --> 自动过滤非数字字符"
+          ]
+        },
+        {
+          "id": "TC-M01-004",
+          "name": "获取短信验证码 - 极验通过",
+          "priority": "P0",
+          "preconditions": [
+            "手机号 13800138001 未超限",
+            "处于登录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入手机号 13800138001",
+              "assert": "获取验证码按钮可点击"
+            },
+            {
+              "seq": 2,
+              "action": "点击获取验证码",
+              "assert": "弹出三番极验滑块/点选验证"
+            },
+            {
+              "seq": 3,
+              "action": "完成极验验证（模拟成功）",
+              "assert": "极验弹窗关闭，按钮显示: 发送中 + loading"
+            },
+            {
+              "seq": 4,
+              "action": "等待短信接口返回",
+              "assert": "按钮变为: 60s后重新获取 灰色倒计时"
+            },
+            {
+              "seq": 5,
+              "action": "等待60秒倒计时结束",
+              "assert": "按钮变为: 重新获取 可点击"
+            }
+          ],
+          "expectedResults": [
+            "极验弹出并可通过",
+            "倒计时正常",
+            "按钮文案和状态流转正确"
+          ]
+        },
+        {
+          "id": "TC-M01-005",
+          "name": "获取短信验证码 - 极验失败",
+          "priority": "P1",
+          "preconditions": [
+            "手机号正常",
+            "处于登录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击获取验证码",
+              "assert": "弹出极验验证"
+            },
+            {
+              "seq": 2,
+              "action": "极验验证失败（模拟失败）",
+              "assert": "Toast: 验证未通过请重试；不发送短信；按钮恢复获取验证码"
+            }
+          ],
+          "expectedResults": [
+            "极验失败不发送短信",
+            "按钮状态恢复"
+          ]
+        },
+        {
+          "id": "TC-M01-006",
+          "name": "验证码频率限制 - 每小时超限",
+          "priority": "P1",
+          "preconditions": [
+            "同一手机号 1 小时内已发送 10 次"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击获取验证码",
+              "assert": "极验通过后提示: 发送过于频繁请稍后再试"
+            },
+            {
+              "seq": 2,
+              "action": "查看按钮状态",
+              "assert": "按钮灰色禁用，文案: 发送次数已达上限"
+            }
+          ],
+          "expectedResults": [
+            "超限被正确拦截",
+            "提示文案准确"
+          ]
+        },
+        {
+          "id": "TC-M01-007",
+          "name": "验证码频率限制 - 每日超限",
+          "priority": "P1",
+          "preconditions": [
+            "同一手机号当天已发送 15 次"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击获取验证码",
+              "assert": "提示: 今日发送次数已达上限，请明天再试"
+            }
+          ],
+          "expectedResults": [
+            "每日限制生效"
+          ]
+        },
+        {
+          "id": "TC-M01-008",
+          "name": "验证码频率限制 - IP每日超限",
+          "priority": "P1",
+          "preconditions": [
+            "同一 IP 当天已发送 30 次"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击获取验证码",
+              "assert": "提示: 操作过于频繁，请明天再试"
+            }
+          ],
+          "expectedResults": [
+            "IP 限制正确生效"
+          ]
+        },
+        {
+          "id": "TC-M01-009",
+          "name": "登录/注册 - 未勾选协议",
+          "priority": "P0",
+          "preconditions": [
+            "手机号已输入",
+            "验证码已输入",
+            "协议未勾选"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击登录/注册按钮",
+              "assert": "底部弹出协议确认弹窗，半透明遮罩"
+            },
+            {
+              "seq": 2,
+              "action": "验证弹窗内容",
+              "assert": "标题: 请阅读并同意以下协议；协议名称蓝色可点击"
+            },
+            {
+              "seq": 3,
+              "action": "点击弹窗内用户服务协议",
+              "assert": "跳转 H5 协议页面"
+            },
+            {
+              "seq": 4,
+              "action": "返回后点击弹窗内不同意",
+              "assert": "弹窗关闭，返回登录页，协议未勾选"
+            },
+            {
+              "seq": 5,
+              "action": "再次点击登录触发弹窗，点击同意并继续",
+              "assert": "协议自动勾选 + 执行登录"
+            }
+          ],
+          "expectedResults": [
+            "弹窗交互正确",
+            "协议跳转正确",
+            "同意后自动勾选并登录"
+          ]
+        },
+        {
+          "id": "TC-M01-010",
+          "name": "协议弹窗遮罩关闭",
+          "priority": "P1",
+          "preconditions": [
+            "协议弹窗已弹出"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击遮罩区域（非弹窗内容区）",
+              "assert": "弹窗关闭，返回登录页，协议保持未勾选"
+            }
+          ],
+          "expectedResults": [
+            "遮罩可关闭弹窗"
+          ]
+        },
+        {
+          "id": "TC-M01-011",
+          "name": "登录成功 - 已注册用户",
+          "priority": "P0",
+          "preconditions": [
+            "手机号 13800138001 已注册",
+            "验证码正确",
+            "协议已勾选"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击登录/注册",
+              "assert": "按钮显示 loading + 验证中"
+            },
+            {
+              "seq": 2,
+              "action": "等待验证结果",
+              "assert": "Toast: 登录成功"
+            },
+            {
+              "seq": 3,
+              "action": "验证登录态存储",
+              "assert": "本地 Storage 存入 token，有效期 7 天"
+            },
+            {
+              "seq": 4,
+              "action": "验证跳转",
+              "assert": "跳转至首页（服务 Tab）"
+            }
+          ],
+          "expectedResults": [
+            "登录成功完整流程正确"
+          ]
+        },
+        {
+          "id": "TC-M01-012",
+          "name": "自动注册 - 未注册用户",
+          "priority": "P0",
+          "preconditions": [
+            "手机号 13800138999 未注册",
+            "验证码正确",
+            "协议已勾选"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击登录/注册",
+              "assert": "按钮 loading"
+            },
+            {
+              "seq": 2,
+              "action": "等待结果",
+              "assert": "Toast: 欢迎加入尊出行"
+            },
+            {
+              "seq": 3,
+              "action": "验证跳转",
+              "assert": "跳转首页"
+            }
+          ],
+          "expectedResults": [
+            "新用户自动注册+登录",
+            "欢迎文案正确"
+          ]
+        },
+        {
+          "id": "TC-M01-013",
+          "name": "登录失败 - 验证码错误",
+          "priority": "P0",
+          "preconditions": [
+            "手机号正常",
+            "验证码错误=111111"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击登录/注册",
+              "assert": "按钮 loading"
+            },
+            {
+              "seq": 2,
+              "action": "等待结果",
+              "assert": "Toast: 验证码错误请重新输入；按钮恢复可点击"
+            }
+          ],
+          "expectedResults": [
+            "错误验证码被正确拦截",
+            "按钮状态恢复"
+          ]
+        },
+        {
+          "id": "TC-M01-014",
+          "name": "登录失败 - 验证码过期",
+          "priority": "P1",
+          "preconditions": [
+            "验证码已过 5 分钟有效期"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入过期验证码",
+              "assert": "验证码输入框下方红色提示: 验证码已失效请重新获取"
+            },
+            {
+              "seq": 2,
+              "action": "点击登录",
+              "assert": "提示: 验证码已失效请重新获取"
+            }
+          ],
+          "expectedResults": [
+            "过期验证码被正确识别"
+          ]
+        },
+        {
+          "id": "TC-M01-015",
+          "name": "微信快捷登录 - 已绑定手机号",
+          "priority": "P0",
+          "preconditions": [
+            "微信已绑定手机号 13800138001"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击微信快捷登录按钮",
+              "assert": "调用 wx.login()"
+            },
+            {
+              "seq": 2,
+              "action": "等待后端验证",
+              "assert": "直接登录成功 -> Toast: 登录成功 -> 跳转首页"
+            }
+          ],
+          "expectedResults": [
+            "微信快捷登录跳过手机号验证直接登录"
+          ]
+        },
+        {
+          "id": "TC-M01-016",
+          "name": "微信快捷登录 - 未绑定手机号",
+          "priority": "P0",
+          "preconditions": [
+            "微信未绑定手机号"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击微信快捷登录",
+              "assert": "跳转手机号绑定页"
+            },
+            {
+              "seq": 2,
+              "action": "输入手机号 + 验证码",
+              "assert": "绑定成功 -> 登录成功 -> 跳转首页"
+            }
+          ],
+          "expectedResults": [
+            "未绑定引导至手机号绑定流程"
+          ]
+        },
+        {
+          "id": "TC-M01-017",
+          "name": "登录态自动刷新",
+          "priority": "P1",
+          "preconditions": [
+            "已登录",
+            "token 距过期不足 1 天"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入首页",
+              "assert": "自动调用 token 刷新接口"
+            },
+            {
+              "seq": 2,
+              "action": "验证 token 有效期",
+              "assert": "token 有效期重置为 7 天"
+            }
+          ],
+          "expectedResults": [
+            "token 自动续期"
+          ]
+        },
+        {
+          "id": "TC-M01-018",
+          "name": "登录态过期处理",
+          "priority": "P0",
+          "preconditions": [
+            "token 已过期"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入任意页面",
+              "assert": "自动清除本地 Storage"
+            },
+            {
+              "seq": 2,
+              "action": "验证跳转",
+              "assert": "跳转登录页 + Toast: 登录已过期请重新登录"
+            }
+          ],
+          "expectedResults": [
+            "过期后自动回到登录页"
+          ]
+        },
+        {
+          "id": "TC-M01-019",
+          "name": "退出登录",
+          "priority": "P1",
+          "preconditions": [
+            "已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "我的 -> 退出登录",
+              "assert": "弹出确认弹窗"
+            },
+            {
+              "seq": 2,
+              "action": "点击确认",
+              "assert": "清除本地 token -> 跳转登录页"
+            }
+          ],
+          "expectedResults": [
+            "退出登录清除登录态"
+          ]
+        },
+        {
+          "id": "TC-M01-020",
+          "name": "多端登录互不影响",
+          "priority": "P2",
+          "preconditions": [
+            "设备A已登录 13800138001"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "设备B用同一手机号登录",
+              "assert": "设备B登录成功"
+            },
+            {
+              "seq": 2,
+              "action": "检查设备A",
+              "assert": "设备A仍保持登录态，未被踢下线"
+            }
+          ],
+          "expectedResults": [
+            "多端可同时登录"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M02",
+      "moduleName": "企业入驻",
+      "pagePath": "/pages/enterprise/apply",
+      "testCases": [
+        {
+          "id": "TC-M02-001",
+          "name": "入驻入口 - 从未申请过",
+          "priority": "P0",
+          "preconditions": [
+            "手机号 13800138999 从未申请企业入驻"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "登录页底部 -> 点击企业入驻",
+              "assert": "跳转入驻申请页 /pages/enterprise/apply"
+            }
+          ],
+          "expectedResults": [
+            "入口正确跳转到申请页"
+          ]
+        },
+        {
+          "id": "TC-M02-002",
+          "name": "入驻入口 - 审核中",
+          "priority": "P1",
+          "preconditions": [
+            "手机号 13800138002 有一条审核中的入驻"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "登录页 -> 点击企业入驻",
+              "assert": "跳转入驻状态页，显示: 审核中"
+            },
+            {
+              "seq": 2,
+              "action": "查看页面内容",
+              "assert": "展示企业名称、申请时间、当前状态"
+            }
+          ],
+          "expectedResults": [
+            "审核中引导至状态页而非重新申请"
+          ]
+        },
+        {
+          "id": "TC-M02-003",
+          "name": "入驻入口 - 已通过",
+          "priority": "P1",
+          "preconditions": [
+            "手机号 13800138001 有一条已通过的入驻"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "登录页 -> 点击企业入驻",
+              "assert": "跳转入驻状态页，显示: 已通过"
+            },
+            {
+              "seq": 2,
+              "action": "验证企业管理入口",
+              "assert": "我的 -> 企业管理入口可见"
+            }
+          ],
+          "expectedResults": [
+            "已通过显示正确状态"
+          ]
+        },
+        {
+          "id": "TC-M02-004",
+          "name": "入驻入口 - 历史均为驳回",
+          "priority": "P1",
+          "preconditions": [
+            "手机号历史申请均被驳回"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "登录页 -> 点击企业入驻",
+              "assert": "跳转入驻申请页（作为新申请）"
+            }
+          ],
+          "expectedResults": [
+            "驳回后可重新提交"
+          ]
+        },
+        {
+          "id": "TC-M02-005",
+          "name": "企业名称校验 - 空值",
+          "priority": "P1",
+          "preconditions": [
+            "处于入驻申请页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "不输入企业名称直接失焦",
+              "assert": "下方红色提示: 请输入企业名称"
+            }
+          ],
+          "expectedResults": [
+            "空值提示正确"
+          ]
+        },
+        {
+          "id": "TC-M02-006",
+          "name": "企业名称校验 - 含非法字符",
+          "priority": "P1",
+          "preconditions": [
+            "处于入驻申请页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入含 @ 的企业名称",
+              "assert": "提示: 企业名称包含不允许的字符"
+            }
+          ],
+          "expectedResults": [
+            "非法字符拦截"
+          ]
+        },
+        {
+          "id": "TC-M02-007",
+          "name": "企业名称校验 - 超长",
+          "priority": "P2",
+          "preconditions": [
+            "处于入驻申请页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入超过 60 字的企业名称",
+              "assert": "提示: 企业名称不超过 60 个字"
+            }
+          ],
+          "expectedResults": [
+            "超长限制生效"
+          ]
+        },
+        {
+          "id": "TC-M02-008",
+          "name": "所在城市选择器",
+          "priority": "P1",
+          "preconditions": [
+            "处于入驻申请页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击所在城市",
+              "assert": "弹出城市选择器"
+            },
+            {
+              "seq": 2,
+              "action": "验证列表",
+              "assert": "按拼音首字母分组，含全国城市，支持搜索"
+            },
+            {
+              "seq": 3,
+              "action": "搜索合肥并选中",
+              "assert": "选择器关闭，显示合肥"
+            }
+          ],
+          "expectedResults": [
+            "城市选择器功能完整"
+          ]
+        },
+        {
+          "id": "TC-M02-009",
+          "name": "管理员姓名校验",
+          "priority": "P1",
+          "preconditions": [
+            "处于入驻申请页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "不输入姓名失焦",
+              "assert": "提示: 请输入管理员姓名"
+            },
+            {
+              "seq": 2,
+              "action": "输入英文名 John",
+              "assert": "提示: 请输入正确的中文姓名"
+            }
+          ],
+          "expectedResults": [
+            "姓名校验正确"
+          ]
+        },
+        {
+          "id": "TC-M02-010",
+          "name": "管理员密码校验",
+          "priority": "P1",
+          "preconditions": [
+            "处于入驻申请页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入纯数字密码 123456",
+              "assert": "提示: 密码需 6-20 位且包含字母和数字"
+            },
+            {
+              "seq": 2,
+              "action": "输入纯字母 abcdef",
+              "assert": "同上错误提示"
+            },
+            {
+              "seq": 3,
+              "action": "输入少于6位 Ab1",
+              "assert": "同上错误提示"
+            },
+            {
+              "seq": 4,
+              "action": "输入有效密码 Abc123456",
+              "assert": "校验通过，无错误提示"
+            }
+          ],
+          "expectedResults": [
+            "密码复杂度校验正确"
+          ]
+        },
+        {
+          "id": "TC-M02-011",
+          "name": "手机号重复申请检测",
+          "priority": "P0",
+          "preconditions": [
+            "管理员手机号 13800138002 已有审核中的入驻"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入管理员手机号 13800138002",
+              "assert": "提示: 该手机号已申请企业入驻，请勿重复提交"
+            },
+            {
+              "seq": 2,
+              "action": "点击查看进度",
+              "assert": "跳转入驻状态页"
+            }
+          ],
+          "expectedResults": [
+            "重复申请被检测并引导查看进度"
+          ]
+        },
+        {
+          "id": "TC-M02-012",
+          "name": "完整的入驻申请提交",
+          "priority": "P0",
+          "preconditions": [
+            "手机号 13800138999 未申请过",
+            "所有字段填写正确"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "填写企业名称: 和行科技有限公司",
+              "assert": "校验通过"
+            },
+            {
+              "seq": 2,
+              "action": "选择所在城市: 合肥",
+              "assert": "显示合肥"
+            },
+            {
+              "seq": 3,
+              "action": "填写管理员姓名: 张三",
+              "assert": "校验通过"
+            },
+            {
+              "seq": 4,
+              "action": "输入管理员手机号 13800138002",
+              "assert": "校验通过，获取验证码可点击"
+            },
+            {
+              "seq": 5,
+              "action": "获取并输入验证码",
+              "assert": "验证码输入成功"
+            },
+            {
+              "seq": 6,
+              "action": "设置密码 Abc123456",
+              "assert": "校验通过"
+            },
+            {
+              "seq": 7,
+              "action": "勾选三个协议",
+              "assert": "均已勾选"
+            },
+            {
+              "seq": 8,
+              "action": "点击提交审核",
+              "assert": "按钮 loading"
+            },
+            {
+              "seq": 9,
+              "action": "等待提交结果",
+              "assert": "Toast: 提交成功请等待审核"
+            }
+          ],
+          "expectedResults": [
+            "完整申请流程正确"
+          ]
+        },
+        {
+          "id": "TC-M02-013",
+          "name": "审核通过后管理员权限",
+          "priority": "P0",
+          "preconditions": [
+            "入驻申请已审核通过",
+            "申请人已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入我的页面",
+              "assert": "企业管理入口可见"
+            },
+            {
+              "seq": 2,
+              "action": "点击企业管理",
+              "assert": "进入企业管理首页"
+            },
+            {
+              "seq": 3,
+              "action": "验证角色",
+              "assert": "身份为管理员，员工管理入口可见"
+            }
+          ],
+          "expectedResults": [
+            "审核通过后管理员权限正确"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M03",
+      "moduleName": "首页（服务Tab）",
+      "pagePath": "/pages/home/index",
+      "testCases": [
+        {
+          "id": "TC-M03-001",
+          "name": "首页基本布局",
+          "priority": "P0",
+          "preconditions": [
+            "用户已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "验证标题栏",
+              "assert": "标题为尊出行"
+            },
+            {
+              "seq": 2,
+              "action": "验证服务入口",
+              "assert": "包车出行、租车出行两个入口可见"
+            },
+            {
+              "seq": 3,
+              "action": "验证底部 Tab",
+              "assert": "服务（选中态）| 我的"
+            }
+          ],
+          "expectedResults": [
+            "首页布局完整"
+          ]
+        },
+        {
+          "id": "TC-M03-002",
+          "name": "Banner轮播 - 有配置",
+          "priority": "P1",
+          "preconditions": [
+            "运营后台已配置轮播图"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看 Banner 区域",
+              "assert": "轮播图正常展示，可滑动"
+            },
+            {
+              "seq": 2,
+              "action": "点击轮播图",
+              "assert": "跳转对应配置的链接"
+            }
+          ],
+          "expectedResults": [
+            "轮播图正常"
+          ]
+        },
+        {
+          "id": "TC-M03-003",
+          "name": "Banner轮播 - 无配置时隐藏",
+          "priority": "P2",
+          "preconditions": [
+            "运营后台未配置轮播图"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看首页",
+              "assert": "Banner 区域不可见，下方内容自动上移"
+            }
+          ],
+          "expectedResults": [
+            "无配置时正确隐藏"
+          ]
+        },
+        {
+          "id": "TC-M03-005",
+          "name": "点击包车出行入口",
+          "priority": "P0",
+          "preconditions": [
+            "用户已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击包车出行",
+              "assert": "跳转包车出行起止点+车型页"
+            }
+          ],
+          "expectedResults": [
+            "入口跳转正确"
+          ]
+        },
+        {
+          "id": "TC-M03-006",
+          "name": "租车出行 - 尊界车主可进入",
+          "priority": "P0",
+          "preconditions": [
+            "用户已认证为尊界车主"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击租车出行",
+              "assert": "跳转租车出行取还车位置页"
+            }
+          ],
+          "expectedResults": [
+            "车主可进入租车"
+          ]
+        },
+        {
+          "id": "TC-M03-007",
+          "name": "租车出行 - 非车主拦截",
+          "priority": "P0",
+          "preconditions": [
+            "用户未认证尊界车主"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击租车出行",
+              "assert": "Toast: 租车服务仅限尊界车主使用"
+            }
+          ],
+          "expectedResults": [
+            "非车主被正确拦截"
+          ]
+        },
+        {
+          "id": "TC-M03-008",
+          "name": "未认证车主权益区",
+          "priority": "P1",
+          "preconditions": [
+            "用户未认证尊界车主"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看车主权益区",
+              "assert": "标题尊享权益，权益说明，前往认证按钮可见"
+            },
+            {
+              "seq": 2,
+              "action": "点击前往认证",
+              "assert": "跳转车主认证页"
+            }
+          ],
+          "expectedResults": [
+            "未认证权益区正确"
+          ]
+        },
+        {
+          "id": "TC-M03-009",
+          "name": "已认证车主权益区",
+          "priority": "P1",
+          "preconditions": [
+            "用户已认证尊界车主"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看车主权益区",
+              "assert": "剩余次数、累计使用次数、权益标签卡片可见"
+            },
+            {
+              "seq": 2,
+              "action": "点击权益标签卡片",
+              "assert": "跳转权益详情页"
+            }
+          ],
+          "expectedResults": [
+            "已认证权益区正确"
+          ]
+        },
+        {
+          "id": "TC-M03-010",
+          "name": "Tab 切换",
+          "priority": "P1",
+          "preconditions": [
+            "用户在首页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击底部我的 Tab",
+              "assert": "切换到我的页面，我的 Tab 选中态"
+            },
+            {
+              "seq": 2,
+              "action": "点击底部服务 Tab",
+              "assert": "切换回首页，服务 Tab 选中态"
+            }
+          ],
+          "expectedResults": [
+            "Tab 切换正常"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M04",
+      "moduleName": "包车出行",
+      "pagePath": "/pages/charter/",
+      "testCases": [
+        {
+          "id": "TC-M04-001",
+          "name": "起止点+车型 - 地址输入",
+          "priority": "P0",
+          "preconditions": [
+            "已进入包车出行页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击出发地 -> 搜索政务中心 -> 选中",
+              "assert": "返回上一页，出发地显示政务中心"
+            },
+            {
+              "seq": 2,
+              "action": "点击目的地 -> 搜索会展中心 -> 选中",
+              "assert": "返回，目的地显示会展中心"
+            },
+            {
+              "seq": 3,
+              "action": "查看请选择套餐按钮",
+              "assert": "按钮变为可点击"
+            }
+          ],
+          "expectedResults": [
+            "地址选择和搜索正常",
+            "按钮状态联动正确"
+          ]
+        },
+        {
+          "id": "TC-M04-002",
+          "name": "起止点交换",
+          "priority": "P2",
+          "preconditions": [
+            "已填入出发地和目的地"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击交换按钮",
+              "assert": "出发地和目的地互换"
+            }
+          ],
+          "expectedResults": [
+            "交换功能正确"
+          ]
+        },
+        {
+          "id": "TC-M04-003",
+          "name": "起止点未填不可选套餐",
+          "priority": "P1",
+          "preconditions": [
+            "出发地或目的地为空"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看请选择套餐按钮",
+              "assert": "按钮灰色禁用"
+            }
+          ],
+          "expectedResults": [
+            "未填完不可点击"
+          ]
+        },
+        {
+          "id": "TC-M04-004",
+          "name": "套餐弹窗 - 弹出和关闭",
+          "priority": "P0",
+          "preconditions": [
+            "起止点已填"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击请选择套餐",
+              "assert": "底部弹出套餐弹窗，标题显示当前车型名"
+            },
+            {
+              "seq": 2,
+              "action": "点击遮罩区域",
+              "assert": "弹窗关闭"
+            }
+          ],
+          "expectedResults": [
+            "弹窗交互正常"
+          ]
+        },
+        {
+          "id": "TC-M04-005",
+          "name": "套餐选择 - 权益标签同步",
+          "priority": "P0",
+          "preconditions": [
+            "套餐弹窗已打开"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "选中尊享基础-日租",
+              "assert": "权益标签: 免费饮用水、车载 WiFi、纸巾湿巾"
+            },
+            {
+              "seq": 2,
+              "action": "切换为尊御顶级-半日租",
+              "assert": "权益标签: 免费饮用水、车载 WiFi、纸巾湿巾、精致茶点、报刊杂志、香槟礼遇、专属管家"
+            }
+          ],
+          "expectedResults": [
+            "套餐选中和权益同步正确"
+          ]
+        },
+        {
+          "id": "TC-M04-006",
+          "name": "套餐弹窗 - 天数调整",
+          "priority": "P1",
+          "preconditions": [
+            "套餐弹窗已打开",
+            "已选套餐 1888/天"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击 + 将天数从 1 调至 3",
+              "assert": "费用预览更新为 5664"
+            },
+            {
+              "seq": 2,
+              "action": "点击 - 至 1",
+              "assert": "费用预览恢复 1888"
+            },
+            {
+              "seq": 3,
+              "action": "测试最低1天最高30天边界",
+              "assert": "范围限制生效"
+            }
+          ],
+          "expectedResults": [
+            "天数范围 1-30，费用实时计算"
+          ]
+        },
+        {
+          "id": "TC-M04-007",
+          "name": "套餐弹窗 - 日期选择",
+          "priority": "P1",
+          "preconditions": [
+            "套餐弹窗已打开"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击起始日期",
+              "assert": "弹出日期选择器，默认当天，未来超30天不可选"
+            },
+            {
+              "seq": 2,
+              "action": "选择当天且不足提前2小时",
+              "assert": "提示需提前不少于2小时"
+            }
+          ],
+          "expectedResults": [
+            "日期范围限制正确"
+          ]
+        },
+        {
+          "id": "TC-M04-008",
+          "name": "订单确认 - 信息展示",
+          "priority": "P0",
+          "preconditions": [
+            "已选套餐确认，跳转订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看行程信息",
+              "assert": "显示出发地政务中心、目的地会展中心"
+            },
+            {
+              "seq": 2,
+              "action": "查看车型套餐和日期",
+              "assert": "车型名+套餐名+日租/半日租+单价x天数+日期范围"
+            },
+            {
+              "seq": 3,
+              "action": "查看底部",
+              "assert": "预估总金额 + 明细入口 + 提交订单按钮"
+            }
+          ],
+          "expectedResults": [
+            "订单信息完整准确"
+          ]
+        },
+        {
+          "id": "TC-M04-009",
+          "name": "订单确认 - 乘车人切换",
+          "priority": "P1",
+          "preconditions": [
+            "处于订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击乘车人切换 -> 选择他人",
+              "assert": "展开姓名+手机号输入框"
+            },
+            {
+              "seq": 2,
+              "action": "填写他人信息",
+              "assert": "显示他人信息"
+            },
+            {
+              "seq": 3,
+              "action": "切换回本人",
+              "assert": "恢复本人信息"
+            }
+          ],
+          "expectedResults": [
+            "乘车人切换正常"
+          ]
+        },
+        {
+          "id": "TC-M04-010",
+          "name": "订单确认 - 支付方式选择",
+          "priority": "P0",
+          "preconditions": [
+            "企业身份用户",
+            "处于订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看支付方式",
+              "assert": "微信/支付宝/企业支付均可见，默认选中企业支付"
+            },
+            {
+              "seq": 2,
+              "action": "切换为个人支付（微信）",
+              "assert": "选中微信支付"
+            }
+          ],
+          "expectedResults": [
+            "支付方式展示和切换正确"
+          ]
+        },
+        {
+          "id": "TC-M04-011",
+          "name": "企业支付额度不足拦截",
+          "priority": "P1",
+          "preconditions": [
+            "企业额度不足 1888"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "选择企业支付 -> 点击提交订单",
+              "assert": "Toast: 企业额度不足，请联系管理员"
+            }
+          ],
+          "expectedResults": [
+            "额度不足正确拦截"
+          ]
+        },
+        {
+          "id": "TC-M04-012",
+          "name": "包车不支持尊享权益",
+          "priority": "P0",
+          "preconditions": [
+            "尊界车主",
+            "处于订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看页面",
+              "assert": "无尊享权益抵扣条"
+            }
+          ],
+          "expectedResults": [
+            "包车不显示尊享权益"
+          ]
+        },
+        {
+          "id": "TC-M04-013",
+          "name": "费用明细页",
+          "priority": "P1",
+          "preconditions": [
+            "订单确认页 -> 点击明细"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看计费清单",
+              "assert": "套餐价、夜间附加、远调费、超时费、超公里费"
+            },
+            {
+              "seq": 2,
+              "action": "点击查看计价规则",
+              "assert": "跳转 H5 页面"
+            },
+            {
+              "seq": 3,
+              "action": "查看底部提示",
+              "assert": "超时/超公里费按实际行程结算；套餐未用完不退款"
+            }
+          ],
+          "expectedResults": [
+            "费用明细展示正确"
+          ]
+        },
+        {
+          "id": "TC-M04-014",
+          "name": "提交订单 - 个人支付成功",
+          "priority": "P0",
+          "preconditions": [
+            "订单确认页信息完整",
+            "选择个人支付（微信）"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击提交订单",
+              "assert": "调起微信支付"
+            },
+            {
+              "seq": 2,
+              "action": "模拟支付成功",
+              "assert": "跳转下单成功页"
+            }
+          ],
+          "expectedResults": [
+            "支付流程正确"
+          ]
+        },
+        {
+          "id": "TC-M04-015",
+          "name": "下单成功页",
+          "priority": "P1",
+          "preconditions": [
+            "提交订单成功"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看页面",
+              "assert": "绿色对号 + 下单成功 + 正在为您匹配司机"
+            },
+            {
+              "seq": 2,
+              "action": "查看订单摘要",
+              "assert": "订单号、车型套餐、日期范围、行程"
+            },
+            {
+              "seq": 3,
+              "action": "点击查看订单详情",
+              "assert": "跳转订单详情页"
+            },
+            {
+              "seq": 4,
+              "action": "返回并点击返回首页",
+              "assert": "跳转首页"
+            }
+          ],
+          "expectedResults": [
+            "下单成功页功能完整"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M05",
+      "moduleName": "租车出行",
+      "pagePath": "/pages/rental/",
+      "testCases": [
+        {
+          "id": "TC-M05-001",
+          "name": "取还车位置 - 正常输入",
+          "priority": "P0",
+          "preconditions": [
+            "尊界车主已登录",
+            "进入租车出行页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击取车位置 -> 选择地址",
+              "assert": "返回并显示取车地址"
+            },
+            {
+              "seq": 2,
+              "action": "点击还车位置 -> 选择地址",
+              "assert": "返回并显示还车地址"
+            },
+            {
+              "seq": 3,
+              "action": "查看下一步按钮",
+              "assert": "按钮变为可点击"
+            }
+          ],
+          "expectedResults": [
+            "地址输入流程正常"
+          ]
+        },
+        {
+          "id": "TC-M05-002",
+          "name": "取还车位置 - 未填禁用",
+          "priority": "P1",
+          "preconditions": [
+            "取车/还车位置为空"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看下一步选择车型按钮",
+              "assert": "灰色禁用"
+            }
+          ],
+          "expectedResults": [
+            "按钮状态正确"
+          ]
+        },
+        {
+          "id": "TC-M05-003",
+          "name": "车型选择 - 滑动切换",
+          "priority": "P0",
+          "preconditions": [
+            "已进入车型+天数日期页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看车型卡片",
+              "assert": "三款车型卡片横向排列"
+            },
+            {
+              "seq": 2,
+              "action": "横向滑动切换",
+              "assert": "车型切换，下方名称和日租价同步更新"
+            },
+            {
+              "seq": 3,
+              "action": "选中增程星辉尊享版",
+              "assert": "显示 1500/天，日里程含 200km"
+            }
+          ],
+          "expectedResults": [
+            "车型切换正常"
+          ]
+        },
+        {
+          "id": "TC-M05-004",
+          "name": "天数和日期选择",
+          "priority": "P1",
+          "preconditions": [
+            "已选车型 1500/天"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "调整天数为3 -> 选日期",
+              "assert": "费用预览 4500，日期可选未来30天"
+            },
+            {
+              "seq": 2,
+              "action": "测试天数边界 1-30",
+              "assert": "范围限制生效"
+            }
+          ],
+          "expectedResults": [
+            "天数范围和费用计算正确"
+          ]
+        },
+        {
+          "id": "TC-M05-005",
+          "name": "订单确认 - 驾驶证上传和删除",
+          "priority": "P0",
+          "preconditions": [
+            "处于租车订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击上传驾驶证",
+              "assert": "调起相册或拍照"
+            },
+            {
+              "seq": 2,
+              "action": "选择图片上传",
+              "assert": "展示缩略图预览"
+            },
+            {
+              "seq": 3,
+              "action": "点击删除缩略图",
+              "assert": "图片删除，可重新上传"
+            }
+          ],
+          "expectedResults": [
+            "驾驶证上传和删除正常"
+          ]
+        },
+        {
+          "id": "TC-M05-006",
+          "name": "驾驶证上传 - 格式/大小限制",
+          "priority": "P1",
+          "preconditions": [
+            "处于租车订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "上传非图片文件",
+              "assert": "拒绝，仅支持JPG/PNG"
+            },
+            {
+              "seq": 2,
+              "action": "上传超10MB图片",
+              "assert": "拒绝，文件过大"
+            }
+          ],
+          "expectedResults": [
+            "文件限制生效"
+          ]
+        },
+        {
+          "id": "TC-M05-007",
+          "name": "租车尊享权益抵扣",
+          "priority": "P0",
+          "preconditions": [
+            "尊界车主",
+            "剩余权益次数 > 0",
+            "处于订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看尊享权益抵扣条",
+              "assert": "显示可抵扣 + 剩余次数 + 使用权益按钮"
+            },
+            {
+              "seq": 2,
+              "action": "点击使用权益",
+              "assert": "费用变为 0.00，支付方式区域隐藏"
+            }
+          ],
+          "expectedResults": [
+            "租车支持尊享权益抵扣"
+          ]
+        },
+        {
+          "id": "TC-M05-008",
+          "name": "驾驶人切换",
+          "priority": "P1",
+          "preconditions": [
+            "处于订单确认页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击驾驶人切换 -> 选择他人",
+              "assert": "展开姓名+手机号输入框"
+            }
+          ],
+          "expectedResults": [
+            "驾驶人切换正常"
+          ]
+        },
+        {
+          "id": "TC-M05-009",
+          "name": "费用明细 - 租车",
+          "priority": "P1",
+          "preconditions": [
+            "订单确认页 -> 点击明细"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看计费清单",
+              "assert": "日租价、超里程费(预估0)、远调费"
+            },
+            {
+              "seq": 2,
+              "action": "查看底部提示",
+              "assert": "无夜间附加费、无等候费；超里程按实际超出结算"
+            }
+          ],
+          "expectedResults": [
+            "租车费用明细正确"
+          ]
+        },
+        {
+          "id": "TC-M05-010",
+          "name": "提交订单 - 完整流程",
+          "priority": "P0",
+          "preconditions": [
+            "所有信息填写完整"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击提交订单",
+              "assert": "调起支付"
+            },
+            {
+              "seq": 2,
+              "action": "支付成功",
+              "assert": "跳转下单成功页"
+            }
+          ],
+          "expectedResults": [
+            "下单流程完整"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M06",
+      "moduleName": "行程管理",
+      "pagePath": "/pages/trips/",
+      "testCases": [
+        {
+          "id": "TC-M06-001",
+          "name": "订单列表 - Tab 筛选",
+          "priority": "P0",
+          "preconditions": [
+            "用户有各状态订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "默认全部Tab",
+              "assert": "展示所有状态订单"
+            },
+            {
+              "seq": 2,
+              "action": "点击待出发Tab",
+              "assert": "仅待支付/待调度/已派车/待取车"
+            },
+            {
+              "seq": 3,
+              "action": "点击行程中Tab",
+              "assert": "仅行程中订单"
+            },
+            {
+              "seq": 4,
+              "action": "点击已完成Tab",
+              "assert": "仅已完成订单"
+            },
+            {
+              "seq": 5,
+              "action": "点击已取消Tab",
+              "assert": "仅已取消订单，含取消原因"
+            }
+          ],
+          "expectedResults": [
+            "Tab 筛选正确"
+          ]
+        },
+        {
+          "id": "TC-M06-002",
+          "name": "订单列表 - 搜索",
+          "priority": "P1",
+          "preconditions": [
+            "存在多个订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入订单号片段",
+              "assert": "过滤出匹配订单"
+            },
+            {
+              "seq": 2,
+              "action": "清空搜索框",
+              "assert": "恢复全部展示"
+            }
+          ],
+          "expectedResults": [
+            "搜索功能正常"
+          ]
+        },
+        {
+          "id": "TC-M06-003",
+          "name": "订单卡片内容 - 两种场景",
+          "priority": "P1",
+          "preconditions": [
+            "存在包车/租车订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看包车出行卡片",
+              "assert": "标签+出发地目的地+日期范围+天数+状态"
+            },
+            {
+              "seq": 2,
+              "action": "查看租车出行卡片",
+              "assert": "标签+取车地址+还车地址+日期范围+天数+状态"
+            }
+          ],
+          "expectedResults": [
+            "两种场景卡片信息完整"
+          ]
+        },
+        {
+          "id": "TC-M06-004",
+          "name": "已取消订单重新下单",
+          "priority": "P0",
+          "preconditions": [
+            "存在已取消订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入已取消Tab -> 点击重新下单",
+              "assert": "跳转对应出行场景，自动填入原订单信息"
+            }
+          ],
+          "expectedResults": [
+            "重新下单自动填回原信息"
+          ]
+        },
+        {
+          "id": "TC-M06-005",
+          "name": "订单详情 - 包车出行",
+          "priority": "P0",
+          "preconditions": [
+            "存在包车出行订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击订单 -> 订单详情",
+              "assert": "状态+订单号+行程(出发地目的地)+日期范围+车型套餐+费用明细"
+            }
+          ],
+          "expectedResults": [
+            "包车订单详情信息完整"
+          ]
+        },
+        {
+          "id": "TC-M06-006",
+          "name": "订单详情 - 租车出行",
+          "priority": "P0",
+          "preconditions": [
+            "存在租车出行订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击租车订单 -> 订单详情",
+              "assert": "状态+订单号+取还车地址+日期范围+车型+费用明细"
+            }
+          ],
+          "expectedResults": [
+            "租车订单详情信息完整"
+          ]
+        },
+        {
+          "id": "TC-M06-007",
+          "name": "订单详情 - 包车每日安排",
+          "priority": "P1",
+          "preconditions": [
+            "存在多天包车订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入包车订单详情",
+              "assert": "每日安排按天平铺展示日期+时间+司机+车辆+状态"
+            }
+          ],
+          "expectedResults": [
+            "包车每日安排正确"
+          ]
+        },
+        {
+          "id": "TC-M06-008",
+          "name": "订单详情 - 租车送取车任务",
+          "priority": "P1",
+          "preconditions": [
+            "存在租车订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入租车订单详情",
+              "assert": "送车任务和取车任务各展示状态"
+            }
+          ],
+          "expectedResults": [
+            "送取车任务状态正确"
+          ]
+        },
+        {
+          "id": "TC-M06-009",
+          "name": "取消订单 - 包车20分钟内免费",
+          "priority": "P0",
+          "preconditions": [
+            "刚创建的包车订单（20分钟内）"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "订单详情 -> 取消订单",
+              "assert": "弹窗显示违约金 0"
+            },
+            {
+              "seq": 2,
+              "action": "确认取消",
+              "assert": "订单取消成功，状态变为已取消"
+            }
+          ],
+          "expectedResults": [
+            "20分钟内免费取消正确"
+          ]
+        },
+        {
+          "id": "TC-M06-010",
+          "name": "取消订单 - 包车扣50%",
+          "priority": "P1",
+          "preconditions": [
+            "包车订单距出发2-4小时"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "取消订单",
+              "assert": "违约金为订单金额50%"
+            },
+            {
+              "seq": 2,
+              "action": "确认取消",
+              "assert": "退款原路返回，扣除50%"
+            }
+          ],
+          "expectedResults": [
+            "违约金计算正确"
+          ]
+        },
+        {
+          "id": "TC-M06-011",
+          "name": "取消订单 - 包车不足2h全扣",
+          "priority": "P1",
+          "preconditions": [
+            "包车订单距出发不足2小时"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "取消订单",
+              "assert": "违约金为100%"
+            }
+          ],
+          "expectedResults": [
+            "不足2小时全扣"
+          ]
+        },
+        {
+          "id": "TC-M06-012",
+          "name": "包车已开始当日不可取消",
+          "priority": "P0",
+          "preconditions": [
+            "包车已开始当日"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入订单详情",
+              "assert": "取消订单按钮不可见或不可用"
+            }
+          ],
+          "expectedResults": [
+            "已开始不可取消"
+          ]
+        },
+        {
+          "id": "TC-M06-013",
+          "name": "取消订单 - 租车与包车取消规则一致",
+          "priority": "P1",
+          "preconditions": [
+            "租车订单在取消规则范围内"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "测试租车订单各时间段取消",
+              "assert": "20分钟内免费/不少于4h免费/2-4h扣50%/小于2h扣100%，与包车规则一致"
+            }
+          ],
+          "expectedResults": [
+            "租车取消规则与规格说明一致"
+          ]
+        },
+        {
+          "id": "TC-M06-014",
+          "name": "评价行程",
+          "priority": "P0",
+          "preconditions": [
+            "存在已完成订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "已完成订单详情 -> 评价行程",
+              "assert": "弹出评价弹窗"
+            },
+            {
+              "seq": 2,
+              "action": "司机4星/车辆5星/服务3星",
+              "assert": "星级高亮"
+            },
+            {
+              "seq": 3,
+              "action": "输入文字评价(不超过200字) -> 提交",
+              "assert": "Toast: 评价成功"
+            },
+            {
+              "seq": 4,
+              "action": "输入超200字",
+              "assert": "输入受限"
+            }
+          ],
+          "expectedResults": [
+            "评价功能完整"
+          ]
+        },
+        {
+          "id": "TC-M06-015",
+          "name": "空状态",
+          "priority": "P2",
+          "preconditions": [
+            "用户无任何订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入我的行程",
+              "assert": "展示: 暂无行程记录"
+            }
+          ],
+          "expectedResults": [
+            "空状态提示正确"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M07",
+      "moduleName": "电子发票",
+      "pagePath": "/pages/invoice/",
+      "testCases": [
+        {
+          "id": "TC-M07-001",
+          "name": "发票列表展示",
+          "priority": "P0",
+          "preconditions": [
+            "用户有发票记录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "我的 -> 电子发票",
+              "assert": "展示发票列表"
+            },
+            {
+              "seq": 2,
+              "action": "查看发票卡片",
+              "assert": "类型标签+抬头+金额+日期+状态"
+            }
+          ],
+          "expectedResults": [
+            "列表展示正确"
+          ]
+        },
+        {
+          "id": "TC-M07-002",
+          "name": "发票状态筛选与颜色",
+          "priority": "P1",
+          "preconditions": [
+            "存在不同状态发票"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "切换状态Tab",
+              "assert": "筛选对应状态"
+            },
+            {
+              "seq": 2,
+              "action": "验证颜色",
+              "assert": "已开具(绿色)/开票中(蓝色)/已作废(灰色)"
+            }
+          ],
+          "expectedResults": [
+            "状态筛选和颜色正确"
+          ]
+        },
+        {
+          "id": "TC-M07-003",
+          "name": "选择开票订单 - 多选合并",
+          "priority": "P0",
+          "preconditions": [
+            "存在已完成未开票订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击申请开票",
+              "assert": "进入选择订单页，仅展示已完成且未开票"
+            },
+            {
+              "seq": 2,
+              "action": "勾选2笔订单",
+              "assert": "底部: 已选2笔，合计金额正确"
+            },
+            {
+              "seq": 3,
+              "action": "取消勾选1笔",
+              "assert": "底部分数金额更新"
+            },
+            {
+              "seq": 4,
+              "action": "未勾选时下一步",
+              "assert": "按钮灰色禁用"
+            }
+          ],
+          "expectedResults": [
+            "多选和金额计算正确"
+          ]
+        },
+        {
+          "id": "TC-M07-004",
+          "name": "填写发票信息 - 个人发票",
+          "priority": "P0",
+          "preconditions": [
+            "已选订单进入填写页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "选择个人发票类型",
+              "assert": "展示姓名+手机号表单"
+            },
+            {
+              "seq": 2,
+              "action": "填写提交",
+              "assert": "Toast: 提交成功发票正在开具中 -> 跳转列表"
+            }
+          ],
+          "expectedResults": [
+            "个人发票流程正确"
+          ]
+        },
+        {
+          "id": "TC-M07-005",
+          "name": "填写发票信息 - 企业发票自动填",
+          "priority": "P0",
+          "preconditions": [
+            "企业身份用户",
+            "已选订单"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "选择企业发票类型",
+              "assert": "企业名称+税号自动填入当前企业信息，可编辑"
+            },
+            {
+              "seq": 2,
+              "action": "填写接收邮箱 -> 提交",
+              "assert": "提交成功"
+            }
+          ],
+          "expectedResults": [
+            "企业发票自动填信息 + 可编辑"
+          ]
+        },
+        {
+          "id": "TC-M07-006",
+          "name": "发票信息必填校验",
+          "priority": "P1",
+          "preconditions": [
+            "发票信息填写页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "不填必填项提交",
+              "assert": "对应字段红色提示"
+            },
+            {
+              "seq": 2,
+              "action": "税号填15位/18位",
+              "assert": "通过"
+            },
+            {
+              "seq": 3,
+              "action": "税号填其他长度",
+              "assert": "不通过"
+            }
+          ],
+          "expectedResults": [
+            "必填校验正确"
+          ]
+        },
+        {
+          "id": "TC-M07-007",
+          "name": "发票详情 - 已开具操作",
+          "priority": "P1",
+          "preconditions": [
+            "存在已开具发票"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击发票卡片",
+              "assert": "发票详情: 状态/发票号/抬头/内容/金额/日期"
+            },
+            {
+              "seq": 2,
+              "action": "下载PDF",
+              "assert": "调起下载"
+            },
+            {
+              "seq": 3,
+              "action": "重新发送至邮箱",
+              "assert": "Toast: 已发送至 xxx@xxx.com"
+            },
+            {
+              "seq": 4,
+              "action": "申请作废重开",
+              "assert": "弹窗确认 -> 提交后台审核"
+            }
+          ],
+          "expectedResults": [
+            "已开具发票功能完整"
+          ]
+        },
+        {
+          "id": "TC-M07-008",
+          "name": "发票详情 - 开票中取消",
+          "priority": "P2",
+          "preconditions": [
+            "存在开票中发票"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入发票详情 -> 取消开票申请",
+              "assert": "弹窗确认 -> 状态变为已取消"
+            }
+          ],
+          "expectedResults": [
+            "开票中可取消"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M08",
+      "moduleName": "企业管理",
+      "pagePath": "/pages/enterprise/",
+      "testCases": [
+        {
+          "id": "TC-M08-001",
+          "name": "企业管理首页 - 管理员视角",
+          "priority": "P0",
+          "preconditions": [
+            "已登录企业管理员"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "我的 -> 企业管理",
+              "assert": "企业名称+编号+剩余额度"
+            },
+            {
+              "seq": 2,
+              "action": "查看菜单",
+              "assert": "员工管理和额度消费记录均可见"
+            }
+          ],
+          "expectedResults": [
+            "管理员首页完整"
+          ]
+        },
+        {
+          "id": "TC-M08-002",
+          "name": "企业管理首页 - 员工视角",
+          "priority": "P1",
+          "preconditions": [
+            "已登录企业普通员工"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "我的 -> 企业管理",
+              "assert": "企业信息+剩余额度"
+            },
+            {
+              "seq": 2,
+              "action": "查看菜单",
+              "assert": "员工管理入口不可见"
+            }
+          ],
+          "expectedResults": [
+            "员工权限受限正确"
+          ]
+        },
+        {
+          "id": "TC-M08-003",
+          "name": "员工管理列表",
+          "priority": "P0",
+          "preconditions": [
+            "管理员已登录",
+            "企业有5名员工"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入员工管理",
+              "assert": "共5名员工+剩余额度"
+            },
+            {
+              "seq": 2,
+              "action": "查看列表",
+              "assert": "管理员标记特殊标识，普通员工有删除按钮"
+            },
+            {
+              "seq": 3,
+              "action": "验证管理员不可删除自己",
+              "assert": "管理员条目无删除按钮"
+            }
+          ],
+          "expectedResults": [
+            "员工列表和权限标识正确"
+          ]
+        },
+        {
+          "id": "TC-M08-004",
+          "name": "添加员工 - 正常流程",
+          "priority": "P0",
+          "preconditions": [
+            "管理员已登录",
+            "13800138003 已注册未关联企业"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击添加员工 -> 输入 13800138003",
+              "assert": "校验通过"
+            },
+            {
+              "seq": 2,
+              "action": "确认添加",
+              "assert": "Toast添加成功 -> 返回列表，新员工出现"
+            }
+          ],
+          "expectedResults": [
+            "添加员工成功"
+          ]
+        },
+        {
+          "id": "TC-M08-005",
+          "name": "添加员工 - 未注册用户拦截",
+          "priority": "P0",
+          "preconditions": [
+            "输入未注册手机号"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "确认添加",
+              "assert": "提示: 该手机号未注册尊出行请通知对方先注册"
+            }
+          ],
+          "expectedResults": [
+            "未注册拦截正确"
+          ]
+        },
+        {
+          "id": "TC-M08-006",
+          "name": "添加员工 - 已关联其他企业拦截",
+          "priority": "P0",
+          "preconditions": [
+            "手机号已关联其他企业"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "确认添加",
+              "assert": "提示: 该用户已关联其他企业"
+            }
+          ],
+          "expectedResults": [
+            "重复关联拦截"
+          ]
+        },
+        {
+          "id": "TC-M08-007",
+          "name": "添加员工 - 手机号格式校验",
+          "priority": "P1",
+          "preconditions": [
+            "添加员工页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "输入错误格式 -> 确认添加",
+              "assert": "提示: 请输入正确手机号"
+            }
+          ],
+          "expectedResults": [
+            "格式校验正确"
+          ]
+        },
+        {
+          "id": "TC-M08-008",
+          "name": "删除员工",
+          "priority": "P1",
+          "preconditions": [
+            "管理员已登录",
+            "有可删除员工"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击删除 -> 确认",
+              "assert": "Toast删除成功 -> 列表更新"
+            }
+          ],
+          "expectedResults": [
+            "删除功能正常"
+          ]
+        },
+        {
+          "id": "TC-M08-009",
+          "name": "额度消费记录 - 管理员看全员",
+          "priority": "P1",
+          "preconditions": [
+            "管理员已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入额度消费记录",
+              "assert": "顶部当月消费总额，可按员工筛选"
+            },
+            {
+              "seq": 2,
+              "action": "查看记录",
+              "assert": "消费(红色-)/退款(绿色+)，金额+时间+操作人+订单号"
+            }
+          ],
+          "expectedResults": [
+            "管理员可见全员且可筛选"
+          ]
+        },
+        {
+          "id": "TC-M08-010",
+          "name": "额度消费记录 - 员工仅看本人",
+          "priority": "P1",
+          "preconditions": [
+            "普通员工已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入记录页",
+              "assert": "仅展示本人记录，无按员工筛选"
+            }
+          ],
+          "expectedResults": [
+            "员工仅可查看本人"
+          ]
+        },
+        {
+          "id": "TC-M08-011",
+          "name": "消费记录点击跳转订单详情",
+          "priority": "P1",
+          "preconditions": [
+            "消费记录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击一条记录",
+              "assert": "跳转关联订单详情"
+            }
+          ],
+          "expectedResults": [
+            "记录可点击跳转"
+          ]
+        },
+        {
+          "id": "TC-M08-012",
+          "name": "按月切换消费汇总",
+          "priority": "P2",
+          "preconditions": [
+            "消费记录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "切换月份",
+              "assert": "顶部消费总额更新，列表刷新"
+            }
+          ],
+          "expectedResults": [
+            "月份切换正确"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M09",
+      "moduleName": "消息中心",
+      "pagePath": "/pages/messages/",
+      "testCases": [
+        {
+          "id": "TC-M09-001",
+          "name": "消息列表展示",
+          "priority": "P0",
+          "preconditions": [
+            "用户有消息"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "我的 -> 消息中心",
+              "assert": "展示消息列表"
+            },
+            {
+              "seq": 2,
+              "action": "查看消息条目",
+              "assert": "未读红点+标题+相对时间+摘要"
+            },
+            {
+              "seq": 3,
+              "action": "验证时间格式",
+              "assert": "N分钟前/N小时前/N天前；超7天显示具体日期"
+            }
+          ],
+          "expectedResults": [
+            "列表展示正确"
+          ]
+        },
+        {
+          "id": "TC-M09-002",
+          "name": "消息类型覆盖",
+          "priority": "P1",
+          "preconditions": [
+            "触发各类型消息"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "验证派车成功消息",
+              "assert": "标题派车成功，含司机车辆信息"
+            },
+            {
+              "seq": 2,
+              "action": "验证行程开始/结束消息",
+              "assert": "含行程信息/评价提醒"
+            },
+            {
+              "seq": 3,
+              "action": "验证取车/还车提醒",
+              "assert": "取车/还车前1小时推送"
+            },
+            {
+              "seq": 4,
+              "action": "验证订单取消消息",
+              "assert": "含取消原因"
+            }
+          ],
+          "expectedResults": [
+            "所有消息类型正确"
+          ]
+        },
+        {
+          "id": "TC-M09-003",
+          "name": "点击消息跳转+已读",
+          "priority": "P0",
+          "preconditions": [
+            "消息列表有未读消息"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击一条未读消息",
+              "assert": "红点消失 -> 直接跳转对应订单详情"
+            }
+          ],
+          "expectedResults": [
+            "消息点击跳转+标记已读"
+          ]
+        },
+        {
+          "id": "TC-M09-004",
+          "name": "全部已读",
+          "priority": "P1",
+          "preconditions": [
+            "存在多条未读消息"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击全部已读",
+              "assert": "所有红点消失，角标清零"
+            }
+          ],
+          "expectedResults": [
+            "一键已读正确"
+          ]
+        },
+        {
+          "id": "TC-M09-005",
+          "name": "左滑删除消息",
+          "priority": "P2",
+          "preconditions": [
+            "消息列表有消息"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "左滑消息 -> 点击删除",
+              "assert": "消息从列表移除"
+            }
+          ],
+          "expectedResults": [
+            "删除功能正常"
+          ]
+        },
+        {
+          "id": "TC-M09-006",
+          "name": "未读角标显示",
+          "priority": "P1",
+          "preconditions": [
+            "有5条未读"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看我的页消息入口",
+              "assert": "角标显示 5"
+            }
+          ],
+          "expectedResults": [
+            "角标数字正确"
+          ]
+        },
+        {
+          "id": "TC-M09-007",
+          "name": "未读角标超99显示99+",
+          "priority": "P2",
+          "preconditions": [
+            "有120条未读"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看角标",
+              "assert": "显示 99+"
+            }
+          ],
+          "expectedResults": [
+            "超99显示99+"
+          ]
+        },
+        {
+          "id": "TC-M09-008",
+          "name": "消息空状态",
+          "priority": "P2",
+          "preconditions": [
+            "无消息"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入消息中心",
+              "assert": "展示: 暂无消息"
+            }
+          ],
+          "expectedResults": [
+            "空状态提示正确"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M10",
+      "moduleName": "联系客服",
+      "pagePath": "/pages/support/",
+      "testCases": [
+        {
+          "id": "TC-M10-001",
+          "name": "联系客服拨号",
+          "priority": "P1",
+          "preconditions": [
+            "已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "我的 -> 联系客服",
+              "assert": "弹窗确认: 呼叫 400-XXX-XXXX？"
+            },
+            {
+              "seq": 2,
+              "action": "点击确认",
+              "assert": "调起系统拨号"
+            },
+            {
+              "seq": 3,
+              "action": "点击取消",
+              "assert": "弹窗关闭，留在当前页"
+            }
+          ],
+          "expectedResults": [
+            "客服拨号流程正确"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M11",
+      "moduleName": "服务协议与隐私政策",
+      "pagePath": "/pages/agreement/ (WebView)",
+      "testCases": [
+        {
+          "id": "TC-M11-001",
+          "name": "我的页面查看协议",
+          "priority": "P1",
+          "preconditions": [
+            "已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "我的 -> 用户服务协议",
+              "assert": "WebView打开服务协议H5"
+            },
+            {
+              "seq": 2,
+              "action": "我的 -> 隐私政策",
+              "assert": "WebView打开隐私政策H5"
+            }
+          ],
+          "expectedResults": [
+            "协议页面正确加载"
+          ]
+        },
+        {
+          "id": "TC-M11-002",
+          "name": "登录页协议入口（无需登录）",
+          "priority": "P1",
+          "preconditions": [
+            "未登录",
+            "处于登录页"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "点击用户服务协议",
+              "assert": "WebView打开H5"
+            },
+            {
+              "seq": 2,
+              "action": "点击隐私政策",
+              "assert": "WebView打开H5"
+            }
+          ],
+          "expectedResults": [
+            "无需登录也可查看协议"
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "M13",
+      "moduleName": "我的页面",
+      "pagePath": "/pages/mine/",
+      "testCases": [
+        {
+          "id": "TC-M13-001",
+          "name": "我的页面 - 个人用户布局",
+          "priority": "P1",
+          "preconditions": [
+            "普通个人用户已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "切换到我的Tab",
+              "assert": "头像+姓名+脱敏手机号"
+            },
+            {
+              "seq": 2,
+              "action": "查看功能区",
+              "assert": "行程/发票/常用地址/消息中心(角标)"
+            },
+            {
+              "seq": 3,
+              "action": "查看设置区",
+              "assert": "客服/计价规则/协议/隐私/退出登录"
+            },
+            {
+              "seq": 4,
+              "action": "检查企业区",
+              "assert": "不可见"
+            }
+          ],
+          "expectedResults": [
+            "个人用户页面正确"
+          ]
+        },
+        {
+          "id": "TC-M13-002",
+          "name": "我的页面 - 企业用户入口",
+          "priority": "P1",
+          "preconditions": [
+            "企业身份用户已登录"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看企业服务区",
+              "assert": "企业管理入口可见"
+            }
+          ],
+          "expectedResults": [
+            "企业入口正确显示"
+          ]
+        },
+        {
+          "id": "TC-M13-003",
+          "name": "车主认证 - 未认证入口",
+          "priority": "P1",
+          "preconditions": [
+            "未认证尊界车主"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "查看车主认证入口",
+              "assert": "展示车主认证入口"
+            },
+            {
+              "seq": 2,
+              "action": "点击车主认证",
+              "assert": "跳转车主认证页"
+            }
+          ],
+          "expectedResults": [
+            "未认证车主入口正确"
+          ]
+        },
+        {
+          "id": "TC-M13-004",
+          "name": "车主认证 - 成功流程",
+          "priority": "P0",
+          "preconditions": [
+            "未认证车主"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "进入认证页",
+              "assert": "姓名+身份证+手机号(预填当前号码)"
+            },
+            {
+              "seq": 2,
+              "action": "填写信息提交",
+              "assert": "身份证末位X自动大写"
+            },
+            {
+              "seq": 3,
+              "action": "核验成功",
+              "assert": "Toast: 认证成功尊享权益已生效 -> 返回"
+            }
+          ],
+          "expectedResults": [
+            "认证成功流程正确"
+          ]
+        },
+        {
+          "id": "TC-M13-005",
+          "name": "车主认证 - 失败提示",
+          "priority": "P1",
+          "preconditions": [
+            "信息不匹配"
+          ],
+          "steps": [
+            {
+              "seq": 1,
+              "action": "提交认证",
+              "assert": "Toast具体错误原因(信息不匹配等)"
+            }
+          ],
+          "expectedResults": [
+            "认证失败提示正确"
+          ]
+        }
+      ]
+    }
+  ],
+  "crossModuleScenarios": [
+    {
+      "id": "CS-001",
+      "name": "完整用户旅程: 注册->下单->支付->评价->开票",
+      "steps": [
+        "新用户进入小程序 -> 输入手机号获取验证码",
+        "通过极验 + 输入验证码 -> 勾选协议 -> 自动注册登录",
+        "首页 -> 选择包车出行 -> 填写起止点 -> 选套餐 -> 确认订单",
+        "选择个人微信支付 -> 提交 -> 支付成功 -> 下单成功",
+        "模拟后台派车、行程开始、行程结束",
+        "消息中心收到派车成功/行程开始/行程结束通知",
+        "我的行程 -> 已完成订单 -> 评价行程",
+        "电子发票 -> 选择订单 -> 填写信息 -> 申请开票"
+      ]
+    },
+    {
+      "id": "CS-002",
+      "name": "企业用户旅程: 入驻->管理->企业支付->消费记录",
+      "steps": [
+        "登录页 -> 企业入驻 -> 填写信息提交",
+        "运营后台审核通过 -> 申请人成为管理员",
+        "管理员添加员工 13800138003",
+        "员工下单选择企业支付",
+        "管理员查看额度消费记录",
+        "企业额度不足时员工下单被拦截"
+      ]
+    },
+    {
+      "id": "CS-003",
+      "name": "尊界车主权益旅程: 认证->使用权益->次数扣减",
+      "steps": [
+        "车主认证成功",
+        "首页权益区显示剩余次数(默认3次)",
+        "预约用车 -> 使用尊享权益 -> 0元下单 -> 权益次数减1",
+        "租车出行 -> 使用尊享权益 -> 0元下单 -> 权益次数减1",
+        "包车出行 -> 确认订单页不显示尊享权益入口",
+        "权益次数用完后不再显示抵扣条"
+      ]
+    }
+  ],
+  "priorityMapping": {
+    "P0": "核心流程，必须通过，阻塞发布",
+    "P1": "重要功能，影响用户体验",
+    "P2": "边缘场景，可后续修复"
+  },
+  "executionGuidelines": {
+    "simulationMode": "AI Agent 按用例 step-by-step 模拟用户操作",
+    "assertionChecks": "每步执行后检查 assert 条件，不符合则标记失败",
+    "errorHandling": "失败步骤记录截图/日志，标记用例为 FAILED",
+    "reportFormat": "模块 -> 用例ID -> 状态(PASS/FAIL/BLOCKED) -> 失败原因",
+    "mockServices": "使用 testData 中的固定值模拟短信验证码/支付/极验等外部服务"
+  }
+}

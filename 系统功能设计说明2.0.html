@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>尊出行 - 系统功能设计说明</title>
+<style>
+  :root {
+    --primary: #1a1a2e;
+    --accent: #d4a853;
+    --bg: #fafaf9;
+    --border: #e5e0d8;
+    --text: #2c2c2c;
+    --muted: #78716c;
+    --surface: #ffffff;
+    --tag-mvp: #059669;
+    --tag-iter: #d97706;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  .header {
+    background: var(--primary);
+    color: #fff;
+    padding: 56px 0 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #d4a853, #c9a03a, #b8942e);
+  }
+  .header h1 { font-size: 32px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px; }
+  .header .subtitle { font-size: 16px; color: rgba(255,255,255,0.7); }
+  .header .meta { margin-top: 16px; font-size: 13px; color: rgba(255,255,255,0.5); }
+
+  .section { margin-top: 48px; }
+  .section-title {
+    font-size: 22px; font-weight: 700;
+    padding-bottom: 12px; border-bottom: 2px solid var(--accent);
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title .num {
+    background: var(--accent); color: #fff;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700;
+  }
+
+  .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .overview-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 24px;
+  }
+  .overview-card h3 { font-size: 16px; margin-bottom: 6px; }
+  .overview-card .role { color: var(--accent); font-weight: 600; font-size: 14px; }
+  .overview-card p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .mermaid-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 32px 24px;
+    overflow-x: auto; margin-bottom: 16px;
+  }
+  .mermaid-wrap .title { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 16px; }
+
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600; color: #fff;
+  }
+  .tag-mvp { background: var(--tag-mvp); }
+  .tag-iter { background: var(--tag-iter); }
+
+  .table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden; margin-bottom: 32px;
+  }
+  .table-wrap h3 {
+    padding: 20px 24px 0; font-size: 17px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+  }
+  th, td {
+    padding: 11px 16px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: #fafaf9; font-weight: 600; font-size: 13px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;
+    position: sticky; top: 0;
+  }
+  td:first-child { font-weight: 600; white-space: nowrap; color: var(--primary); }
+  td:nth-child(2) { min-width: 160px; }
+  td:nth-child(3) { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fdfcf9; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px 28px; }
+  .toc h3 { font-size: 16px; margin-bottom: 12px; }
+  .toc ol { padding-left: 20px; font-size: 14px; line-height: 2.2; }
+  .toc a { color: var(--text); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+
+  @page {
+    size: A4;
+    margin: 10mm 10mm;
+  }
+  @media print {
+    body { font-size: 12px; line-height: 1.5; }
+    .header { background: #fff !important; color: #000 !important; padding: 12px 0; }
+    .header h1 { color: #000; font-size: 22px; }
+    .header .subtitle, .header .meta { color: #666; font-size: 11px; }
+    .container { padding: 8px 8px 12px; max-width: none; }
+    .section { margin-top: 16px; break-inside: auto; page-break-inside: auto; }
+    .section-title { font-size: 16px; margin-bottom: 10px; padding-bottom: 6px; break-after: avoid; page-break-after: avoid; }
+    .section-title .num { width: 22px; height: 22px; font-size: 12px; }
+    h3 { font-size: 13px; break-after: avoid; page-break-after: avoid; }
+
+    /* mermaid 流程图：作为一个整块，绝不允许跨页断开；
+       通过 max-height + SVG 自适应缩放，把超长的图整体压到一页之内 */
+    .mermaid-wrap {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      padding: 10px 10px; margin-bottom: 8px;
+      max-height: 260mm;
+      overflow: hidden;
+      text-align: center;
+    }
+    .mermaid-wrap .title { font-size: 11px; margin-bottom: 6px; text-align: left; }
+    .mermaid {
+      max-height: 245mm;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .mermaid svg {
+      max-width: 100% !important;
+      max-height: 245mm !important;
+      width: auto !important;
+      height: auto !important;
+    }
+
+    /* 表格允许跨页，但表头在新页重复 */
+    .table-wrap { margin-bottom: 12px; break-inside: auto; page-break-inside: auto; }
+    .table-wrap h3 { padding: 10px 12px 0; }
+    table { font-size: 11px; }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    th, td { padding: 6px 10px; }
+
+    /* 卡片网格：放开整块禁断页，允许行间断开 */
+    .overview-grid { gap: 8px; }
+    .overview-card { padding: 12px; break-inside: avoid; page-break-inside: avoid; }
+    .overview-card h3 { font-size: 13px; }
+    .overview-card p { font-size: 11px; }
+
+    .toc { padding: 12px 16px; }
+    .toc ol { line-height: 1.8; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>尊出行 · 系统功能设计说明</h1>
+  <div class="subtitle">高端出行服务平台 — 面向尊界企业客户及尊界车主</div>
+  <div class="meta">版本：MVP V2.0 &nbsp;|&nbsp; 日期：2026-06-02 &nbsp;|&nbsp; 状态：MVP 范围已确认</div>
+</div>
+
+<div class="container">
+
+<!-- ========== 一、系统概述 ========== -->
+<div class="section">
+  <div class="section-title"><span class="num">1</span>系统概述</div>
+  <div class="overview-grid">
+    <div class="overview-card">
+      <div class="role">定位</div>
+      <h3>高端出行服务</h3>
+      <p>尊界专属车型，为 B 端企业客户及其员工提供公商务出行服务，租车出行场景支持尊界车主使用尊享权益免费用车</p>
+    </div>
+    <div class="overview-card">
+      <div class="role">产品形态</div>
+      <h3>微信小程序 + APP + Web 后台</h3>
+      <p>乘客端为微信小程序；司机端为APP；企业端/尊界运营端为 PC Web 后台</p>
+    </div>
+    <div class="overview-card">
+      <div class="role">四端架构</div>
+      <h3>乘客 · 司机 · 企业 · 尊界运营</h3>
+      <p>一小程序 + 一APP + 两端 Web 后台，覆盖出行全链路</p>
+    </div>
+    <div class="overview-card">
+      <div class="role">首批城市</div>
+      <h3>合肥 · 北上广深</h3>
+      <p>运营区域地图绘制，不在服务区不可下单</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 二、目录 ========== -->
+<div class="section">
+  <div class="section-title"><span class="num">2</span>目录</div>
+  <div class="toc">
+    <ol>
+      <li><a href="#s3">系统架构与角色</a></li>
+      <li><a href="#s4">业务流程图</a></li>
+      <li><a href="#s5">出行场景说明</a></li>
+      <li><a href="#s6">乘客端功能清单</a></li>
+      <li><a href="#s7">司机端功能清单</a></li>
+      <li><a href="#s8">企业端后台功能清单</a></li>
+      <li><a href="#s9">尊界运营管理后台功能清单</a></li>
+      <li><a href="#s10">订单模型对比</a></li>
+      <li><a href="#s11">MVP 范围边界</a></li>
+    </ol>
+  </div>
+</div>
+
+<!-- ========== 三、系统架构 ========== -->
+<div class="section" id="s3">
+  <div class="section-title"><span class="num">3</span>系统架构与角色</div>
+  <div class="overview-grid">
+    <div class="overview-card">
+      <div class="role">乘客端</div>
+      <h3>微信小程序</h3>
+      <p>公商务出行（预约用车 / 机场用车 / 包车出行 / 租车出行）；租车出行场景支持尊界车主使用尊享权益免费抵扣</p>
+    </div>
+    <div class="overview-card">
+      <div class="role">司机端</div>
+      <h3>APP</h3>
+      <p>司机使用：接单 / 行程执行 / 送取车 / 收入报表 / 环检拍照</p>
+    </div>
+    <div class="overview-card">
+      <div class="role">企业端</div>
+      <h3>PC Web 后台</h3>
+      <p>企业管理员使用：员工管理 / 额度查看 / 订单查看 / 月度账单</p>
+    </div>
+    <div class="overview-card">
+      <div class="role">尊界运营端</div>
+      <h3>PC Web 后台</h3>
+      <p>尊界运营方使用：全平台管控，含企业管理、调度、车辆/司机、车主权益、财务等</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 四、业务流程图 ========== -->
+<div class="section" id="s4">
+  <div class="section-title"><span class="num">4</span>业务流程图</div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.1 整体业务流程</div>
+    <div class="mermaid">
+flowchart LR
+    A[乘客注册/登录] --> B[选择出行场景<br/>预约/包车/租车]
+    B --> C[填写行程信息]
+    C --> D[确认费用]
+    D --> E{支付方式}
+    E -->|个人支付| F[微信/支付宝支付]
+    E -->|企业支付| G[校验企业额度]
+    E -->|尊享权益<br/>仅租车场景| H[校验剩余权益次数]
+    G -->|额度充足| I[下单成功]
+    G -->|额度不足| J[提示联系管理员]
+    H -->|权益充足| HH[本次出行免费<br/>扣减1次权益]
+    H -->|权益不足| K[提示权益已用完]
+    HH --> I
+    F -->|支付成功| I
+    F -->|支付失败/超时| L[订单自动取消]
+    I --> M[系统自动调度<br/>分配车辆+司机]
+    M --> N[司机接单]
+    N --> O[行程执行]
+    O --> P[行程完成]
+    P --> Q[评价]
+    Q --> R[申请电子发票]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.2 预约用车流程（单程）</div>
+    <div class="mermaid">
+flowchart TD
+    A[选择出发地/目的地] --> B[地图选址/手动输入/常用地址]
+    B --> C[选择日期+出发时间]
+    C --> D[路线预览]
+    D --> E[是否帮他人叫车?]
+    E -->|是| F[填写乘车人姓名+手机号]
+    E -->|否| G[确认费用明细]
+    F --> G
+    G --> H[提交订单]
+    H --> I[支付]
+    I --> J[系统分配车辆+司机]
+    J --> K[司机接单出发]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.3 包车出行流程（配司机）</div>
+    <div class="mermaid">
+flowchart TD
+    A[选择套餐: 4小时/8小时] --> B[选择日期（单日/多日）]
+    B --> C[每天出发时间+路线A→B<br/>同一车同一司机]
+    C --> D[展示费用明细]
+    D --> E[是否帮他人叫车?]
+    E -->|是| F[填写乘车人姓名+手机号]
+    E -->|否| G[提交订单]
+    F --> G
+    G --> H[支付一笔总价]
+    H --> I[系统按天拆分子订单<br/>每个子订单独立调度]
+    I --> J[下单后立即分配车辆+司机]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.4 租车出行流程（不配司机）</div>
+    <div class="mermaid">
+flowchart TD
+    A[选择租期: 单日/多日] --> B[送车时间+送车地点]
+    B --> C[取车时间+取车地点]
+    C --> D[上传驾驶证<br/>实际驾驶人信息]
+    D --> E[展示费用明细]
+    E --> F[提交订单]
+    F --> G[支付一笔总价]
+    G --> H[系统生成送车任务+取车任务<br/>推送至司机端]
+    H --> I[司机送车至指定地点交付]
+    I --> J[客户自驾用车]
+    J --> K[到期司机至指定地点取回]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.5 机场用车流程</div>
+    <div class="mermaid">
+flowchart TD
+    A[输入航班号搜索] --> B{查询结果?}
+    B -->|查到| C[自动填充:<br/>城市/航站楼/计划时间/实际时间]
+    B -->|查不到| D[手动填写航班信息]
+    C --> E{接机/送机?}
+    D --> E
+    E -->|接机| F[出发地=机场<br/>输入目的地]
+    E -->|送机| G[输入出发地<br/>目的地=机场<br/>反推建议出发时间]
+    F --> H[填写乘车人+人数]
+    G --> H
+    H --> I[展示费用明细]
+    I --> J[支付]
+    J --> K[系统分配车辆+司机]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.6 尊享权益使用流程（仅限租车出行场景）</div>
+    <div class="mermaid">
+flowchart TD
+    A[用户进入租车下单] --> B[系统识别身份]
+    B --> C{是否为尊界车主<br/>且有权益?}
+    C -->|否| D[支付方式仅展示<br/>个人支付/企业支付]
+    C -->|是| E[支付方式展示<br/>尊享权益免费出行]
+    E --> F{用户选择}
+    F -->|选个人/企业支付| G[按原流程支付下单]
+    F -->|选尊享权益| H[展示剩余次数+使用说明]
+    H --> I{剩余次数>0?}
+    I -->|否| J[提示权益已用完<br/>切换其他支付]
+    I -->|是| K[确认使用1次权益<br/>本次出行免费]
+    K --> L[提交订单<br/>系统扣减1次权益]
+    L --> M[系统分配车辆<br/>送车/取车]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.7 企业入驻与支付流程</div>
+    <div class="mermaid">
+flowchart TD
+    A[企业入驻] --> B{入驻方式}
+    B -->|小程序申请| C[填写企业信息<br/>上传营业执照]
+    B -->|后台直接添加| D[尊界运营录入]
+    C --> E[尊界后台审核]
+    D --> F[开通企业端<br/>配置额度]
+    E -->|通过| F
+    E -->|驳回| C
+    F --> G[企业管理员登录企业端]
+    G --> H[添加员工<br/>手机号关联<br/>勾选是否管理员]
+    H --> I[员工小程序端<br/>自动关联企业身份]
+    I --> J[员工下单选企业支付]
+    J --> K{校验额度}
+    K -->|充足| L[直接下单成功<br/>额度实时扣减]
+    K -->|不足| M[提示联系管理员<br/>联系尊界调额度]
+    L --> N[月底生成企业账单]
+    N --> O[企业对账确认]
+    O --> P[线下打款结算]
+    P --> Q[尊界后台标记已结算]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.8 订单生命周期</div>
+    <div class="mermaid">
+stateDiagram-v2
+    [*] --> 待支付: 提交订单
+    待支付 --> 待出发: 支付成功 / 权益抵扣成功
+    待支付 --> 已取消: 超时未支付/主动取消
+    待出发 --> 已取消: 取消订单(扣违约金)
+    待出发 --> 行程中: 司机到达/开始行程
+    行程中 --> 已完成: 到达目的地
+    已完成 --> 待结算: 预付不足/产生额外费用
+    已完成 --> [*]: 无需补款
+    待结算 --> [*]: 补款完成
+    已取消 --> [*]
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.9 包车拆单模型 — 配司机（乘客端 vs 司机端视角）</div>
+    <div class="mermaid">
+flowchart LR
+    subgraph 乘客端视角
+        P[主订单<br/>包车3天 8h/天<br/>多日包车]
+        P --> P1[Day1 6/1 09:00<br/>张三 京A12345<br/>待出发]
+        P --> P2[Day2 6/2 09:00<br/>张三 京A12345<br/>待出发]
+        P --> P3[Day3 6/3 10:00<br/>张三 京A12345<br/>待出发]
+    end
+    subgraph 司机端视角
+        D1[订单 #001<br/>6/1 09:00-17:00<br/>8h A→B<br/>司机张三接单]
+        D2[订单 #002<br/>6/2 09:00-17:00<br/>8h A→B<br/>司机张三接单]
+        D3[订单 #003<br/>6/3 10:00-18:00<br/>8h A→B<br/>司机张三接单]
+    end
+    P1 -.-> D1
+    P2 -.-> D2
+    P3 -.-> D3
+    </div>
+  </div>
+
+  <div class="mermaid-wrap">
+    <div class="title">4.10 租车送取车模型 — 不配司机（乘客端 vs 司机端视角）</div>
+    <div class="mermaid">
+flowchart LR
+    subgraph 乘客端
+        R[租车订单<br/>不配司机<br/>6/2-6/4<br/>A点送车 B点取车]
+    end
+    subgraph 司机端
+        T1[送车任务<br/>6/2 09:00<br/>送至A点<br/>验车拍照留底]
+        T2[取车任务<br/>6/4 18:00<br/>至B点取回<br/>验车拍照留底]
+    end
+    subgraph 尊界后台
+        M[租车订单<br/>关联送取车任务]
+    end
+    R --> M
+    T1 --> M
+    T2 --> M
+    </div>
+  </div>
+</div>
+
+<!-- ========== 五、出行场景说明 ========== -->
+<div class="section" id="s5">
+  <div class="section-title"><span class="num">5</span>出行场景说明</div>
+
+  <h3 style="margin-bottom:16px; color: var(--accent);">公商务出行</h3>
+  <table style="margin-bottom:32px;">
+    <tr><th style="width:12%">场景</th><th style="width:12%">类型</th><th style="width:12%">司机</th><th style="width:18%">订单结构</th><th>说明</th></tr>
+    <tr>
+      <td>预约用车</td><td>单程</td><td>必配</td><td>一单一行程</td>
+      <td>A→B 点对点，选日期+时间，基础出行方式</td>
+    </tr>
+    <tr>
+      <td>机场用车</td><td>单程</td><td>必配</td><td>一单一行程</td>
+      <td>接机：机场→目的地；送机：出发地→机场。对接三方航班数据，搜索航班号自动填充航班信息</td>
+    </tr>
+    <tr>
+      <td>包车出行</td><td>单日/多日</td><td>必配</td><td>主订单+子订单（按天拆）</td>
+      <td>选 4h/8h 套餐，配备司机出行。同一车同一司机，多日按天拆分子订单</td>
+    </tr>
+    <tr>
+      <td>租车出行</td><td>单日/多日</td><td>不配</td><td>租车订单+送车任务+取车任务</td>
+      <td>客户自驾，需上传驾驶证。系统按订单生成送车/取车任务，司机送至指定地点交付，到期取回</td>
+    </tr>
+  </table>
+
+  <h3 style="margin-bottom:16px; color: var(--accent);">尊享权益（仅限租车出行场景）</h3>
+  <table>
+    <tr><th style="width:18%">项目</th><th>说明</th></tr>
+    <tr><td>定位</td><td>尊享权益不是独立出行场景，而是叠加在租车出行下单流程中的支付方式</td></tr>
+    <tr><td>触发条件</td><td>系统识别用户为尊界车主且账户存在有效权益次数，下单页"支付方式"自动出现"尊享权益 · 免费出行"选项</td></tr>
+    <tr><td>使用规则</td><td>选择后本次出行免费，提交订单即扣减 1 次权益；权益不足则该选项置灰并提示</td></tr>
+    <tr><td>适用场景</td><td>仅限租车出行场景；后台正常计费，司机收入正常结算，仅乘客支付环节免单</td></tr>
+    <tr><td>非车主用户</td><td>不展示尊享权益入口，下单页支付方式仅显示个人支付/企业支付</td></tr>
+  </table>
+</div>
+
+<!-- ========== 六、乘客端 ========== -->
+<div class="section" id="s6">
+  <div class="section-title"><span class="num">6</span>乘客端功能清单 <span class="tag tag-mvp" style="margin-left:8px;">微信小程序</span></div>
+
+  <div class="table-wrap">
+  <table>
+  <tr><th style="width:14%">模块</th><th style="width:22%">功能点</th><th>功能说明</th></tr>
+
+  <tr><td rowspan="4">注册登录</td>
+    <td>产品入口</td><td>两个入口：① 微信小程序（需注册登录） ② 鸿蒙执行APP内嵌H5（用户体系已打通，无需注册登录）。两端功能一致，共享同一套后端服务</td></tr>
+  <tr><td>手机号注册</td><td>手机号+验证码注册，设置登录密码</td></tr>
+  <tr><td>微信快捷登录</td><td>微信授权一键登录</td></tr>
+  <tr><td>企业关联</td><td>企业管理员后台添加员工后，乘客端自动展示企业身份及可用额度</td></tr>
+
+  <tr><td rowspan="2">企业入驻</td>
+    <td>入驻申请</td><td>填写企业信息（名称/税号/联系人）并上传营业执照，提交审核</td></tr>
+  <tr><td>审核状态</td><td>查看入驻审核进度，驳回可重新提交</td></tr>
+
+  <tr><td rowspan="7">预约用车（公商务出行）</td>
+    <td>出发地/目的地</td><td>支持手动输入地址、地图选址定位</td></tr>
+  <tr><td>常用地址</td><td>收藏常用地址（家/公司等），支持地址联想搜索</td></tr>
+  <tr><td>时间选择</td><td>选择日期+具体出发时间</td></tr>
+  <tr><td>路线预览</td><td>自动生成路线，展示距离和预计时间</td></tr>
+  <tr><td>帮他人叫车</td><td>填写乘车人姓名+手机号</td></tr>
+  <tr><td>费用明细</td><td>展示预估费用及费用构成</td></tr>
+  <tr><td>备注</td><td>填写定制需求备注（如行李搬运等）</td></tr>
+
+  <tr><td rowspan="7">机场用车（公商务出行）</td>
+    <td>航班号搜索</td><td>对接三方航班数据，搜索航班号，查到自动填充航班信息，查不到手动填写</td></tr>
+  <tr><td>接机</td><td>出发地=机场，输入目的地</td></tr>
+  <tr><td>送机</td><td>目的地=机场，输入出发地，反推建议出发时间</td></tr>
+  <tr><td>乘车信息</td><td>填写乘车人姓名 + 联系方式 + 乘车人数</td></tr>
+  <tr><td>费用明细</td><td>展示预估费用及明细（含等待费等）</td></tr>
+  <tr><td>帮他人叫车</td><td>填写乘车人姓名+手机号</td></tr>
+  <tr><td>备注</td><td>填写定制需求备注</td></tr>
+
+  <tr><td rowspan="7">包车出行（公商务出行）</td>
+    <td>套餐选择</td><td>4小时 / 8小时，固定时长</td></tr>
+  <tr><td>日期选择</td><td>选择单日或多个日期</td></tr>
+  <tr><td>时间+路线</td><td>每天出发时间 + A→B 路线，同一车同一司机</td></tr>
+  <tr><td>超时/超里程</td><td>展示超时费、超里程费规则</td></tr>
+  <tr><td>主订单+子订单</td><td>乘客端展示主订单，展开显示每天子订单</td></tr>
+  <tr><td>帮他人叫车</td><td>填写乘车人姓名+手机号</td></tr>
+  <tr><td>费用明细</td><td>套餐价×天数 + 超时/超里程</td></tr>
+
+  <tr><td rowspan="7">租车出行（公商务出行）</td>
+    <td>租期选择</td><td>选择单日或多日租期</td></tr>
+  <tr><td>送车配置</td><td>送车时间 + 送车地点</td></tr>
+  <tr><td>取车配置</td><td>取车时间 + 取车地点</td></tr>
+  <tr><td>驾驶证上传</td><td>上传实际驾驶人驾驶证照片</td></tr>
+  <tr><td>实际驾驶人</td><td>填写实际驾驶人姓名+手机号（可与下单人不同）</td></tr>
+  <tr><td>用车说明</td><td>展示自驾用车规则、车辆损坏处理流程</td></tr>
+  <tr><td>费用明细</td><td>日租价×天数 + 送车费 + 取车费</td></tr>
+
+  <tr><td rowspan="5">支付</td>
+    <td>个人支付</td><td>微信支付</td></tr>
+  <tr><td>企业支付</td><td>选择关联企业 → 校验额度 → 直接下单成功</td></tr>
+  <tr><td>尊享权益</td><td>仅尊界车主可见。下单页"支付方式"自动出现"尊享权益 · 免费出行"，选择后本次出行免费，提交订单扣减 1 次权益；权益不足时选项置灰并提示</td></tr>
+  <tr><td>额度不足</td><td>企业支付额度不足时提示联系企业管理员</td></tr>
+  <tr><td>支付超时</td><td>超时15分钟未支付自动取消订单</td></tr>
+  <tr><td>取消退款</td><td>个人/企业支付按违约金规则扣除后退还；权益订单：2小时内取消权益不退，2小时外正常恢复权益次数</td></tr>
+
+  <tr><td rowspan="10">行程管理</td>
+    <td>订单列表</td><td>展示所有订单，按状态筛选（待出发/行程中/已完成/已取消）</td></tr>
+  <tr><td>包车展示</td><td>主订单展开子订单列表，每天独立展示</td></tr>
+  <tr><td>租车展示</td><td>展示送车/取车时间地点、实际驾驶人信息及任务状态</td></tr>
+  <tr><td>订单详情</td><td>完整订单信息：路线/费用/车辆/司机/状态</td></tr>
+  <tr><td>取消订单</td><td>待出发订单可取消，展示违约金规则</td></tr>
+  <tr><td>历史行程</td><td>已完成+已取消订单列表，支持一键复用重新下单</td></tr>
+  <tr><td>车辆追踪</td><td>行程中实时查看车辆位置</td></tr>
+  <tr><td>导航跳转</td><td>一键跳转第三方地图导航</td></tr>
+  <tr><td>虚拟号码通话</td><td>行程中通过虚拟号码呼叫司机，保护双方隐私</td></tr>
+  <tr><td>备注</td><td>填写定制需求备注</td></tr>
+
+  <tr><td rowspan="2">评价</td>
+    <td>评分</td><td>1-5 星评分（司机/车辆/服务）</td></tr>
+  <tr><td>文字评价</td><td>填写评价内容</td></tr>
+
+  <tr><td rowspan="3">电子发票</td>
+    <td>申请开票</td><td>已完成订单可申请开具电子发票（企业抬头）</td></tr>
+  <tr><td>发票信息</td><td>填写发票抬头、税号</td></tr>
+  <tr><td>发票管理</td><td>查看发票历史记录，下载/转发发票</td></tr>
+
+  <tr><td rowspan="5">个人中心</td>
+    <td>个人信息</td><td>头像/昵称/手机号，支持修改</td></tr>
+  <tr><td>我的企业</td><td>关联企业列表，展示每家企业可用额度</td></tr>
+  <tr><td>尊享权益</td><td>仅尊界车主可见。展示剩余次数+有效期+权益说明（适用范围/使用规则/超额计费），并提供"使用记录"列表（订单/扣减时间/恢复记录）</td></tr>
+  <tr><td>消息通知</td><td>订单状态/支付/退款/系统通知</td></tr>
+  <tr><td>帮助中心</td><td>常见问题解答、用车规则说明</td></tr>
+  </table>
+  </div>
+</div>
+
+<!-- ========== 七、司机端 ========== -->
+<div class="section" id="s7">
+  <div class="section-title"><span class="num">7</span>司机端功能清单 <span class="tag tag-mvp" style="margin-left:8px;">APP</span></div>
+
+  <div class="table-wrap">
+  <table>
+  <tr><th style="width:14%">模块</th><th style="width:22%">功能点</th><th>功能说明</th></tr>
+
+  <tr><td rowspan="3">注册认证</td>
+    <td>注册登录</td><td>手机号+验证码注册/登录</td></tr>
+  <tr><td>实名认证</td><td>上传身份证正反面 + 驾驶证 + 人脸核验</td></tr>
+  <tr><td>审核状态</td><td>查看认证审核进度</td></tr>
+
+  <tr><td rowspan="2">车辆环检</td>
+    <td>出车前拍照</td><td>环车拍照，自动加水印（时间+位置+司机名）</td></tr>
+  <tr><td>上传留底</td><td>照片上传至后台留存</td></tr>
+
+  <tr><td rowspan="5">接单</td>
+    <td>订单类型</td><td>普通行程 / 包车子订单 / 租车送取车任务，三种类型区分展示（权益订单与普通行程对司机端无差异）</td></tr>
+  <tr><td>新订单推送</td><td>新订单实时推送通知</td></tr>
+  <tr><td>订单详情</td><td>查看乘客信息/路线/费用/时间等完整信息</td></tr>
+  <tr><td>接受订单</td><td>确认接单（不能拒单，需改派联系调度员）</td></tr>
+  <tr><td>今日订单</td><td>今日所有订单列表</td></tr>
+
+  <tr><td rowspan="5">行程执行</td>
+    <td>导航出发</td><td>一键导航至乘客出发地</td></tr>
+  <tr><td>到达确认</td><td>确认到达出发地，通知乘客</td></tr>
+  <tr><td>开始行程</td><td>乘客上车后开始行程，开始计费</td></tr>
+  <tr><td>行程导航</td><td>行程中实时导航</td></tr>
+  <tr><td>虚拟号码</td><td>通过虚拟号码呼叫乘客</td></tr>
+
+  <tr><td rowspan="4">送取车<br/>(租车出行)</td>
+    <td>送车任务</td><td>导航至送车点 → 联系客户 → 验车拍照留底 → 交付</td></tr>
+  <tr><td>取车任务</td><td>导航至取车点 → 联系客户 → 验车拍照留底 → 开回</td></tr>
+  <tr><td>验车拍照</td><td>车辆外观拍照留底，线下交接</td></tr>
+  <tr><td>任务记录</td><td>送取车任务完成记录</td></tr>
+
+  <tr><td rowspan="3">收入报表</td>
+    <td>月收入总览</td><td>当月收入汇总</td></tr>
+  <tr><td>每单明细</td><td>每笔订单收入明细（按场景抽成比例计算，权益用车另行核算）</td></tr>
+  <tr><td>历史收入</td><td>按月查看历史收入记录</td></tr>
+
+  <tr><td rowspan="2">数据报表</td>
+    <td>订单统计</td><td>月订单量 + 完成率统计</td></tr>
+  <tr><td>综合评分</td><td>乘客评价综合评分查看</td></tr>
+
+  <tr><td rowspan="4">个人中心</td>
+    <td>个人信息</td><td>查看个人信息</td></tr>
+  <tr><td>车辆信息</td><td>查看绑定车辆信息</td></tr>
+  <tr><td>在线状态</td><td>在线/忙碌状态切换</td></tr>
+  <tr><td>评价查看</td><td>查看乘客对自己的评价</td></tr>
+
+  <tr><td rowspan="3">实报费用</td>
+    <td>费用填报</td><td>行程完成后，司机垫付的实报费用（高速/过路/停车/轮渡/机场进出场/异地住宿等）在线填报金额并上传凭证</td></tr>
+  <tr><td>费用明细</td><td>乘客端结算时展示实报费用明细，乘客在线支付包含此部分</td></tr>
+  <tr><td>费用说明</td><td>乘客自行支付的部分无需司机填报</td></tr>
+  </table>
+  </div>
+</div>
+
+<!-- ========== 八、企业端 ========== -->
+<div class="section" id="s8">
+  <div class="section-title"><span class="num">8</span>企业端后台功能清单 <span class="tag tag-mvp" style="margin-left:8px;">PC Web</span></div>
+
+  <div class="table-wrap">
+  <table>
+  <tr><th style="width:14%">模块</th><th style="width:22%">功能点</th><th>功能说明</th></tr>
+
+  <tr><td>登录</td>
+    <td>账号密码登录</td><td>企业管理员账号密码登录</td></tr>
+
+  <tr><td rowspan="3">员工管理</td>
+    <td>添加员工</td><td>输入手机号添加员工，勾选"是否管理员"即可赋予后台登录权限</td></tr>
+  <tr><td>删除员工</td><td>删除员工前校验是否有未完成订单，有则提示不可删除</td></tr>
+  <tr><td>员工列表</td><td>展示姓名/手机号/用车次数/消费金额</td></tr>
+
+  <tr><td rowspan="2">额度查看</td>
+    <td>额度总览</td><td>总额度 + 已用额度 + 剩余额度实时展示</td></tr>
+  <tr><td>额度不足</td><td>额度不足时展示提示</td></tr>
+
+  <tr><td rowspan="3">订单查看</td>
+    <td>订单列表</td><td>实时查看本企业所有企业支付订单</td></tr>
+  <tr><td>筛选查询</td><td>按时间/员工/出行场景筛选</td></tr>
+  <tr><td>订单详情</td><td>查看单个订单完整信息</td></tr>
+
+  <tr><td rowspan="3">月度账单</td>
+    <td>账单总览</td><td>每月账单总金额 + 明细</td></tr>
+  <tr><td>账单导出</td><td>导出账单文件</td></tr>
+  <tr><td>历史账单</td><td>查看历史月份账单</td></tr>
+  </table>
+  </div>
+</div>
+
+<!-- ========== 九、尊界运营端 ========== -->
+<div class="section" id="s9">
+  <div class="section-title"><span class="num">9</span>尊界运营管理后台功能清单 <span class="tag tag-mvp" style="margin-left:8px;">PC Web</span></div>
+
+  <div class="table-wrap">
+  <table>
+  <tr><th style="width:14%">模块</th><th style="width:22%">功能点</th><th>功能说明</th></tr>
+
+  <tr><td rowspan="4">权限管理</td>
+    <td>角色分级</td><td>超级管理员/运营管理员/财务管理员/客服管理员，不同角色不同权限</td></tr>
+  <tr><td>管理员管理</td><td>新增/编辑/删除管理员账号，分配角色</td></tr>
+  <tr><td>操作日志</td><td>记录所有管理员操作日志，支持查询导出</td></tr>
+  <tr><td>账号安全</td><td>锁定/解锁管理员账号，重置密码</td></tr>
+
+  <tr><td rowspan="4">运营区域</td>
+    <td>区域绘制</td><td>在地图上绘制多边形围栏，定义可服务区域</td></tr>
+  <tr><td>区域管理</td><td>区域列表/新增/编辑/删除</td></tr>
+  <tr><td>下单限制</td><td>出发地不在服务区域时，乘客端提示不可下单</td></tr>
+  <tr><td>首批城市</td><td>合肥、北京、上海、广州、深圳</td></tr>
+
+  <tr><td rowspan="5">企业管理</td>
+    <td>入驻审核</td><td>审核企业入驻申请（小程序申请/后台直接添加两种来源），通过/驳回</td></tr>
+  <tr><td>企业列表</td><td>企业信息列表，支持查询筛选</td></tr>
+  <tr><td>企业信息</td><td>维护企业基本信息（名称/税号/联系人等）</td></tr>
+  <tr><td>企业状态</td><td>正常/禁用，禁用后企业支付不可用</td></tr>
+  <tr><td>管理员账号</td><td>管理企业端管理员账号</td></tr>
+
+  <tr><td rowspan="4">额度管理</td>
+    <td>额度设置</td><td>为企业设置信用额度</td></tr>
+  <tr><td>额度调整</td><td>调增/调减额度，记录调整历史</td></tr>
+  <tr><td>额度预警</td><td>额度低于阈值时提醒</td></tr>
+  <tr><td>额度扣减</td><td>企业支付订单实时扣减额度，取消订单自动恢复</td></tr>
+
+  <tr><td rowspan="3">调度管理</td>
+    <td>待分配列表</td><td>所有待分配订单（含包车子订单、送取车任务），权益订单与普通订单一并参与调度</td></tr>
+  <tr><td>自动调度</td><td>系统按规则自动分配车辆+司机</td></tr>
+  <tr><td>手动改派</td><td>调度员手动更换车辆/司机，记录改派日志</td></tr>
+
+  <tr><td rowspan="7">订单管理</td>
+    <td>多条件查询</td><td>按编号/手机号/状态/时间/场景/企业筛选</td></tr>
+  <tr><td>包车展示</td><td>主订单+子订单层级展示，每个子订单独立调度</td></tr>
+  <tr><td>租车展示</td><td>租车订单+送车/取车任务关联展示</td></tr>
+  <tr><td>订单详情</td><td>预约/支付/行程/评价全信息查看</td></tr>
+  <tr><td>状态修改</td><td>手动修改订单状态，填写操作原因</td></tr>
+  <tr><td>异常标记</td><td>标记异常订单+处理记录+跟踪</td></tr>
+  <tr><td>送取车任务</td><td>查看租车订单关联的送车/取车任务状态</td></tr>
+
+  <tr><td rowspan="5">车辆管理</td>
+    <td>车辆查询</td><td>按车牌号/车型/状态筛选</td></tr>
+  <tr><td>车辆CRUD</td><td>新增/编辑/删除车辆信息</td></tr>
+  <tr><td>状态管理</td><td>正常/维修/禁用，维修期间不参与派单</td></tr>
+  <tr><td>证件审核</td><td>审核车辆保险/年检证件</td></tr>
+  <tr><td>车辆-司机绑定</td><td>多对多关系，一辆车可绑多个司机</td></tr>
+
+  <tr><td rowspan="6">司机管理</td>
+    <td>司机查询</td><td>按姓名/手机号/状态筛选</td></tr>
+  <tr><td>司机CRUD</td><td>新增/编辑/删除司机信息</td></tr>
+  <tr><td>证件审核</td><td>审核身份证+驾驶证</td></tr>
+  <tr><td>状态管理</td><td>正常/禁用，重置密码</td></tr>
+  <tr><td>排班管理</td><td>一车多司机按小时排班，系统调度按排班匹配</td></tr>
+  <tr><td>环检查看</td><td>查看司机上传的环检照片</td></tr>
+
+  <tr><td rowspan="2">司机账单</td>
+    <td>账单记录</td><td>按场景抽成比例 × 子订单金额，自动生成司机账单记录</td></tr>
+  <tr><td>账单导出</td><td>导出司机账单，线下打款</td></tr>
+
+  <tr><td rowspan="4">尊享权益管理</td>
+    <td>车主管理</td><td>尊界车主信息维护（姓名/手机号/车辆信息），支持导入</td></tr>
+  <tr><td>权益配置</td><td>配置每年免费用车次数+有效期，支持批量设置</td></tr>
+  <tr><td>权益说明配置</td><td>维护乘客端"尊享权益"页面展示的权益说明文案（适用范围/使用规则/超额计费等）</td></tr>
+  <tr><td>权益记录</td><td>查看车主权益使用明细（订单/扣减/恢复），年度统计</td></tr>
+
+  <tr><td rowspan="4">财务管理</td>
+    <td>企业账单</td><td>按企业生成月度账单，支持导出</td></tr>
+  <tr><td>对账确认</td><td>企业结算状态跟踪（待结算/已结算）</td></tr>
+  <tr><td>支付记录</td><td>支付记录查询+异常核实</td></tr>
+  <tr><td>退款管理</td><td>退款审核+执行+进度跟踪</td></tr>
+
+  <tr><td rowspan="3">发票管理</td>
+    <td>发票申请</td><td>查看用户发票申请，按类型/状态筛选</td></tr>
+  <tr><td>开具发票</td><td>审核通过后开具电子发票</td></tr>
+  <tr><td>发票作废</td><td>作废错误发票</td></tr>
+
+  <tr><td rowspan="6">运营配置</td>
+    <td>司机匹配规则</td><td>附近范围内空闲司机优先匹配，阈值后台可调</td></tr>
+  <tr><td>司机抽成比例</td><td>各场景司机抽成比例配置（含权益用车，后台正常计费正常结算）</td></tr>
+  <tr><td>取消规则</td><td>各场景取消时效及违约金比例配置</td></tr>
+  <tr><td>等候规则</td><td>各场景免费等候时长及超时费率配置</td></tr>
+  <tr><td>夜间服务</td><td>夜间时段及附加费率配置</td></tr>
+  <tr><td>异地住宿</td><td>跨城住宿判定规则及城市均价配置</td></tr>
+
+  <tr><td rowspan="2">数据报表</td>
+    <td>核心数据</td><td>订单量/交易金额/完成率/取消率统计</td></tr>
+  <tr><td>报表导出</td><td>订单/用户/财务/权益报表导出（Excel/PDF）</td></tr>
+
+  <tr><td rowspan="2">系统配置</td>
+    <td>消息模板</td><td>订单/支付/退款/系统通知模板设置</td></tr>
+  <tr><td>系统日志</td><td>用户操作日志/系统运行日志查询导出</td></tr>
+  </table>
+  </div>
+</div>
+
+<!-- ========== 十、订单模型对比 ========== -->
+<div class="section" id="s10">
+  <div class="section-title"><span class="num">10</span>四种订单模型对比</div>
+  <table>
+    <tr><th>维度</th><th>预约用车</th><th>机场用车</th><th>包车出行</th><th>租车出行</th></tr>
+    <tr><td>乘客端展示</td><td>一条订单</td><td>一条订单</td><td>主订单+子订单</td><td>租车订单+送取车信息</td></tr>
+    <tr><td>司机端展示</td><td>一条行程</td><td>一条行程</td><td>N条独立子订单</td><td>送车+取车两条任务</td></tr>
+    <tr><td>司机</td><td>必配</td><td>必配</td><td>必配</td><td>不配（客户自驾）</td></tr>
+    <tr><td>支付方式</td><td>个人 / 企业</td><td>个人 / 企业</td><td>个人 / 企业</td><td>个人 / 企业 / 尊享权益</td></tr>
+    <tr><td>支付次数</td><td>一次</td><td>一次</td><td>一次（总价）</td><td>一次（总价）</td></tr>
+    <tr><td>调度</td><td>分配一车一司机</td><td>分配一车一司机</td><td>每个子订单同一车同一司机</td><td>送取车各分配一名司机</td></tr>
+    <tr><td>帮他人</td><td>支持</td><td>支持</td><td>支持（填乘车人）</td><td>支持（填实际驾驶人）</td></tr>
+  </table>
+</div>
+
+<!-- ========== 十一、MVP 范围 ========== -->
+<div class="section" id="s11">
+  <div class="section-title"><span class="num">11</span>MVP 范围边界</div>
+
+  <h3 style="margin-bottom:16px;">MVP 包含</h3>
+  <div class="overview-grid" style="margin-bottom:32px;">
+    <div class="overview-card"><h3>包车出行</h3><p>4h/8h 套餐，单日/多日，必配司机，按天拆单同一车同一司机</p></div>
+    <div class="overview-card"><h3>租车出行</h3><p>单日/多日自驾，不配司机，生成送车+取车任务</p></div>
+    <div class="overview-card"><h3>尊享权益</h3><p>叠加在租车出行下单流程，作为支付方式之一，每年 N 次免费出行</p></div>
+    <div class="overview-card"><h3>个人支付</h3><p>微信/支付宝支付</p></div>
+    <div class="overview-card"><h3>企业支付</h3><p>额度扣减+月底对账结算</p></div>
+    <div class="overview-card"><h3>企业入驻</h3><p>小程序申请+后台审核+后台直接添加</p></div>
+    <div class="overview-card"><h3>电子发票</h3><p>线上申请+开具+下载</p></div>
+    <div class="overview-card"><h3>运营区域</h3><p>地图绘制围栏，首批合肥+北上广深</p></div>
+    <div class="overview-card"><h3>车辆+司机管理</h3><p>多对多绑定+排班+证件审核</p></div>
+    <div class="overview-card"><h3>调度+改派</h3><p>系统自动分配+手动改派</p></div>
+    <div class="overview-card"><h3>司机账单</h3><p>自动生成账单记录+线下打款</p></div>
+    <div class="overview-card"><h3>评价</h3><p>行程完成后评分+文字评价</p></div>
+    <div class="overview-card"><h3>数据报表</h3><p>核心数据统计+Excel/PDF导出</p></div>
+  </div>
+
+  <h3 style="margin-bottom:16px;">迭代再做</h3>
+  <div class="overview-grid">
+    <div class="overview-card"><h3>预约用车</h3><p>单程 A→B，必配司机（迭代再做）</p></div>
+    <div class="overview-card"><h3>机场用车</h3><p>接机/送机，对接三方航班数据，必配司机（迭代再做）</p></div>
+    <div class="overview-card"><h3>预约用车多程</h3><p>迭代</p></div>
+    <div class="overview-card"><h3>投诉/售后</h3><p>迭代</p></div>
+    <div class="overview-card"><h3>包车中途换地点</h3><p>不支持</p></div>
+    <div class="overview-card"><h3>租车损坏线上流程</h3><p>拍照留底即可</p></div>
+    <div class="overview-card"><h3>优惠券/营销活动</h3><p>迭代</p></div>
+    <div class="overview-card"><h3>在线咨询/智能客服</h3><p>迭代（先用帮助中心）</p></div>
+    <div class="overview-card"><h3>数据可视化图表</h3><p>迭代（MVP做报表导出）</p></div>
+    <div class="overview-card"><h3>余额支付/钱包</h3><p>不做</p></div>
+    <div class="overview-card"><h3>APP</h3><p>后续版本</p></div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+  window.__pdfReady = false;
+  function postProcessSvgs() {
+    document.querySelectorAll('.mermaid svg').forEach(function (svg) {
+      // 让 SVG 在打印时按 viewBox 等比缩放
+      var w = svg.getAttribute('width');
+      var h = svg.getAttribute('height');
+      if (!svg.getAttribute('viewBox') && w && h) {
+        svg.setAttribute('viewBox', '0 0 ' + parseFloat(w) + ' ' + parseFloat(h));
+      }
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+      svg.style.maxWidth = '100%';
+      svg.style.height = 'auto';
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    });
+  }
+  function loadMermaid(srcs, idx) {
+    idx = idx || 0;
+    if (idx >= srcs.length) { window.__pdfReady = true; return; }
+    var s = document.createElement('script');
+    s.src = srcs[idx];
+    s.onload = function () {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        theme: 'neutral',
+        flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+        stateDiagram: { useMaxWidth: true }
+      });
+      try {
+        window.mermaid.run({ querySelector: '.mermaid' }).then(function () {
+          postProcessSvgs();
+          window.__pdfReady = true;
+        }).catch(function () {
+          window.__pdfReady = true;
+        });
+      } catch (e) {
+        // 兜底：旧版 API
+        try { window.mermaid.init(undefined, '.mermaid'); } catch (e2) {}
+        setTimeout(function () { postProcessSvgs(); window.__pdfReady = true; }, 800);
+      }
+    };
+    s.onerror = function () { loadMermaid(srcs, idx + 1); };
+    document.head.appendChild(s);
+  }
+  loadMermaid([
+    'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js',
+    'https://unpkg.com/mermaid@10/dist/mermaid.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js'
+  ]);
+</script>
+
+</body>
+</html>
