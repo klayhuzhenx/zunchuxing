@@ -225,7 +225,7 @@ export default function VehicleList() {
         {selectedVehicle && (editMode ? (
           <div>
             <Form form={editForm} initialValues={selectedVehicle} layout="vertical" style={{ maxWidth: 500 }}>
-              <Form.Item label="车牌号" field="plateNo" rules={[{ required: true }]}><Input disabled /></Form.Item>
+              <Form.Item label="车牌号" field="plateNo" rules={[{ required: true }]}><Input /></Form.Item>
               <Form.Item label="车型" field="type" rules={[{ required: true }]}><Select options={typeOptions.map(t => ({ label: t, value: t }))} /></Form.Item>
               <Form.Item label="品牌" field="brand" rules={[{ required: true }]}><Select options={brandOptions.map(b => ({ label: b, value: b }))} /></Form.Item>
               <Form.Item label="型号" field="model" rules={[{ required: true }]}><Select options={modelOptions[selectedVehicle.brand]?.map(m => ({ label: m, value: m })) || []} /></Form.Item>

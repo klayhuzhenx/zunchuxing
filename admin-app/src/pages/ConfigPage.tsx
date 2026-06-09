@@ -8,10 +8,12 @@ import type { VehicleModel, PricingRule, BenefitTemplate } from '../types';
 
 // ===== 计费规则 Tab =====
 function PricingTab() {
-  const [rules] = useState(pricingRules);
+  const [rules, setRules] = useState(pricingRules);
   const [bizTab, setBizTab] = useState('charter');
   const [modelFilter, setModelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
+  const [addVisible, setAddVisible] = useState(false);
+  const [addForm] = Form.useForm();
 
   const charterRules = useMemo(() => rules.filter(r => r.tier), [rules]);
   const rentalRules = useMemo(() => rules.filter(r => !r.tier), [rules]);
@@ -24,30 +26,50 @@ function PricingTab() {
     return r;
   }, [currentRules, modelFilter, statusFilter]);
 
+  const handleAdd = () => {
+    addForm.validate().then(v => {
+      Message.success('规则保存成功');
+      setAddVisible(false);
+      addForm.resetFields();
+    }).catch(() => {});
+  };
+
+  const cancelSummary = (r: PricingRule) =>
+    `免费: ${r.cancelFreeMins}min / ${r.cancelFreeHours}h | 中档 ${r.cancelMidLow}-${r.cancelMidHigh}h 扣${r.cancelMidPct}% | 高档 扣${r.cancelHighPct}%`;
+
   const charterColumns = [
     { title: '车型', dataIndex: 'modelName', width: 150 },
-    { title: '套餐档位', dataIndex: 'tier', width: 100, render: (v: string) => <Tag color="arcoblue" size="small">{v}</Tag> },
-    { title: '半日租价', width: 100, render: (_: unknown, r: PricingRule) => r.halfDayPrice ? `¥${r.halfDayPrice}` : '-' },
-    { title: '日租价', width: 100, render: (_: unknown, r: PricingRule) => `¥${r.dayPrice}` },
-    { title: '服务内容', dataIndex: 'serviceContent', width: 200, ellipsis: true },
+    { title: '套餐档位', dataIndex: 'tier', width: 110, render: (v: string) => <Tag color="arcoblue" size="small">{v}</Tag> },
+    { title: '半日租价', width: 100, render: (_: unknown, r: PricingRule) => r.halfDayPrice ? `¥${r.halfDayPrice.toLocaleString()}` : '-' },
+    { title: '日租价', width: 100, render: (_: unknown, r: PricingRule) => `¥${r.dayPrice.toLocaleString()}` },
+    { title: '取消规则', width: 240, ellipsis: true, render: (_: unknown, r: PricingRule) => <span style={{ fontSize: 12, color: '#86909c' }}>{cancelSummary(r)}</span> },
     { title: '超时费', width: 90, render: (_: unknown, r: PricingRule) => `¥${r.overtimeRate}/h` },
     { title: '超公里费', width: 100, render: (_: unknown, r: PricingRule) => `¥${r.extraMileageRate}/km` },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '启用' : '停用'}</Tag> },
     {
-      title: '操作', width: 120, render: () => (
-        <Space size={4}><Button type="text" size="small">编辑</Button><Button type="text" size="small" status="warning">停用</Button></Space>
+      title: '操作', width: 140, render: (_: unknown, r: PricingRule) => (
+        <Space size={4}><Button type="text" size="small" onClick={() => Message.info('编辑功能')}>编辑</Button>
+        {r.status === 'active'
+          ? <Button type="text" size="small" status="warning" onClick={() => Message.success('规则已停用')}>停用</Button>
+          : <Button type="text" size="small" status="success" onClick={() => Message.success('规则已启用')}>启用</Button>}
+        </Space>
       ),
     },
   ];
 
   const rentalColumns = [
     { title: '车型', dataIndex: 'modelName', width: 160 },
-    { title: '日租价', width: 120, render: (_: unknown, r: PricingRule) => `¥${r.dayPrice}` },
+    { title: '日租价', width: 120, render: (_: unknown, r: PricingRule) => `¥${r.dayPrice.toLocaleString()}` },
+    { title: '取消规则', width: 260, ellipsis: true, render: (_: unknown, r: PricingRule) => <span style={{ fontSize: 12, color: '#86909c' }}>{cancelSummary(r)}</span> },
     { title: '超时费', width: 100, render: (_: unknown, r: PricingRule) => `¥${r.overtimeRate}/h` },
     { title: '超公里费', width: 110, render: (_: unknown, r: PricingRule) => `¥${r.extraMileageRate}/km` },
-    { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true },
+    { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true, render: (v?: string) => v || '-' },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '启用' : '停用'}</Tag> },
-    { title: '操作', width: 120, render: () => <Space size={4}><Button type="text" size="small">编辑</Button><Button type="text" size="small" status="warning">停用</Button></Space> },
+    { title: '操作', width: 140, render: (r: PricingRule) => <Space size={4}><Button type="text" size="small" onClick={() => Message.info('编辑')}>编辑</Button>
+      {r.status === 'active'
+        ? <Button type="text" size="small" status="warning" onClick={() => Message.success('规则已停用')}>停用</Button>
+        : <Button type="text" size="small" status="success" onClick={() => Message.success('规则已启用')}>启用</Button>}
+    </Space> },
   ];
 
   return (
@@ -64,13 +86,71 @@ function PricingTab() {
           <Select placeholder="状态" style={{ width: 120 }} value={statusFilter}
             onChange={setStatusFilter}
             options={[{ label: '启用', value: 'active' }, { label: '停用', value: 'inactive' }]} allowClear />
-          <Button type="primary" icon={<IconPlus />} onClick={() => Message.info('新增计费规则（MVP 略）')}>新增{bizTab === 'charter' ? '车型' : '车型'}计费</Button>
+          <Button type="primary" icon={<IconPlus />} onClick={() => setAddVisible(true)}>新增{bizTab === 'charter' ? '车型' : '车型'}计费</Button>
         </Space>
       </Card>
       <Card bodyStyle={{ padding: 0 }}>
         <Table columns={bizTab === 'charter' ? charterColumns : rentalColumns} data={filtered} rowKey="id"
-          scroll={{ x: bizTab === 'charter' ? 1100 : 900 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
+          scroll={{ x: bizTab === 'charter' ? 1200 : 1200 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
       </Card>
+
+      <Modal title={`新增${bizTab === 'charter' ? '包车' : '租车'}计费规则`} visible={addVisible}
+        onOk={handleAdd} onCancel={() => setAddVisible(false)} style={{ width: 640 }}>
+        <Form form={addForm} layout="vertical">
+          <Form.Item label="车型" field="modelId" rules={[{ required: true, message: '请选择车型' }]}>
+            <Select options={vehicleModels.filter(v => v.status === 'active').map(v => ({ label: v.name, value: v.id }))} />
+          </Form.Item>
+          {bizTab === 'charter' && (
+            <>
+              <Form.Item label="套餐档位" field="tier" rules={[{ required: true }]}>
+                <Select options={['尊享基础', '尊荣高级', '尊御顶级'].map(t => ({ label: t, value: t }))} />
+              </Form.Item>
+              <Form.Item label="半日租价（元，含4h/50km）" field="halfDayPrice" rules={[{ required: true }]}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </>
+          )}
+          <Form.Item label={bizTab === 'charter' ? '日租价（元，含8h/100km）' : '日租价（元，含8h/100km）'} field="dayPrice" rules={[{ required: true }]}>
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+          {bizTab === 'charter' && (
+            <Form.Item label="服务内容" field="serviceContent" rules={[{ required: true }]}>
+              <Input.TextArea maxLength={200} placeholder="该档位包含的服务说明" />
+            </Form.Item>
+          )}
+          <Form.Item label="超时费率（元/小时）" field="overtimeRate" rules={[{ required: true }]}>
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="超公里费率（元/公里）" field="extraMileageRate" rules={[{ required: true }]}>
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Card title="取消规则" size="small" style={{ marginTop: 8 }}>
+            <Space size={12} wrap>
+              <Form.Item label="下单后免费时长(分钟)" field="cancelFreeMins" rules={[{ required: true }]} style={{ width: 180 }}>
+                <InputNumber min={1} />
+              </Form.Item>
+              <Form.Item label="距出发免费时长(小时)" field="cancelFreeHours" rules={[{ required: true }]} style={{ width: 180 }}>
+                <InputNumber min={1} />
+              </Form.Item>
+              <Form.Item label="中档阈值上限(h)" field="cancelMidHigh" rules={[{ required: true }]} style={{ width: 140 }}>
+                <InputNumber min={1} />
+              </Form.Item>
+              <Form.Item label="中档阈值下限(h)" field="cancelMidLow" rules={[{ required: true }]} style={{ width: 140 }}>
+                <InputNumber min={1} />
+              </Form.Item>
+              <Form.Item label="中档扣费(%)" field="cancelMidPct" rules={[{ required: true }]} style={{ width: 120 }}>
+                <InputNumber min={1} max={99} />
+              </Form.Item>
+              <Form.Item label="高档扣费(%)" field="cancelHighPct" rules={[{ required: true }]} style={{ width: 120 }}>
+                <InputNumber min={1} max={99} />
+              </Form.Item>
+            </Space>
+          </Card>
+          <Form.Item label="备注" field="remark" style={{ marginTop: 12 }}>
+            <Input.TextArea maxLength={200} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

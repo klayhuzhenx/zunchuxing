@@ -94,7 +94,6 @@ function BillTab() {
       title: '操作', width: 200, fixed: 'right' as const, render: (_: unknown, r: EnterpriseBill) => (
         <Space size={4}>
           <Button type="text" size="small" onClick={() => openDetail(r)}>详情</Button>
-          <Button type="text" size="small" icon={<IconDownload />}>导出</Button>
           {r.status !== 'settled' && <Button type="text" size="small" status="warning" onClick={() => openSettle(r)}>结算</Button>}
         </Space>
       ),
@@ -113,7 +112,8 @@ function BillTab() {
           <Select placeholder="企业" style={{ width: 160 }} value={enterpriseFilter || undefined} onChange={v => setEnterpriseFilter(v || '')} allowClear showSearch
             options={[...new Set(bills.map(b => b.enterpriseName))].map(n => ({ label: n, value: n }))} />
           <div style={{ flex: 1 }} />
-          <Button type="outline" onClick={() => setGenBillVisible(true)}>生成账单</Button>
+          <Button type="outline" onClick={() => setGenBillVisible(true)}>刷新</Button>
+          <Button icon={<IconDownload />} type="outline" onClick={() => Message.success('导出成功')}>导出</Button>
         </Space>
       </Card>
 
@@ -160,25 +160,26 @@ function BillTab() {
               ]} />
             </Card>
 
-            <Card title="消费明细" size="small" style={{ marginBottom: 16 }}
-              extra={<Button type="text" size="small" icon={<IconDownload />}>导出</Button>}
+            <Card title="账单明细" size="small" style={{ marginBottom: 16 }}
+              extra={<Button type="text" size="small" icon={<IconDownload />} onClick={() => Message.success('导出成功')}>导出</Button>}
             >
-              <Table columns={[
-                { title: '日期', dataIndex: 'date' }, { title: '订单号', dataIndex: 'orderNo' },
-                { title: '类型', dataIndex: 'type', render: (v: string) => v === 'charter' ? '包车' : '租车' },
-                { title: '用车人', dataIndex: 'passenger' }, { title: '金额', dataIndex: 'amount', render: (v: number) => `¥${v.toLocaleString()}` },
-                { title: '结算状态', dataIndex: 'settled', render: (v: boolean) => v ? <Tag color="green" size="small">已结算</Tag> : <Tag color="orangered" size="small">未结算</Tag> },
-              ]} data={billOrderItems.filter(i => selectedBill.month.startsWith(i.date.slice(0, 7)))} rowKey="orderNo" pagination={false} size="small" />
-            </Card>
-
-            <Card title="退款明细" size="small" style={{ marginBottom: 16 }}
-              extra={<Button type="text" size="small" icon={<IconDownload />}>导出</Button>}
-            >
-              <Table columns={[
-                { title: '日期', dataIndex: 'date' }, { title: '退款单号', dataIndex: 'refundNo' },
-                { title: '关联订单', dataIndex: 'orderNo' }, { title: '金额', dataIndex: 'amount', render: (v: number) => <span style={{ color: '#00B42A' }}>¥{v.toLocaleString()}</span> },
-                { title: '原因', dataIndex: 'reason' },
-              ]} data={billRefundItems.filter(i => selectedBill.month.startsWith(i.date.slice(0, 7)))} rowKey="refundNo" pagination={false} size="small" />
+              <Tabs defaultActiveTab="consumption">
+                <Tabs.TabPane key="consumption" title="消费明细">
+                  <Table columns={[
+                    { title: '日期', dataIndex: 'date' }, { title: '订单号', dataIndex: 'orderNo' },
+                    { title: '类型', dataIndex: 'type', render: (v: string) => v === 'charter' ? '包车' : '租车' },
+                    { title: '用车人', dataIndex: 'passenger' }, { title: '金额', dataIndex: 'amount', render: (v: number) => `¥${v.toLocaleString()}` },
+                    { title: '结算状态', dataIndex: 'settled', render: (v: boolean) => v ? <Tag color="green" size="small">已结算</Tag> : <Tag color="orangered" size="small">未结算</Tag> },
+                  ]} data={billOrderItems.filter(i => selectedBill.month.startsWith(i.date.slice(0, 7)))} rowKey="orderNo" pagination={false} size="small" />
+                </Tabs.TabPane>
+                <Tabs.TabPane key="refund" title="退款明细">
+                  <Table columns={[
+                    { title: '日期', dataIndex: 'date' }, { title: '退款单号', dataIndex: 'refundNo' },
+                    { title: '关联订单', dataIndex: 'orderNo' }, { title: '金额', dataIndex: 'amount', render: (v: number) => <span style={{ color: '#00B42A' }}>¥{v.toLocaleString()}</span> },
+                    { title: '原因', dataIndex: 'reason' },
+                  ]} data={billRefundItems.filter(i => selectedBill.month.startsWith(i.date.slice(0, 7)))} rowKey="refundNo" pagination={false} size="small" />
+                </Tabs.TabPane>
+              </Tabs>
             </Card>
 
             <Card title="额度变动记录" size="small" style={{ marginBottom: 16 }}>

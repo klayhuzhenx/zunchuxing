@@ -628,7 +628,7 @@ tailwind.config = {
 
 <section class="fixed bottom-0 w-full bg-white/80 rounded-t-[32px] px-container-margin pt-6 pb-10 space-y-4 z-50" style="backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0px -10px 40px rgba(0,0,0,0.04);">
 <button class="w-full h-14 bg-obsidian-deep text-white font-label-md rounded-[24px] hover:opacity-90 active:scale-[0.98] transition-all duration-200" onclick="go('home')">返回首页</button>
-<button class="w-full h-14 bg-white text-primary border border-slate-surface font-label-md rounded-[24px] hover:bg-slate-surface/50 active:scale-[0.98] transition-all duration-200" onclick="screenStack=['home','trip-detail-charter'];go('trip-detail-charter')" class="after-payment-btn">查看订单详情</button>
+<button class="w-full h-14 bg-white text-primary border border-slate-surface font-label-md rounded-[24px] hover:bg-slate-surface/50 active:scale-[0.98] transition-all duration-200" onclick="goPaymentDetail()" class="after-payment-btn">查看订单详情</button>
 </section>
 </div>
 
@@ -1671,6 +1671,20 @@ tailwind.config = {
 <div><p class="font-label-md text-label-md text-amber-700 font-semibold">等待司机派车</p><p class="font-body-md text-body-md text-secondary mt-1">订单已提交，运营正在为您调度车辆和司机，请耐心等待</p></div>
 </div>
 
+<!-- 司机位置（待接驾状态） -->
+<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="charter-driver-location" style="display:none;">
+<h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">司机位置</h3>
+<div class="w-full h-40 rounded-2xl overflow-hidden relative mb-3" style="background:linear-gradient(135deg,#E8F3FF 0%,#D4E8FF 50%,#C5DFF5 100%);display:flex;align-items:center;justify-content:center;">
+  <div style="text-align:center;">
+    <span class="material-symbols-outlined" style="font-size:36px;color:#165DFF;">location_on</span>
+    <p style="font-size:12px;color:#165DFF;margin-top:4px;font-weight:500;">深圳市南山区科技园</p>
+    <p style="font-size:11px;color:#4E83FD;margin-top:2px;">距上车点 2.3km · 预计 8 分钟到达</p>
+  </div>
+  <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;padding:2px 8px;border-radius:8px;">GPS 实时定位 · 30秒前更新</div>
+</div>
+<div class="flex items-center gap-2 text-secondary"><span class="material-symbols-outlined text-[16px]">person</span><span class="font-body-sm">李师傅 · 京A12345</span></div>
+</div>
+
 <!-- 行程信息 -->
 <div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="charter-trip-info">
 <h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">行程信息</h3>
@@ -1691,24 +1705,7 @@ tailwind.config = {
 <p class="font-body-md text-body-md text-secondary mt-1">日租 ¥2,088/天 × 3</p>
 </div>
 
-</div>
 
-
-<!-- 司机位置（待接驾状态） -->
-<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="charter-driver-location" style="display:none;">
-<h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">司机位置</h3>
-<div class="w-full h-40 rounded-2xl overflow-hidden relative mb-3" style="background:linear-gradient(135deg,#E8F3FF 0%,#D4E8FF 50%,#C5DFF5 100%);display:flex;align-items:center;justify-content:center;">
-  <div style="text-align:center;">
-    <span class="material-symbols-outlined" style="font-size:36px;color:#165DFF;">location_on</span>
-    <p style="font-size:12px;color:#165DFF;margin-top:4px;font-weight:500;">深圳市南山区科技园</p>
-    <p style="font-size:11px;color:#4E83FD;margin-top:2px;">距上车点 2.3km · 预计 8 分钟到达</p>
-  </div>
-  <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;padding:2px 8px;border-radius:8px;">GPS 实时定位 · 30秒前更新</div>
-</div>
-<div class="flex items-center gap-2 text-secondary"><span class="material-symbols-outlined text-[16px]">person</span><span class="font-body-sm">李师傅 · 京A12345</span></div>
-
-<!-- 每日安排 -->
-<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="charter-schedule-section">
 <!-- 每日安排 -->
 <div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="charter-schedule-section">
 <h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">每日安排</h3>
@@ -1716,6 +1713,7 @@ tailwind.config = {
 <div class="flex items-center gap-4 py-4 border-b border-slate-surface/50"><div class="w-12 h-12 rounded-full bg-obsidian-deep/5 flex items-center justify-center shrink-0"><span class="font-headline-sm text-headline-sm-mobile text-obsidian-deep">10</span></div><div class="flex-1"><p class="font-label-md text-label-md text-secondary">06月10日 · 09:00</p></div><span class="px-2 py-1 rounded-full font-label-sm text-label-sm bg-premium-blue/10 text-premium-blue shrink-0">待出发</span></div>
 <div class="flex items-center gap-4 py-4 border-b border-slate-surface/50"><div class="w-12 h-12 rounded-full bg-obsidian-deep/5 flex items-center justify-center shrink-0"><span class="font-headline-sm text-headline-sm-mobile text-obsidian-deep">11</span></div><div class="flex-1"><p class="font-label-md text-label-md text-secondary">06月11日 · 09:00</p></div><span class="px-2 py-1 rounded-full font-label-sm text-label-sm bg-premium-blue/10 text-premium-blue shrink-0">待出发</span></div>
 <div class="flex items-center gap-4 py-4"><div class="w-12 h-12 rounded-full bg-obsidian-deep/5 flex items-center justify-center shrink-0"><span class="font-headline-sm text-headline-sm-mobile text-obsidian-deep">12</span></div><div class="flex-1"><p class="font-label-md text-label-md text-secondary">06月12日 · 09:00</p></div><span class="px-2 py-1 rounded-full font-label-sm text-label-sm bg-premium-blue/10 text-premium-blue shrink-0">待出发</span></div>
+</div>
 </div>
 
 <!-- 费用明细 -->
@@ -1729,14 +1727,16 @@ tailwind.config = {
 <hr class="border-surface-container my-1"/>
 <div class="flex justify-between items-end"><p class="font-body-lg text-body-lg font-bold">总额</p><div class="text-right"><p class="font-display-lg-mobile text-display-lg-mobile font-bold text-obsidian-deep">¥6,264.00</p><p class="font-label-sm text-label-sm text-secondary">已支付</p></div></div>
 </div>
+</div>
 
 <!-- 订单动态 -->
-<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface">
+<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="charter-timeline">
 <h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">订单动态</h3>
 <div class="relative pl-6 space-y-0">
 <div class="absolute left-[9px] top-2 bottom-2 w-[1.5px] bg-surface-variant"></div>
 <div class="relative pb-5"><div class="absolute -left-[18px] top-1 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center"><div class="w-1.5 h-1.5 rounded-full bg-white"></div></div><p class="font-body-md text-body-md font-semibold">订单已提交，等待派车</p><p class="font-label-sm text-label-sm text-secondary mt-0.5">06-09 14:22</p></div>
 <div class="relative"><div class="absolute -left-[18px] top-1 w-4 h-4 rounded-full bg-slate-surface border-2 border-surface-variant"></div><p class="font-body-md text-body-md text-secondary">支付成功，¥6,264.00</p><p class="font-label-sm text-label-sm text-secondary mt-0.5">06-09 14:20</p></div>
+</div>
 </div>
 
 <div class="h-8"></div>
@@ -1813,6 +1813,20 @@ tailwind.config = {
 <div><p class="font-label-md text-label-md text-amber-700 font-semibold">等待派车，请您耐心等待</p><p class="font-body-md text-body-md text-secondary mt-1">运营正在安排派车，请您耐心等待</p></div>
 </div>
 
+<!-- 司机位置（待取车未送达状态） -->
+<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="rental-delivery-location" style="display:none;">
+<h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">送车位置</h3>
+<div class="w-full h-40 rounded-2xl overflow-hidden relative mb-3" style="background:linear-gradient(135deg,#FFF7E6 0%,#FFE8C4 50%,#FFD599 100%);display:flex;align-items:center;justify-content:center;">
+  <div style="text-align:center;">
+    <span class="material-symbols-outlined" style="font-size:36px;color:#D48806;">local_shipping</span>
+    <p style="font-size:12px;color:#D48806;margin-top:4px;font-weight:500;">深圳市宝安区西乡</p>
+    <p style="font-size:11px;color:#B07D06;margin-top:2px;">距取车点 5.1km · 预计 15 分钟送达</p>
+  </div>
+  <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;padding:2px 8px;border-radius:8px;">GPS 实时定位 · 1分钟前更新</div>
+</div>
+<div class="flex items-center gap-2 text-secondary"><span class="material-symbols-outlined text-[16px]">person</span><span class="font-body-sm">赵师傅 · 粤B34567</span></div>
+</div>
+
 <!-- 取还车 -->
 <div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="rental-pickup-info">
 <h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">取还车</h3>
@@ -1846,23 +1860,8 @@ tailwind.config = {
 <div class="flex items-center gap-4 py-4 border-b border-slate-surface/50"><div class="w-12 h-12 rounded-full bg-obsidian-deep/5 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary">local_shipping</span></div><div class="flex-1"><p class="font-label-md text-label-md text-secondary">送车任务</p><p class="font-body-md text-body-md mt-0.5"><span id="rental-delivery-driver">—</span></p></div><div class="flex flex-col items-end gap-2"><span class="px-2 py-1 rounded-full font-label-sm text-label-sm bg-amber-50 text-amber-600 shrink-0" id="rental-delivery-status">待送车</span><button class="hidden flex items-center gap-1 px-3 py-1.5 rounded-full bg-obsidian-deep text-white font-label-sm text-label-sm active:scale-95 transition-all" id="rental-delivery-call" onclick="event.stopPropagation();showHomeToast('已拨打司机电话')"><span class="material-symbols-outlined text-[14px]">call</span>联系司机</button></div></div>
 <div class="flex items-center gap-4 py-4"><div class="w-12 h-12 rounded-full bg-obsidian-deep/5 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary">key</span></div><div class="flex-1"><p class="font-label-md text-label-md text-secondary">取车任务</p><p class="font-body-md text-body-md mt-0.5"><span id="rental-pickup-driver">—</span></p></div><div class="flex flex-col items-end gap-2"><span class="px-2 py-1 rounded-full font-label-sm text-label-sm bg-slate-surface text-secondary shrink-0" id="rental-pickup-status">—</span><button class="hidden flex items-center gap-1 px-3 py-1.5 rounded-full bg-obsidian-deep text-white font-label-sm text-label-sm active:scale-95 transition-all" id="rental-pickup-call" onclick="event.stopPropagation();showHomeToast('已拨打司机电话')"><span class="material-symbols-outlined text-[14px]">call</span>联系司机</button></div></div>
 </div>
-
-<!-- 司机位置（待取车未送达状态） -->
-<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="rental-delivery-location" style="display:none;">
-<h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">送车位置</h3>
-<div class="w-full h-40 rounded-2xl overflow-hidden relative mb-3" style="background:linear-gradient(135deg,#FFF7E6 0%,#FFE8C4 50%,#FFD599 100%);display:flex;align-items:center;justify-content:center;">
-  <div style="text-align:center;">
-    <span class="material-symbols-outlined" style="font-size:36px;color:#D48806;">local_shipping</span>
-    <p style="font-size:12px;color:#D48806;margin-top:4px;font-weight:500;">深圳市宝安区西乡</p>
-    <p style="font-size:11px;color:#B07D06;margin-top:2px;">距取车点 5.1km · 预计 15 分钟送达</p>
-  </div>
-  <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;padding:2px 8px;border-radius:8px;">GPS 实时定位 · 1分钟前更新</div>
-</div>
-<div class="flex items-center gap-2 text-secondary"><span class="material-symbols-outlined text-[16px]">person</span><span class="font-body-sm">赵师傅 · 粤B34567</span></div>
 </div>
 
-<!-- 费用明细 -->
-<div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="rental-fee-section">
 <!-- 费用明细 -->
 <div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="rental-fee-section">
 <h3 class="font-headline-sm text-headline-sm-mobile text-on-surface mb-stack-md">费用明细</h3>
@@ -1874,6 +1873,7 @@ tailwind.config = {
 <hr class="border-surface-container my-1"/>
 <div class="flex justify-between items-end"><p class="font-body-lg text-body-lg font-bold">总额</p><div class="text-right"><p class="font-display-lg-mobile text-display-lg-mobile font-bold text-obsidian-deep">¥4,500.00</p><p class="font-label-sm text-label-sm text-secondary">已支付</p></div></div>
 </div>
+</div>
 
 <!-- 订单动态 -->
 <div class="bg-surface-container-lowest rounded-[32px] p-stack-md border border-slate-surface" id="rental-timeline">
@@ -1882,6 +1882,7 @@ tailwind.config = {
 <div class="absolute left-[9px] top-2 bottom-2 w-[1.5px] bg-surface-variant"></div>
 <div class="relative pb-5"><div class="absolute -left-[18px] top-1 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center"><div class="w-1.5 h-1.5 rounded-full bg-white"></div></div><p class="font-body-md text-body-md font-semibold">订单已提交，等待派车</p><p class="font-label-sm text-label-sm text-secondary mt-0.5">06-09 14:22</p></div>
 <div class="relative"><div class="absolute -left-[18px] top-1 w-4 h-4 rounded-full bg-slate-surface border-2 border-surface-variant"></div><p class="font-body-md text-body-md text-secondary">支付成功，¥4,500.00</p><p class="font-label-sm text-label-sm text-secondary mt-0.5">06-09 14:20</p></div>
+</div>
 </div>
 
 <div class="h-8"></div>
@@ -1934,7 +1935,7 @@ tailwind.config = {
 <p class="font-body-md text-secondary mb-2">¥6,264.00</p>
 <p class="font-label-sm text-secondary mb-12">订单 P20260610001 · 微信支付</p>
 <div class="w-full space-y-4">
-<button class="w-full h-14 bg-obsidian-deep text-white rounded-[24px] font-label-md text-label-md active:scale-95 transition-all" onclick="(function(){ var t = paymentOrderType === 'rental' ? 'trip-detail-rental' : 'trip-detail-charter'; screenStack=['home',t]; go(t); })()">查看订单</button>
+<button class="w-full h-14 bg-obsidian-deep text-white rounded-[24px] font-label-md text-label-md active:scale-95 transition-all" onclick="goPaymentDetail()">查看订单详情</button>
 <button class="w-full h-14 border border-slate-surface rounded-[24px] font-label-md text-label-md active:scale-95 transition-all" onclick="go('home')">返回首页</button>
 </div>
 </main>
@@ -2023,7 +2024,7 @@ tailwind.config = {
 <p class="font-label-sm text-label-sm text-secondary mt-2" id="cancel-penalty-rate">距出发＜4h，扣除 25%</p>
 </div>
 
-<!-- 取消规则 -->
+<!-- 取消规则（包车） -->
 <div class="space-y-3 mb-10" id="cancel-rules-charter">
 <div class="flex items-start gap-3">
 <span class="material-symbols-outlined text-status-error text-[20px] shrink-0 mt-0.5">info</span>
@@ -2031,12 +2032,18 @@ tailwind.config = {
 <p class="font-body-md text-body-md text-obsidian-deep font-medium">包车取消规则</p>
 <p class="font-body-md text-body-md text-secondary mt-1">下单 20 分钟内或提前 4h 以上免费取消；距出发＜4h 扣 25%；＜2h 扣 50%。多日包车可提前结束行程：已开始的日期不退，未开始日期按取消规则退款。</p>
 </div>
+</div>
+</div>
+
+<!-- 取消规则（租车） -->
 <div class="space-y-3 mb-10 hidden" id="cancel-rules-rental">
 <div class="flex items-start gap-3">
 <span class="material-symbols-outlined text-status-error text-[20px] shrink-0 mt-0.5">info</span>
 <div>
 <p class="font-body-md text-body-md text-obsidian-deep font-medium">租车取消规则</p>
 <p class="font-body-md text-body-md text-secondary mt-1">下单 20 分钟内或提前 4h 以上免费取消；距出发＜4h 扣 25%；＜2h 扣 50%。多日租车可提前结束行程：已开始的日期不退，未开始日期按取消规则退款。尊享权益出发 2h 外取消可恢复。</p>
+</div>
+</div>
 </div>
 
 <!-- 退款说明 -->
@@ -2047,6 +2054,8 @@ tailwind.config = {
 <p class="font-label-md text-label-md text-secondary">退款方式</p>
 <p class="font-body-md text-body-md text-secondary mt-0.5">扣除违约金后余额原路退回，预计 1-3 个工作日到账</p>
 </div>
+</div>
+</div>
 
 <!-- 按钮 -->
 <div class="flex flex-col gap-4">
@@ -2054,6 +2063,8 @@ tailwind.config = {
 <button class="w-full h-14 bg-transparent text-error rounded-full font-headline-sm text-headline-sm-mobile active:opacity-60 transition-all" onclick="confirmCancel()">确认取消</button>
 </div>
 
+</div>
+</div>
 </div>
 
 
@@ -2107,6 +2118,9 @@ tailwind.config = {
 <div class="text-right">
 <p class="font-headline-md text-headline-md font-bold text-status-error" id="early-end-total">¥3,132.00</p>
 </div>
+</div>
+</div>
+</div>
 
 <!-- 退款说明 -->
 <div class="bg-slate-surface/50 rounded-2xl p-4 mb-8">
@@ -2116,6 +2130,8 @@ tailwind.config = {
 <p class="font-label-md text-label-md text-secondary">退款方式</p>
 <p class="font-body-md text-body-md text-secondary mt-0.5">原路退回，预计 1-3 个工作日到账。企业支付订单将退回企业额度。</p>
 </div>
+</div>
+</div>
 
 <!-- 按钮 -->
 <div class="flex flex-col gap-4">
@@ -2124,11 +2140,13 @@ tailwind.config = {
 </div>
 
 </div>
+</div>
+</div>
 
 
 <!-- ===== MODAL: 评价弹窗 ===== -->
 <div class="fixed inset-0 z-[100] flex items-end justify-center bg-obsidian-deep/40 opacity-0 pointer-events-none transition-opacity duration-300" id="review-modal" onclick="closeReviewModal(event)" style="backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);">
-<div class="w-full max-w-lg bg-surface-container-lowest rounded-t-[32px] p-container-margin transform translate-y-full transition-transform duration-500 ease-out shadow-[0px_-10px_40px_rgba(0,0,0,0.1)]" onclick="event.stopPropagation()">
+<div class="w-full max-w-lg bg-surface-container-lowest rounded-t-[32px] p-container-margin transform translate-y-full transition-transform duration-500 ease-out shadow-[0px_-10px_40px_rgba(0,0,0,0.1)] max-h-[88vh] overflow-y-auto" onclick="event.stopPropagation()">
 <div class="w-12 h-1 bg-surface-variant rounded-full mx-auto mb-8"></div>
 
 <div class="flex items-center justify-between mb-8">
@@ -2144,17 +2162,32 @@ tailwind.config = {
 <p class="font-label-md text-label-md text-secondary tracking-widest">司机</p>
 <div class="flex gap-2" data-rating-group="driver">
 <span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
-<span class="material-symbols-outlined text-3xl cursor-pointer text-surface-variant" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+</div>
 </div>
 <div class="flex flex-col items-center gap-3">
 <p class="font-label-md text-label-md text-secondary tracking-widest">车辆</p>
 <div class="flex gap-2" data-rating-group="vehicle">
 <span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+</div>
 </div>
 <div class="flex flex-col items-center gap-3">
 <p class="font-label-md text-label-md text-secondary tracking-widest">服务</p>
 <div class="flex gap-2" data-rating-group="service">
 <span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+<span class="material-symbols-outlined text-3xl cursor-pointer star-active" onclick="rateStar(this)">star</span>
+</div>
+</div>
 </div>
 
 <!-- 文字评价 -->
@@ -2163,20 +2196,12 @@ tailwind.config = {
 <textarea class="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md text-primary resize-none placeholder:text-secondary h-24" id="review-text" placeholder="分享您的出行体验 (选填，200字以内)" maxlength="200" oninput="updateReviewCounter()"></textarea>
 <div class="absolute bottom-4 right-4 text-secondary font-label-sm text-label-sm" id="review-counter">0/200</div>
 </div>
+</div>
 
 <!-- 提交 -->
 <button class="w-full h-14 bg-obsidian-deep text-on-primary font-body-lg text-body-lg font-bold rounded-[24px] shadow-lg active:opacity-80 active:scale-[0.98] transition-all duration-200" onclick="submitReview()">提交评价</button>
 <div class="h-6"></div>
-</div>
 
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 </div>
@@ -4201,6 +4226,12 @@ function showDriverLocation(type) {
 
 function confirmPayment() {
   go('payment-success');
+}
+
+function goPaymentDetail() {
+  var t = paymentOrderType === 'rental' ? 'trip-detail-rental' : 'trip-detail-charter';
+  screenStack = ['home', t];
+  go(t);
 }
 
 function handleLogout() {
