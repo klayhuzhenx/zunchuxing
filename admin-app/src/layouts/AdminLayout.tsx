@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Layout, Menu, Button, Dropdown, Avatar, Space, Tag,
-  Modal, Form, Input, Message, Descriptions,
+  Modal, Form, Input, Message,
 } from '@arco-design/web-react';
 import {
   IconDashboard, IconUserGroup, IconFile, IconDriveFile,
@@ -21,11 +21,22 @@ export default function AdminLayout() {
   const [profileVisible, setProfileVisible] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [profileForm] = Form.useForm();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const selectedKey = location.pathname === '/' ? 'dashboard' : location.pathname.split('/')[1] || 'dashboard';
+  // 计算选中 key：系统管理子路由用 'system-xxx' 格式
+  const pathname = location.pathname;
+  const selectedKey = (() => {
+    if (pathname === '/') return 'dashboard';
+    if (pathname.startsWith('/system/')) {
+      const sub = pathname.split('/system/')[1];
+      return `system-${sub}`;
+    }
+    return pathname.split('/')[1] || 'dashboard';
+  })();
+
+  // 系统管理子菜单默认展开
+  const defaultOpenKeys = ['order-group', 'system-group'];
 
   const handleMenuClick = (key: string) => {
     const routeMap: Record<string, string> = {
@@ -33,7 +44,13 @@ export default function AdminLayout() {
       orders: '/orders', 'driver-orders': '/driver-orders',
       vehicles: '/vehicles', drivers: '/drivers',
       finance: '/finance',
-      config: '/config', analytics: '/analytics', system: '/system',
+      config: '/config', analytics: '/analytics',
+      'system-accounts': '/system/accounts',
+      'system-roles': '/system/roles',
+      'system-login-logs': '/system/login-logs',
+      'system-op-logs': '/system/op-logs',
+      'system-online': '/system/online',
+      'system-city-management': '/system/city-management',
     };
     navigate(routeMap[key] || '/');
   };
@@ -87,7 +104,7 @@ export default function AdminLayout() {
         <Menu
           theme="light"
           selectedKeys={[selectedKey]}
-          defaultOpenKeys={['order-group']}
+          defaultOpenKeys={defaultOpenKeys}
           onClickMenuItem={handleMenuClick}
           style={{ flex: 1, overflow: 'auto', borderRight: 'none' }}
         >
@@ -102,7 +119,14 @@ export default function AdminLayout() {
           <Item key="finance"><IconSafe />财务管理</Item>
           <Item key="config"><IconSettings />运营配置</Item>
           <Item key="analytics"><IconDesktop />数据分析与报表</Item>
-          <Item key="system"><IconCommon />系统管理</Item>
+          <SubMenu key="system-group" title={<span><IconCommon />系统管理</span>}>
+            <Item key="system-accounts">账号管理</Item>
+            <Item key="system-roles">角色管理</Item>
+            <Item key="system-login-logs">登录日志</Item>
+            <Item key="system-op-logs">操作日志</Item>
+            <Item key="system-online">在线用户</Item>
+            <Item key="system-city-management">城市管理</Item>
+          </SubMenu>
         </Menu>
 
         <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

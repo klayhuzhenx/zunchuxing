@@ -223,6 +223,7 @@ function OrderDetailPanel({ order }: { order: Order }) {
           { label: '手机号', value: order.passengerPhone },
           { label: '用户身份', value: order.userIdentity === 'enterprise_employee' ? <Tag color='arcoblue' size='small'>企业员工</Tag> : <Tag color='green' size='small'>个人</Tag> },
           ...(order.userIdentity === 'enterprise_employee' ? [{ label: '下单企业', value: order.enterpriseName || '-' }] : []),
+          ...(order.enterpriseOrderName ? [{ label: '企业订单名称', value: order.enterpriseOrderName }] : []),
           { label: '支付方式', value: payMethodMap[order.paymentMethod].label },
         ]} />
       </Card>

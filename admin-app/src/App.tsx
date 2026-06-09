@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layouts/AdminLayout';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -12,7 +12,9 @@ import DriverList from './pages/drivers/DriverList';
 import FinanceList from './pages/finance/FinanceList';
 import ConfigPage from './pages/ConfigPage';
 import AnalyticsPage from './pages/AnalyticsPage';
-import SystemPage from './pages/SystemPage';
+import SystemPage, {
+  AccountsPage, RolesPage, LoginLogsPage, OperationLogsPage, OnlineUsersPage, CityManagementPage,
+} from './pages/SystemPage';
 
 export default function App() {
   return (
@@ -31,7 +33,15 @@ export default function App() {
           <Route path="/finance" element={<FinanceList />} />
           <Route path="/config" element={<ConfigPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/system" element={<SystemPage />} />
+          <Route path="/system" element={<SystemPage />}>
+            <Route index element={<Navigate to="/system/accounts" replace />} />
+            <Route path="accounts" element={<AccountsPage />} />
+            <Route path="roles" element={<RolesPage />} />
+            <Route path="login-logs" element={<LoginLogsPage />} />
+            <Route path="op-logs" element={<OperationLogsPage />} />
+            <Route path="online" element={<OnlineUsersPage />} />
+            <Route path="city-management" element={<CityManagementPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

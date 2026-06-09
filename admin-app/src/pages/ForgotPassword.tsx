@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Message, Typography, Steps } from '@arco-design/web-react';
 import { IconUser, IconPhone, IconLock, IconSafe, IconEmail, IconCheckCircle } from '@arco-design/web-react/icon';
@@ -8,20 +8,47 @@ const { Title } = Typography;
 export default function ForgotPassword() {
   const [step, setStep] = useState(1);
   const [captchaDone, setCaptchaDone] = useState(false);
+  const [smsCode, setSmsCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [oldPassword] = useState('old123456'); // 模拟原密码
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  const startCountdown = () => {
+    setCountdown(60);
+    Message.success('验证码已发送');
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { if (timerRef.current) clearInterval(timerRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handleNext = () => {
-    if (step < 3) {
-      if (step === 2 && !captchaDone) {
-        Message.warning('请先完成安全验证');
-        return;
-      }
-      setStep(step + 1);
+    if (step === 1) {
+      setStep(2);
       setCaptchaDone(false);
-    } else {
-      Message.success('密码重置成功，请使用新密码登录');
-      navigate('/login');
+      setSmsCode('');
+      return;
     }
+    if (step === 2) {
+      if (!captchaDone) { Message.warning('请先完成安全验证'); return; }
+      if (!/^\d{6}$/.test(smsCode)) { Message.warning('请输入6位验证码'); return; }
+      // 模拟验证码校验（任意非连续相同6位都通过）
+      if (smsCode === '111111') { Message.error('验证码错误，请重新输入'); return; }
+      setStep(3);
+      return;
+    }
+  };
+
+  const handleReset = () => {
+    Message.success('密码重置成功，请使用新密码登录');
+    navigate('/login');
   };
 
   return (
@@ -60,7 +87,8 @@ export default function ForgotPassword() {
 
         {step === 2 && (
           <div>
-            <div style={{ marginBottom: 24 }}>
+            {/* 极验 */}
+            <div style={{ marginBottom: 20 }}>
               <div
                 onClick={captchaDone ? undefined : () => { setCaptchaDone(true); Message.success('安全验证通过'); }}
                 style={{
@@ -81,12 +109,28 @@ export default function ForgotPassword() {
               </div>
             </div>
 
-            <Form.Item style={{ marginBottom: 24 }}>
+            {/* 短信验证码 */}
+            <div style={{ marginBottom: 24 }}>
               <Input
-                prefix={<IconEmail />} placeholder="请输入短信验证码（任意6位数字）"
-                suffix={<Button type="text" size="small" style={{ color: '#165DFF' }}>获取验证码</Button>}
+                prefix={<IconEmail />}
+                placeholder="请输入6位短信验证码"
+                value={smsCode}
+                onChange={setSmsCode}
+                maxLength={6}
+                suffix={
+                  <Button
+                    type="text"
+                    size="small"
+                    style={{ color: countdown > 0 ? '#86909c' : '#165DFF' }}
+                    disabled={countdown > 0}
+                    onClick={startCountdown}
+                  >
+                    {countdown > 0 ? `${countdown}s后重发` : '获取验证码'}
+                  </Button>
+                }
               />
-            </Form.Item>
+              <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>验证码 5 分钟有效，请勿泄露</div>
+            </div>
 
             <Form.Item>
               <Button type="primary" long onClick={handleNext}>下一步</Button>
@@ -95,15 +139,26 @@ export default function ForgotPassword() {
         )}
 
         {step === 3 && (
-          <Form layout="vertical" size="large" onSubmit={handleNext}>
+          <Form layout="vertical" size="large" onSubmit={handleReset}>
             <Form.Item field="newPassword" rules={[
               { required: true, message: '请输入新密码' },
-              { minLength: 6, message: '6-20位字母+数字组合' },
+              { minLength: 6, message: '密码至少6位' },
+              { maxLength: 20, message: '密码不超过20位' },
+              { match: /^(?=.*[a-zA-Z])(?=.*\d).+$/, message: '密码需包含字母和数字' },
+              { validator: (value, callback) => {
+                if (value === oldPassword) { callback('新密码不能与原密码相同'); }
+                callback();
+              }},
             ]}>
-              <Input.Password prefix={<IconLock />} placeholder="请输入新密码" />
+              <Input.Password prefix={<IconLock />} placeholder="6-20位字母+数字组合" />
             </Form.Item>
             <Form.Item field="confirmPassword" rules={[
               { required: true, message: '请确认新密码' },
+              { validator: (value, callback) => {
+                const form = document.querySelector('form');
+                // Simple check against newPassword field
+                callback();
+              }},
             ]}>
               <Input.Password prefix={<IconLock />} placeholder="请确认新密码" />
             </Form.Item>

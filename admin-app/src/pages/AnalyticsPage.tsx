@@ -1,10 +1,8 @@
-import { useState, useMemo } from 'react';
-import {
-  Card, Table, Tag, Button, Select, Space, Tabs, DatePicker, Input, Grid,
-} from '@arco-design/web-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Card, Table, Tag, Button, Select, Space, DatePicker, Input, Grid } from '@arco-design/web-react';
 import { IconDownload, IconArrowUp, IconArrowDown } from '@arco-design/web-react/icon';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { overviewMetrics, analyticsTrendData, topEnterprises } from '../data/mock';
+import { overviewMetrics, analyticsTrendData, topEnterprises, topDrivers } from '../data/mock';
 import type { OverviewMetric } from '../types';
 
 const { Row, Col } = Grid;
@@ -12,6 +10,13 @@ const { Row, Col } = Grid;
 // ===== 数据概览 =====
 function OverviewTab() {
   const [timeRange, setTimeRange] = useState('7d');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // 每5分钟自动刷新
+  useEffect(() => {
+    const timer = setInterval(() => setRefreshKey(k => k + 1), 300000);
+    return () => clearInterval(timer);
+  }, []);
 
   const COLORS = ['#165DFF', '#0FC6C2', '#FF7D00', '#F53F3F', '#722ED1'];
   const pieData = [
@@ -22,7 +27,7 @@ function OverviewTab() {
   ];
 
   return (
-    <div>
+    <div key={refreshKey}>
       {/* 时间选择 */}
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
         <Space>
@@ -109,7 +114,7 @@ function OverviewTab() {
             </ResponsiveContainer>
           </Card>
         </Col>
-        <Col span={12}>
+        <Col span={6}>
           <Card title="Top 活跃企业" size="small">
             <Table columns={[
               { title: '排名', width: 50, render: (_: unknown, __: unknown, idx: number) => idx + 1 },
@@ -117,6 +122,16 @@ function OverviewTab() {
               { title: '订单数', dataIndex: 'value', width: 80 },
               { title: '消费总额', dataIndex: 'extra', width: 100 },
             ]} data={topEnterprises} rowKey="name" pagination={false} size="small" />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card title="Top 10 司机" size="small">
+            <Table columns={[
+              { title: '排名', width: 50, render: (_: unknown, __: unknown, idx: number) => idx + 1 },
+              { title: '司机', dataIndex: 'name' },
+              { title: '订单数', dataIndex: 'value', width: 80 },
+              { title: '评分', dataIndex: 'extra', width: 80 },
+            ]} data={topDrivers} rowKey="name" pagination={false} size="small" />
           </Card>
         </Col>
       </Row>
@@ -263,18 +278,5 @@ function RevenueReportTab() {
 }
 
 export default function AnalyticsPage() {
-  const [activeTab, setActiveTab] = useState('overview');
-
-  return (
-    <div>
-      <Tabs activeTab={activeTab} onChange={setActiveTab} style={{ marginBottom: 16 }}>
-        <Tabs.TabPane key="overview" title="数据概览" />
-        <Tabs.TabPane key="order-report" title="订单报表" />
-        <Tabs.TabPane key="revenue-report" title="收入报表" />
-      </Tabs>
-      {activeTab === 'overview' && <OverviewTab />}
-      {activeTab === 'order-report' && <OrderReportTab />}
-      {activeTab === 'revenue-report' && <RevenueReportTab />}
-    </div>
-  );
+  return <OverviewTab />;
 }

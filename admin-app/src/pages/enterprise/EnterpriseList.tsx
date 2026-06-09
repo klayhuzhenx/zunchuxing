@@ -120,9 +120,20 @@ export default function EnterpriseList() {
     } catch { /* */ }
   };
 
-  const handleDisable = (record: Enterprise) => {
-    setData(data.map(e => e.id === record.id ? { ...e, status: 'disabled' as EnterpriseStatus } : e));
-    Message.success(`企业「${record.name}」已禁用`);
+  const [disableVisible, setDisableVisible] = useState(false);
+  const [disableReason, setDisableReason] = useState('');
+  const [disableTarget, setDisableTarget] = useState<Enterprise | null>(null);
+
+  const handleDisable = () => {
+    if (!disableTarget || !disableReason.trim()) {
+      Message.warning('请填写禁用原因');
+      return;
+    }
+    setData(data.map(e => e.id === disableTarget.id ? { ...e, status: 'disabled' as EnterpriseStatus } : e));
+    Message.success(`企业「${disableTarget.name}」已禁用`);
+    setDisableVisible(false);
+    setDisableReason('');
+    setDisableTarget(null);
   };
 
   const handleEnable = (record: Enterprise) => {
@@ -168,9 +179,7 @@ export default function EnterpriseList() {
           {record.status === 'approved' && (
             <>
               <Button type="text" size="small" onClick={() => { setSelectedEnterprise(record); setShowQuotaModal(true); }}>调整额度</Button>
-              <Popconfirm title={`确定禁用「${record.name}」吗？`} onOk={() => handleDisable(record)}>
-                <Button type="text" size="small" status="danger">禁用</Button>
-              </Popconfirm>
+              <Button type="text" size="small" status="danger" onClick={() => { setDisableTarget(record); setDisableVisible(true); }}>禁用</Button>
             </>
           )}
           {record.status === 'disabled' && (
@@ -290,6 +299,28 @@ export default function EnterpriseList() {
             <Input.TextArea placeholder="如：线下打款、记账纠错、赠送试用额度" maxLength={200} showWordLimit />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 禁用企业弹窗 */}
+      <Modal
+        title={`禁用企业 — ${disableTarget?.name || ''}`}
+        visible={disableVisible}
+        onOk={handleDisable}
+        onCancel={() => { setDisableVisible(false); setDisableReason(''); setDisableTarget(null); }}
+        okText="确认禁用"
+        okButtonProps={{ status: 'danger' }}
+      >
+        <p style={{ marginBottom: 16, color: '#4e5969', fontSize: 14 }}>
+          确定禁用企业「<strong>{disableTarget?.name}</strong>」吗？禁用后该企业员工将不可使用企业支付。
+        </p>
+        <Input.TextArea
+          placeholder="禁用原因（必填）"
+          value={disableReason}
+          onChange={setDisableReason}
+          maxLength={200}
+          showWordLimit
+          rows={3}
+        />
       </Modal>
     </div>
   );

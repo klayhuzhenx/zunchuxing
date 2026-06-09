@@ -93,7 +93,7 @@ export default function Dashboard() {
     { title: '今日订单', value: stats.todayOrders, suffix: '单', change: stats.todayOrdersChange, link: '/orders', visible: true },
     { title: '今日交易额', value: stats.todayRevenue, prefix: '¥', change: stats.todayRevenueChange, link: '/orders', visible: true },
     { title: '待派车', value: stats.pendingDispatch, suffix: '单', link: '/orders?tab=pending_dispatch', visible: roleVisible(['super_admin', 'ops_admin']) },
-    { title: '待补款', value: stats.pendingExtra, suffix: '单', link: '/orders?tab=unpaid', visible: roleVisible(['super_admin', 'ops_admin', 'finance_admin']) },
+    { title: '待补款', value: stats.pendingExtra, suffix: '单', link: '/orders?tab=unpaid', visible: roleVisible(['super_admin', 'finance_admin']) },
     { title: '在线司机', value: `${stats.onlineDrivers}/${stats.totalDrivers}`, link: '/drivers', visible: roleVisible(['super_admin', 'ops_admin']) },
   ].filter(c => c.visible);
 

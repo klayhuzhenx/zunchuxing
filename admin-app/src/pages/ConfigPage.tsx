@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import {
-  Card, Table, Tag, Button, Select, Space, Tabs, Modal, Message, Input, Form, InputNumber, Switch,
+  Card, Table, Tag, Button, Select, Space, Tabs, Modal, Message, Input, Form, InputNumber, Descriptions,
 } from '@arco-design/web-react';
-import { IconPlus } from '@arco-design/web-react/icon';
+import { IconPlus, IconSearch } from '@arco-design/web-react/icon';
 import { vehicleModels, pricingRules, benefitTemplates, quotaAlertConfig } from '../data/mock';
 import type { VehicleModel, PricingRule, BenefitTemplate } from '../types';
 
@@ -65,7 +65,7 @@ function PricingTab() {
     { title: '超公里费', width: 110, render: (_: unknown, r: PricingRule) => `¥${r.extraMileageRate}/km` },
     { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true, render: (v?: string) => v || '-' },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '启用' : '停用'}</Tag> },
-    { title: '操作', width: 140, render: (r: PricingRule) => <Space size={4}><Button type="text" size="small" onClick={() => Message.info('编辑')}>编辑</Button>
+    { title: '操作', width: 140, render: (_: unknown, r: PricingRule) => <Space size={4}><Button type="text" size="small" onClick={() => Message.info('编辑')}>编辑</Button>
       {r.status === 'active'
         ? <Button type="text" size="small" status="warning" onClick={() => Message.success('规则已停用')}>停用</Button>
         : <Button type="text" size="small" status="success" onClick={() => Message.success('规则已启用')}>启用</Button>}
@@ -157,38 +157,79 @@ function PricingTab() {
 
 // ===== 车型管理 Tab =====
 function ModelTab() {
-  const [models] = useState(vehicleModels);
-  const [catFilter, setCatFilter] = useState('');
+  const [models, setModels] = useState(vehicleModels);
+  const [keyword, setKeyword] = useState('');
+  const [addVisible, setAddVisible] = useState(false);
+  const [addForm] = Form.useForm();
 
   const filtered = useMemo(() => {
-    let r = models;
-    if (catFilter) r = r.filter(m => m.category === catFilter);
-    return r;
-  }, [models, catFilter]);
+    if (!keyword) return models;
+    return models.filter(m => m.name.includes(keyword) || m.brand.includes(keyword) || m.category.includes(keyword));
+  }, [models, keyword]);
+
+  const handleAdd = () => {
+    addForm.validate().then(v => {
+      const newModel: VehicleModel = {
+        id: 'VM' + String(models.length + 1).padStart(3,'0'),
+        name: v.name, brand: v.brand, seats: v.seats, category: v.category,
+        vehicleCount: 0, status: 'active',
+      };
+      setModels([...models, newModel]);
+      Message.success('车型保存成功');
+      setAddVisible(false);
+      addForm.resetFields();
+    }).catch(() => {});
+  };
 
   const columns = [
-    { title: '车型名称', dataIndex: 'name', width: 160 },
+    { title: '车型名称', dataIndex: 'name', width: 180 },
     { title: '品牌', dataIndex: 'brand', width: 80 },
-    { title: '座位数', dataIndex: 'seats', width: 80 },
+    { title: '座位数', dataIndex: 'seats', width: 80, render: (v: number) => `${v}座` },
     { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => <Tag size="small">{v}</Tag> },
-    { title: '在用车辆数', dataIndex: 'vehicleCount', width: 100 },
+    { title: '在用车辆', dataIndex: 'vehicleCount', width: 90 },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '启用' : '停用'}</Tag> },
-    { title: '操作', width: 140, render: () => <Space size={4}><Button type="text" size="small">编辑</Button><Button type="text" size="small" status="warning">停用</Button></Space> },
+    { title: '操作', width: 140, render: (_: unknown, r: VehicleModel) => (
+      <Space size={4}>
+        <Button type="text" size="small" onClick={() => Message.info('编辑车型')}>编辑</Button>
+        {r.status === 'active'
+          ? <Button type="text" size="small" status="warning" onClick={() => {
+              if (r.vehicleCount > 0) { Message.warning('该车型下存在在用车辆，无法停用'); return; }
+              Message.success('车型已停用');
+            }}>停用</Button>
+          : <Button type="text" size="small" status="success" onClick={() => Message.success('车型已启用')}>启用</Button>}
+      </Space>
+    )},
   ];
 
   return (
     <div>
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
         <Space size={12}>
-          <Select placeholder="车型分类" style={{ width: 150 }} value={catFilter || undefined} onChange={v => setCatFilter(v || '')} allowClear
-            options={['轿车', 'SUV', 'MPV', '豪华轿车'].map(c => ({ label: c, value: c }))} />
+          <Input prefix={<IconSearch />} placeholder="搜索车型/品牌/分类" style={{ width: 240 }} value={keyword} onChange={setKeyword} allowClear />
           <div style={{ flex: 1 }} />
-          <Button type="primary" icon={<IconPlus />} onClick={() => Message.info('新增车型（MVP 略）')}>新增车型</Button>
+          <Button type="primary" icon={<IconPlus />} onClick={() => setAddVisible(true)}>新增车型</Button>
         </Space>
       </Card>
       <Card bodyStyle={{ padding: 0 }}>
         <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 800 }} pagination={false} stripe />
       </Card>
+
+      <Modal title="新增车型" visible={addVisible} onOk={handleAdd} onCancel={() => setAddVisible(false)}>
+        <Form form={addForm} layout="vertical">
+          <Form.Item label="车型名称" field="name" rules={[{ required: true, message: '请输入车型名称' }]}>
+            <Input placeholder="如：尊界 S800" maxLength={30} />
+          </Form.Item>
+          <Form.Item label="品牌" field="brand" rules={[{ required: true, message: '请选择品牌' }]}>
+            <Select options={['尊界','奔驰','别克','奥迪'].map(b => ({ label: b, value: b }))} />
+          </Form.Item>
+          <Form.Item label="座位数" field="seats" rules={[{ required: true }]}>
+            <Select options={[4,5,6,7].map(s => ({ label: `${s}座`, value: s }))} />
+          </Form.Item>
+          <Form.Item label="车型分类" field="category" rules={[{ required: true }]}>
+            <Select options={['轿车','SUV','MPV','豪华轿车'].map(c => ({ label: c, value: c }))} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
@@ -224,30 +265,148 @@ function BenefitTab() {
 
 // ===== 额度告急 Tab =====
 function QuotaTab() {
-  const [config, setConfig] = useState(quotaAlertConfig);
+  const [editMode, setEditMode] = useState(false);
+  const [threshold, setThreshold] = useState(quotaAlertConfig.threshold);
+  const [editValue, setEditValue] = useState(threshold);
+
+  const handleEdit = () => { setEditValue(threshold); setEditMode(true); };
+  const handleSave = () => {
+    if (editValue <= 0) { Message.warning('阈值必须大于0'); return; }
+    setThreshold(editValue);
+    setEditMode(false);
+    Message.success('阈值已更新');
+  };
+  const handleCancel = () => { setEditMode(false); };
 
   return (
-    <Card title="额度告急阈值配置" style={{ maxWidth: 600 }}>
-      <Form layout="vertical">
-        <Form.Item label="告急阈值（元）" help="剩余额度低于该值时触发告急提醒">
-          <InputNumber value={config.threshold} onChange={v => setConfig({ ...config, threshold: v || 0 })} min={0} style={{ width: '100%' }} suffix="元" />
-        </Form.Item>
-        <Form.Item label="提醒频率">
-          <Select value={config.frequency} onChange={v => setConfig({ ...config, frequency: v })}
-            options={['每小时', '每日 1 次', '每周'].map(f => ({ label: f, value: f }))} style={{ width: '100%' }} />
-        </Form.Item>
-        <Button type="primary" onClick={() => Message.success('阈值已更新')}>保存配置</Button>
-      </Form>
+    <Card title="额度告急阈值" style={{ maxWidth: 480 }}>
+      <p style={{ color: '#86909c', fontSize: 13, marginBottom: 16 }}>
+        当企业剩余额度低于阈值时触发告急。每天上午9点检查，同一企业同一告急周期内不重复提醒。
+        额度恢复到阈值以上后再次低于阈值时重新触发。
+      </p>
+      <Descriptions column={1} size="small" data={[
+        { label: '告急阈值', value: editMode
+          ? <InputNumber value={editValue} onChange={v => setEditValue(v || 0)} min={1} style={{ width: 200 }} suffix="元" />
+          : <span style={{ fontSize: 16, fontWeight: 700 }}>¥{threshold.toLocaleString()}</span> },
+      ]} />
+      <div style={{ marginTop: 16 }}>
+        {editMode ? (
+          <Space>
+            <Button type="primary" onClick={handleSave}>保存</Button>
+            <Button onClick={handleCancel}>取消</Button>
+          </Space>
+        ) : (
+          <Button type="outline" onClick={handleEdit}>编辑</Button>
+        )}
+      </div>
     </Card>
   );
 }
 
+// ===== 运营区域 Tab =====
 function AreaTab() {
+  const [regions, setRegions] = useState([
+    { id: 'R001', name: '南山区核心商圈', city: '深圳', vehicleIds: ['V001','V002'], status: 'active', updatedAt: '2026-06-01' },
+    { id: 'R002', name: '浦东陆家嘴', city: '上海', vehicleIds: ['V003'], status: 'active', updatedAt: '2026-05-28' },
+    { id: 'R003', name: '福田CBD', city: '深圳', vehicleIds: [], status: 'inactive', updatedAt: '2026-04-15' },
+  ]);
+  const [keyword, setKeyword] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
+  const [addVisible, setAddVisible] = useState(false);
+  const [addForm] = Form.useForm();
+
+  const vehicleOptions = useMemo(() => [
+    { label: '粤B12345 奔驰V260L', value: 'V001' },
+    { label: '粤B67890 别克GL8', value: 'V002' },
+    { label: '粤B34567 奥迪A6L', value: 'V003' },
+    { label: '粤B56789 奔驰V260L', value: 'V004' },
+    { label: '粤B99999 别克GL8', value: 'V005' },
+  ], []);
+
+  const filtered = useMemo(() => {
+    let r = regions;
+    if (keyword) r = r.filter(x => x.name.includes(keyword));
+    if (cityFilter) r = r.filter(x => x.city === cityFilter);
+    return r;
+  }, [regions, keyword, cityFilter]);
+
+  const handleAdd = () => {
+    addForm.validate().then(v => {
+      const newRegion = {
+        id: 'R' + String(regions.length + 1).padStart(3,'0'),
+        name: v.name, city: v.city, vehicleIds: v.vehicleIds || [],
+        status: 'active' as const, updatedAt: new Date().toISOString().slice(0,10),
+      };
+      setRegions([...regions, newRegion]);
+      Message.success('区域保存成功');
+      setAddVisible(false);
+      addForm.resetFields();
+    }).catch(() => {});
+  };
+
+  const columns = [
+    { title: '区域名称', dataIndex: 'name', width: 140 },
+    { title: '所属城市', dataIndex: 'city', width: 80 },
+    { title: '绑定车辆', dataIndex: 'vehicleIds', width: 80, render: (v: string[]) => (v || []).length },
+    { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '已启用' : '已停用'}</Tag> },
+    { title: '更新时间', dataIndex: 'updatedAt', width: 100 },
+    { title: '操作', width: 100, render: () => <Space size={4}><Button type="text" size="small">编辑</Button><Button type="text" size="small" status="warning">停用</Button></Space> },
+  ];
+
   return (
-    <Card style={{ textAlign: 'center', padding: 60 }}>
-      <p style={{ color: '#86909c', fontSize: 14, marginBottom: 16 }}>运营区域设置（地图绘制多边形围栏）为进阶功能</p>
-      <p style={{ color: '#86909c', fontSize: 12 }}>MVP 阶段暂不实现前端地图交互，后端保留接口</p>
-    </Card>
+    <div>
+      {/* 顶部筛选 */}
+      <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
+        <Space size={12}>
+          <Select placeholder="城市" style={{ width: 120 }} value={cityFilter || undefined} onChange={v => setCityFilter(v || '')} allowClear
+            options={['深圳','上海','广州','北京'].map(c => ({ label: c, value: c }))} />
+          <Input prefix={<IconSearch />} placeholder="搜索区域名称" style={{ width: 200 }} value={keyword} onChange={setKeyword} allowClear />
+          <div style={{ flex: 1 }} />
+          <Button type="primary" icon={<IconPlus />} onClick={() => setAddVisible(true)}>新增区域</Button>
+        </Space>
+      </Card>
+
+      {/* 地图主区域 + 区域列表分栏 */}
+      <div style={{ display: 'flex', gap: 0, height: 'calc(100vh - 260px)', minHeight: 500, borderRadius: 8, overflow: 'hidden' }}>
+        {/* 区域列表左侧栏 */}
+        <div style={{
+          width: 380, flexShrink: 0,
+          background: '#fff', borderRight: '1px solid #e5e6eb',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 14, fontWeight: 600, color: '#1d2129', flexShrink: 0 }}>运营区域</div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 360 }} pagination={false} stripe size="small" />
+          </div>
+        </div>
+        {/* 地图主区域 */}
+        <div style={{ flex: 1, background: '#e8ecf1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', color: '#86909c' }}>
+            <p style={{ fontSize: 36, marginBottom: 12 }}>🗺️</p>
+            <p style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>地图预览区</p>
+            <p style={{ fontSize: 12 }}>接入高德/百度地图 SDK 后可在此绘制围栏多边形</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 新增区域弹窗 */}
+      <Modal title="新增运营区域" visible={addVisible} onOk={handleAdd} onCancel={() => setAddVisible(false)}>
+        <Form form={addForm} layout="vertical">
+          <Form.Item label="区域名称" field="name" rules={[{ required: true, message: '请输入区域名称' }]}>
+            <Input placeholder="如：南山区核心商圈" maxLength={20} />
+          </Form.Item>
+          <Form.Item label="所属城市" field="city" rules={[{ required: true, message: '请选择城市' }]}>
+            <Select options={['深圳','上海','广州','北京'].map(c => ({ label: c, value: c }))} />
+          </Form.Item>
+          <Form.Item label="关联车辆" field="vehicleIds">
+            <Select mode="multiple" placeholder="选择可调度的车辆" options={vehicleOptions} style={{ width: '100%' }} />
+          </Form.Item>
+          <p style={{ color: '#86909c', fontSize: 12, marginTop: 4 }}>
+            完整功能需接入地图 SDK 绘制多边形围栏。当前版本保存区域基本信息。
+          </p>
+        </Form>
+      </Modal>
+    </div>
   );
 }
 

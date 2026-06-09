@@ -462,6 +462,19 @@ export const topEnterprises: TopItem[] = [
 ];
 
 // ===== 系统管理 Mock =====
+export const topDrivers: TopItem[] = [
+  { name: '王师傅', value: 48, extra: '4.9' },
+  { name: '李师傅', value: 42, extra: '4.8' },
+  { name: '周师傅', value: 38, extra: '4.9' },
+  { name: '赵师傅', value: 35, extra: '4.7' },
+  { name: '刘师傅', value: 32, extra: '4.8' },
+  { name: '陈师傅', value: 28, extra: '4.6' },
+  { name: '杨师傅', value: 25, extra: '4.9' },
+  { name: '黄师傅', value: 22, extra: '4.5' },
+  { name: '吴师傅', value: 20, extra: '4.7' },
+  { name: '郑师傅', value: 18, extra: '4.6' },
+];
+
 export const operatorAccounts: OperatorAccount[] = [
   { id: 'A001', username: 'zhangyunying', name: '张运营', phone: '13800001001', role: 'super_admin', status: 'active', createdAt: '2025-10-01 09:00', lastLogin: '2026-06-09 08:30', lastIp: '192.168.1.100' },
   { id: 'A002', username: 'liyunying', name: '李运营', phone: '13800001002', role: 'ops_admin', areas: ['南山区核心商圈'], status: 'active', createdAt: '2025-10-15 14:00', lastLogin: '2026-06-09 09:15', lastIp: '192.168.1.101' },

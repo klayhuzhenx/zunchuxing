@@ -1,0 +1,176 @@
+/**
+ * 尊出行 · 乘客端 · 设计系统
+ * 与 HTML 原型 (passenger-app.html) Tailwind 配置一一对齐
+ * 品牌色：obsidian-deep (#000) + heritage-gold (#D4AF37) + premium-blue (#0057FF)
+ */
+
+/* ============================================================
+ * 1. 颜色 token (对齐原型 tailwind.config.theme.colors)
+ * ============================================================ */
+$color-obsidian-deep: #000000;
+$color-primary: #000000;
+$color-primary-container: #1B1B1B;
+$color-on-primary: #FFFFFF;
+$color-on-primary-container: #848484;
+
+$color-heritage-gold: #D4AF37;
+$color-gold-bg: rgba(212, 175, 55, 0.15);
+$color-gold-bg-soft: rgba(212, 175, 55, 0.10);
+$color-gold-border: rgba(212, 175, 55, 0.30);
+
+$color-premium-blue: #0057FF;
+$color-premium-blue-bg: rgba(0, 87, 255, 0.08);
+
+/* 表面 / 背景 */
+$color-surface: #F9F9F9;
+$color-surface-container-lowest: #FFFFFF;
+$color-surface-container-low: #F3F3F3;
+$color-surface-container: #EEEEEE;
+$color-surface-container-high: #E8E8E8;
+$color-surface-container-highest: #E2E2E2;
+$color-slate-surface: #F2F2F2;
+$color-background: #F9F9F9;
+
+/* 文本 */
+$color-on-surface: #1A1C1C;
+$color-on-surface-variant: #4C4546;
+$color-text-primary: #1A1C1C;
+$color-text-secondary: #86868B;
+$color-text-placeholder: #C9CDD4;
+$color-text-inverse: #FFFFFF;
+$color-text-inverse-secondary: rgba(255, 255, 255, 0.70);
+$color-text-inverse-muted: rgba(255, 255, 255, 0.40);
+
+/* 边框 */
+$color-outline: #7E7576;
+$color-outline-variant: #CFC4C5;
+$color-border: #E5E6EB;
+$color-border-light: #F2F2F2;
+
+/* 状态色 */
+$color-success: #00B06B;
+$color-success-mark: #10B981;
+$color-success-bg: rgba(0, 176, 107, 0.10);
+$color-warning: #FF7D00;
+$color-warning-bg: rgba(255, 125, 0, 0.10);
+$color-error: #EF4444;
+$color-status-error: #FF4D4F;
+$color-error-bg: rgba(239, 68, 68, 0.10);
+$color-info: #0057FF;
+$color-wechat: #07C160;
+$color-alipay: #1677FF;
+
+/* 兼容旧用法 */
+$color-white: #FFFFFF;
+$color-bg: #F9F9F9;
+$color-bg-secondary: #F2F2F2;
+$color-bg-card: #FFFFFF;
+
+/* ============================================================
+ * 2. 字体 (对齐 fontSize)
+ * ============================================================ */
+$font-family-base: -apple-system, BlinkMacSystemFont, 'Hanken Grotesk',
+  'PingFang SC', 'HarmonyOS Sans', 'Helvetica Neue', sans-serif;
+
+/* display-lg-mobile 28/36/700 */
+$font-display-lg-mobile-size: 28px;
+$font-display-lg-mobile-line: 36px;
+$font-display-lg-mobile-weight: 700;
+
+/* headline-md-mobile 22/30/600 */
+$font-headline-md-mobile-size: 22px;
+$font-headline-md-mobile-line: 30px;
+$font-headline-md-mobile-weight: 600;
+
+/* headline-sm-mobile 20/28/600 */
+$font-headline-sm-mobile-size: 20px;
+$font-headline-sm-mobile-line: 28px;
+$font-headline-sm-mobile-weight: 600;
+
+/* body-lg 17/26/400 */
+$font-body-lg-size: 17px;
+$font-body-lg-line: 26px;
+
+/* body-md 15/22/400 */
+$font-body-md-size: 15px;
+$font-body-md-line: 22px;
+
+/* label-md 13/18/500 */
+$font-label-md-size: 13px;
+$font-label-md-line: 18px;
+$font-label-md-weight: 500;
+
+/* label-sm 11/16/500 letter 0.05em */
+$font-label-sm-size: 11px;
+$font-label-sm-line: 16px;
+$font-label-sm-weight: 500;
+
+/* 通用尺寸别名 */
+$font-size-xs: 11px;
+$font-size-sm: 13px;
+$font-size-base: 15px;
+$font-size-md: 17px;
+$font-size-lg: 20px;
+$font-size-xl: 22px;
+$font-size-2xl: 28px;
+
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+/* ============================================================
+ * 3. 间距 (对齐 spacing)
+ * ============================================================ */
+$spacing-stack-sm: 12px;
+$spacing-stack-md: 20px;
+$spacing-stack-lg: 32px;
+$spacing-stack-xl: 48px;
+$spacing-gutter-md: 16px;
+$spacing-container-margin: 24px;
+
+/* 通用别名 */
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-base: 16px;
+$spacing-lg: 20px;
+$spacing-xl: 24px;
+$spacing-2xl: 32px;
+
+/* ============================================================
+ * 4. 圆角 (对齐 borderRadius)
+ * ============================================================ */
+$radius-sm: 8px;
+$radius-base: 12px;
+$radius-md: 16px;
+$radius-lg: 20px;
+$radius-xl: 24px;        /* luxury / large / input */
+$radius-card: 32px;      /* card / extra-large */
+$radius-full: 9999px;
+
+/* ============================================================
+ * 5. 阴影
+ * ============================================================ */
+$shadow-card: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+$shadow-button: 0 4px 16px rgba(0, 0, 0, 0.08);
+$shadow-elevated: 0 -10px 40px rgba(0, 0, 0, 0.04);
+$shadow-sheet: 0 -10px 40px rgba(0, 0, 0, 0.08);
+
+/* ============================================================
+ * 6. uni-app 原生变量覆盖
+ * ============================================================ */
+$uni-color-primary: #000000;
+$uni-color-success: #00B06B;
+$uni-color-warning: #FF7D00;
+$uni-color-error: #EF4444;
+$uni-text-color: #1A1C1C;
+$uni-text-color-inverse: #FFFFFF;
+$uni-text-color-grey: #86868B;
+$uni-text-color-placeholder: #C9CDD4;
+$uni-bg-color: #FFFFFF;
+$uni-bg-color-grey: #F9F9F9;
+$uni-border-color: #E5E6EB;
+$uni-font-size-sm: 13px;
+$uni-font-size-base: 15px;
+$uni-font-size-lg: 17px;
