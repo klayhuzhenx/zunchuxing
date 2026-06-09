@@ -189,3 +189,64 @@ export interface TodoItem {
 }
 
 export interface TrendData { date: string; orders: number; revenue: number; }
+
+// ===== 运营配置 =====
+export interface PricingRule {
+  id: string; modelId: string; modelName: string;
+  tier?: string; // 'basic'|'premium'|'ultimate' for charter
+  halfDayPrice?: number; dayPrice: number;
+  serviceContent?: string;
+  cancelFreeMins: number; cancelFreeHours: number;
+  cancelMidHigh: number; cancelMidLow: number;
+  cancelMidPct: number; cancelHighPct: number;
+  overtimeRate: number; extraMileageRate: number;
+  remark?: string;
+  status: 'active' | 'inactive';
+}
+
+export interface VehicleModel {
+  id: string; name: string; brand: string; seats: number; category: string;
+  image?: string; vehicleCount: number; status: 'active' | 'inactive';
+}
+
+export interface BenefitTemplate {
+  id: string; code: string; name: string; type: string;
+  totalCount: number; totalAmount: number; singleLimit?: number;
+  validMonths: number; applicableModels: string[];
+  remark?: string; status: 'active' | 'inactive';
+}
+
+export interface QuotaAlertConfig { threshold: number; frequency: string; }
+
+// ===== 数据分析 =====
+export interface OverviewMetric {
+  label: string; value: string; change?: number; changeLabel?: string;
+}
+export interface TrendPoint { date: string; charter: number; rental: number; revenue: number; avgPrice: number; }
+export interface TopItem { name: string; value: number; extra?: string; }
+
+// ===== 系统管理 =====
+export type AccountRole = 'super_admin' | 'ops_admin' | 'finance_admin' | 'cs_admin';
+export type AccountStatus = 'active' | 'disabled';
+
+export interface OperatorAccount {
+  id: string; username: string; name: string; phone: string;
+  role: AccountRole; areas?: string[]; status: AccountStatus;
+  createdAt: string; lastLogin?: string; lastIp?: string;
+}
+
+export interface LoginLog {
+  id: string; username: string; name: string; time: string;
+  ip: string; device: string; result: 'success' | 'failed';
+  failReason?: string;
+}
+
+export interface OperationLog {
+  id: string; time: string; operator: string; module: string;
+  type: string; target: string; detail: string; ip: string;
+}
+
+export interface OnlineUser {
+  id: string; username: string; name: string; role: AccountRole;
+  loginTime: string; ip: string; device: string; duration: string;
+}

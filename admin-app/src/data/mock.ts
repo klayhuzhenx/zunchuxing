@@ -400,3 +400,94 @@ export const roleMenus: Record<string, string[]> = {
   finance_admin: ['dashboard', 'invoices', 'finance'],
   cs_admin: ['dashboard', 'orders'],
 };
+
+// ===== 运营配置 Mock =====
+export const vehicleModels: VehicleModel[] = [
+  { id: 'VM001', name: '增程星辉尊享版', brand: '尊界', seats: 7, category: 'MPV', vehicleCount: 3, status: 'active' },
+  { id: 'VM002', name: '增程星辉行政版', brand: '尊界', seats: 7, category: 'MPV', vehicleCount: 2, status: 'active' },
+  { id: 'VM003', name: '增程星耀行政版', brand: '尊界', seats: 5, category: '豪华轿车', vehicleCount: 2, status: 'active' },
+  { id: 'VM004', name: '尊界S800', brand: '尊界', seats: 5, category: '豪华轿车', vehicleCount: 1, status: 'active' },
+];
+
+export const pricingRules: PricingRule[] = [
+  { id: 'PR001', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊享基础', halfDayPrice: 988, dayPrice: 1888, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, status: 'active' },
+  { id: 'PR002', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊荣高级', halfDayPrice: 1188, dayPrice: 2088, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, status: 'active' },
+  { id: 'PR003', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊御顶级', halfDayPrice: 1588, dayPrice: 2688, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 200, extraMileageRate: 10, status: 'active' },
+  { id: 'PR004', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊享基础', halfDayPrice: 1088, dayPrice: 1988, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, status: 'active' },
+  { id: 'PR005', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊荣高级', halfDayPrice: 1288, dayPrice: 2288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, status: 'active' },
+  { id: 'PR006', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊御顶级', halfDayPrice: 1688, dayPrice: 2888, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 250, extraMileageRate: 12, status: 'active' },
+  { id: 'PR007', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊享基础', halfDayPrice: 1288, dayPrice: 2288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, status: 'active' },
+  { id: 'PR008', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊荣高级', halfDayPrice: 1588, dayPrice: 2688, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, status: 'active' },
+  { id: 'PR009', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊御顶级', halfDayPrice: 1888, dayPrice: 3288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 300, extraMileageRate: 15, status: 'active' },
+  { id: 'PR010', modelId: 'VM001', modelName: '增程星辉尊享版', dayPrice: 1500, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, status: 'active', remark: '日租含 8h/100km' },
+  { id: 'PR011', modelId: 'VM002', modelName: '增程星辉行政版', dayPrice: 1800, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, status: 'active', remark: '日租含 8h/100km' },
+  { id: 'PR012', modelId: 'VM003', modelName: '增程星耀行政版', dayPrice: 2200, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, status: 'active', remark: '日租含 8h/100km' },
+];
+
+export const benefitTemplates: BenefitTemplate[] = [
+  { id: 'B001', code: 'BEN20260001', name: '尊界 S800 年度权益', type: '综合权益', totalCount: 12, totalAmount: 50000, singleLimit: 10000, validMonths: 12, applicableModels: ['尊界S800'], status: 'active' },
+  { id: 'B002', code: 'BEN20260002', name: '尊界全系包车权益', type: '包车权益', totalCount: 6, totalAmount: 20000, validMonths: 12, applicableModels: ['增程星辉尊享版', '增程星辉行政版', '增程星耀行政版'], status: 'active' },
+  { id: 'B003', code: 'BEN20260003', name: '租车体验权益', type: '租车权益', totalCount: 3, totalAmount: 6000, singleLimit: 2000, validMonths: 6, applicableModels: [], status: 'active' },
+];
+
+export const quotaAlertConfig: QuotaAlertConfig = { threshold: 10000, frequency: '每日 1 次' };
+
+// ===== 数据分析 Mock =====
+export const overviewMetrics: OverviewMetric[] = [
+  { label: '订单总量', value: '1,256', change: 8.5, changeLabel: '较上月' },
+  { label: '营收总额', value: '¥386,720', change: 12.3, changeLabel: '较上月' },
+  { label: '客单价', value: '¥308', change: 3.5, changeLabel: '较上月' },
+  { label: '派车及时率', value: '96.8%', change: 1.2, changeLabel: '较上月' },
+  { label: '退款金额', value: '¥12,480', change: -5.2, changeLabel: '较上月' },
+  { label: '活跃企业数', value: '18', change: 2, changeLabel: '较上月' },
+];
+
+export const analyticsTrendData: TrendPoint[] = [
+  { date: '06-01', charter: 28, rental: 12, revenue: 82000, avgPrice: 310 },
+  { date: '06-02', charter: 32, rental: 15, revenue: 95000, avgPrice: 285 },
+  { date: '06-03', charter: 25, rental: 18, revenue: 78000, avgPrice: 330 },
+  { date: '06-04', charter: 35, rental: 20, revenue: 105000, avgPrice: 295 },
+  { date: '06-05', charter: 30, rental: 14, revenue: 88000, avgPrice: 310 },
+  { date: '06-06', charter: 40, rental: 10, revenue: 110000, avgPrice: 350 },
+  { date: '06-07', charter: 22, rental: 22, revenue: 72000, avgPrice: 300 },
+  { date: '06-08', charter: 38, rental: 16, revenue: 102000, avgPrice: 320 },
+];
+
+export const topEnterprises: TopItem[] = [
+  { name: '腾讯科技', value: 285, extra: '¥86,200' },
+  { name: '华为技术', value: 210, extra: '¥65,400' },
+  { name: '字节跳动', value: 168, extra: '¥48,900' },
+  { name: '平安集团', value: 145, extra: '¥42,100' },
+  { name: '万科地产', value: 98, extra: '¥28,600' },
+];
+
+// ===== 系统管理 Mock =====
+export const operatorAccounts: OperatorAccount[] = [
+  { id: 'A001', username: 'zhangyunying', name: '张运营', phone: '13800001001', role: 'super_admin', status: 'active', createdAt: '2025-10-01 09:00', lastLogin: '2026-06-09 08:30', lastIp: '192.168.1.100' },
+  { id: 'A002', username: 'liyunying', name: '李运营', phone: '13800001002', role: 'ops_admin', areas: ['南山区核心商圈'], status: 'active', createdAt: '2025-10-15 14:00', lastLogin: '2026-06-09 09:15', lastIp: '192.168.1.101' },
+  { id: 'A003', username: 'wangcaiwu', name: '王财务', phone: '13800001003', role: 'finance_admin', status: 'active', createdAt: '2025-11-01 10:00', lastLogin: '2026-06-08 16:45', lastIp: '192.168.1.102' },
+  { id: 'A004', username: 'zhaokefu', name: '赵客服', phone: '13800001004', role: 'cs_admin', status: 'active', createdAt: '2025-11-15 11:00', lastLogin: '2026-06-09 07:00', lastIp: '192.168.1.103' },
+  { id: 'A005', username: 'sunyunwei', name: '孙运维', phone: '13800001005', role: 'ops_admin', status: 'disabled', createdAt: '2025-12-01 09:00', lastLogin: '2026-04-15 10:30', lastIp: '192.168.1.104' },
+];
+
+export const loginLogs: LoginLog[] = [
+  { id: 'LL001', username: 'zhangyunying', name: '张运营', time: '2026-06-09 08:30:15', ip: '192.168.1.100', device: 'Chrome 120 / macOS', result: 'success' },
+  { id: 'LL002', username: 'liyunying', name: '李运营', time: '2026-06-09 09:15:42', ip: '192.168.1.101', device: 'Chrome 120 / Windows', result: 'success' },
+  { id: 'LL003', username: 'zhaokefu', name: '赵客服', time: '2026-06-09 07:00:08', ip: '192.168.1.103', device: 'Safari / macOS', result: 'success' },
+  { id: 'LL004', username: 'unknown', name: '', time: '2026-06-09 03:22:11', ip: '10.0.0.55', device: 'Chrome 120 / Windows', result: 'failed', failReason: '密码错误' },
+  { id: 'LL005', username: 'sunyunwei', name: '孙运维', time: '2026-06-09 06:45:33', ip: '192.168.1.105', device: 'Firefox / Linux', result: 'failed', failReason: '账号已停用' },
+];
+
+export const operationLogs: OperationLog[] = [
+  { id: 'OL001', time: '2026-06-09 09:30:00', operator: 'zhangyunying / 张运营', module: '订单管理', type: '派车', target: 'ZC20260608-0010', detail: '分配司机 王师傅 · 车牌 粤B12345', ip: '192.168.1.100' },
+  { id: 'OL002', time: '2026-06-09 09:00:00', operator: 'wangcaiwu / 王财务', module: '财务管理', type: '结算确认', target: 'BILL202605-0002', detail: '结算 ¥3,900，剩余待结算 ¥2,000', ip: '192.168.1.102' },
+  { id: 'OL003', time: '2026-06-08 16:30:00', operator: 'zhangyunying / 张运营', module: '企业客户', type: '调整额度', target: '腾讯科技', detail: '额度 200,000 → 250,000，原因：线下打款', ip: '192.168.1.100' },
+  { id: 'OL004', time: '2026-06-08 15:00:00', operator: 'liyunying / 李运营', module: '司机管理', type: '停用', target: '钱师傅 (13811110015)', detail: '原因：离职', ip: '192.168.1.101' },
+  { id: 'OL005', time: '2026-06-08 14:00:00', operator: 'zhangyunying / 张运营', module: '配置', type: '配置修改', target: '包车计费规则', detail: '超时费 150→200 元/小时', ip: '192.168.1.100' },
+];
+
+export const onlineUsers: OnlineUser[] = [
+  { id: 'OU001', username: 'zhangyunying', name: '张运营', role: 'super_admin', loginTime: '2026-06-09 08:30', ip: '192.168.1.100', device: 'Chrome / macOS', duration: '2h 15m' },
+  { id: 'OU002', username: 'liyunying', name: '李运营', role: 'ops_admin', loginTime: '2026-06-09 09:15', ip: '192.168.1.101', device: 'Chrome / Windows', duration: '1h 30m' },
+  { id: 'OU003', username: 'wangcaiwu', name: '王财务', role: 'finance_admin', loginTime: '2026-06-08 16:45', ip: '192.168.1.102', device: 'Edge / Windows', duration: '18h 0m' },
+];

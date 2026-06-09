@@ -10,7 +10,9 @@ import DriverOrderList from './pages/orders/DriverOrderList';
 import VehicleList from './pages/vehicles/VehicleList';
 import DriverList from './pages/drivers/DriverList';
 import FinanceList from './pages/finance/FinanceList';
-import Placeholder from './pages/Placeholder';
+import ConfigPage from './pages/ConfigPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import SystemPage from './pages/SystemPage';
 
 export default function App() {
   return (
@@ -27,9 +29,9 @@ export default function App() {
           <Route path="/vehicles" element={<VehicleList />} />
           <Route path="/drivers" element={<DriverList />} />
           <Route path="/finance" element={<FinanceList />} />
-          <Route path="/config" element={<Placeholder module="config" />} />
-          <Route path="/analytics" element={<Placeholder module="analytics" />} />
-          <Route path="/system" element={<Placeholder module="system" />} />
+          <Route path="/config" element={<ConfigPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/system" element={<SystemPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

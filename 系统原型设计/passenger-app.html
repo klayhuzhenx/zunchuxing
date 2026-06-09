@@ -79,6 +79,7 @@ tailwind.config = {
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .star-active { font-variation-settings: 'FILL' 1; color: #D4AF37; }
   #trip-order-list > div { box-shadow: 0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03); }
+  #invoice-list > div { box-shadow: 0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03); }
 </style>
 </head>
 <body>
@@ -2379,7 +2380,7 @@ tailwind.config = {
 </div>
 </nav>
 <main class="flex-1 px-container-margin pt-stack-md pb-32">
-<div class="flex flex-col gap-stack-sm">
+<div class="flex flex-col gap-5" id="invoice-list">
 <div class="bg-white rounded-[32px] p-6 border border-slate-surface active:scale-[0.98] transition-all cursor-pointer invoice-card" data-status="已开具" onclick="currentInvoiceStatus='已开具';go('invoice-detail')">
 <div class="flex justify-between items-start mb-4">
 <div class="flex flex-col gap-1">
@@ -2391,6 +2392,7 @@ tailwind.config = {
 <div class="flex justify-between items-end">
 <div class="flex flex-col"><span class="font-label-sm text-label-sm text-secondary">2023年10月24日 14:30</span></div>
 <div class="text-right"><span class="font-headline-md text-headline-md text-primary">¥ 1,280.00</span></div>
+</div>
 </div>
 <div class="bg-white rounded-[32px] p-6 border border-slate-surface active:scale-[0.98] transition-all cursor-pointer invoice-card" data-status="开票中" onclick="currentInvoiceStatus='开票中';go('invoice-detail')">
 <div class="flex justify-between items-start mb-4">
@@ -2407,6 +2409,7 @@ tailwind.config = {
 </div>
 <div class="text-right"><span class="font-headline-md text-headline-md text-primary">¥ 458.50</span></div>
 </div>
+</div>
 <div class="bg-white rounded-[32px] p-6 border border-slate-surface active:scale-[0.98] transition-all cursor-pointer invoice-card" data-status="已开具" onclick="currentInvoiceStatus='已开具';go('invoice-detail')">
 <div class="flex justify-between items-start mb-4">
 <div class="flex flex-col gap-1">
@@ -2418,6 +2421,8 @@ tailwind.config = {
 <div class="flex justify-between items-end">
 <div class="flex flex-col"><span class="font-label-sm text-label-sm text-secondary">2023年10月05日 11:20</span></div>
 <div class="text-right"><span class="font-headline-md text-headline-md text-primary">¥ 88.00</span></div>
+</div>
+</div>
 </div>
 </main>
 <div class="fixed bottom-0 left-0 w-full p-container-margin bg-gradient-to-t from-[#f9f9f9] via-[#f9f9f9] to-transparent pt-8">
@@ -2721,6 +2726,7 @@ tailwind.config = {
 <div class="text-center mb-6"><div class="w-16 h-16 rounded-full bg-premium-blue/10 flex items-center justify-center mx-auto mb-4"><span class="material-symbols-outlined text-premium-blue text-3xl">headset_mic</span></div><h2 class="font-headline-sm text-headline-sm-mobile">联系客服</h2><p class="text-secondary font-body-md mt-2">客服热线 7×24 小时</p><p class="font-headline-md text-headline-md text-premium-blue mt-2">400-XXX-XXXX</p></div>
 <div class="flex gap-3"><button class="flex-1 h-14 border border-slate-surface rounded-full font-label-md active:scale-95 transition-all" onclick="closeContactModal()">取消</button><button class="flex-1 h-14 bg-premium-blue text-white rounded-full font-label-md active:scale-95 transition-all" onclick="closeContactModal();showHomeToast('正在呼叫...')">呼叫</button></div>
 </div>
+</div>
 
 <!-- ===== 认证失败弹窗 ===== -->
 <div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300" id="cert-fail-modal" onclick="closeCertFailModal(event)">
@@ -2729,6 +2735,7 @@ tailwind.config = {
 <h2 class="font-headline-sm text-headline-sm mb-2">认证失败</h2>
 <p class="text-secondary font-body-md mb-6" id="cert-fail-msg">车主信息暂未匹配到数据库记录，请确认信息后重试或联系客服</p>
 <button class="w-full h-14 bg-obsidian-deep text-white rounded-[24px] font-label-md active:scale-95 transition-all" onclick="closeCertFailModal()">知道了</button>
+</div>
 </div>
 
 <!-- ===== 删除确认弹窗 ===== -->
@@ -2741,7 +2748,8 @@ tailwind.config = {
 <button class="flex-1 h-14 border border-slate-surface rounded-full font-label-md active:scale-95 transition-all" onclick="closeDeleteStaffModal()">取消</button>
 <button class="flex-1 h-14 bg-status-error text-white rounded-full font-label-md active:scale-95 transition-all" onclick="confirmDeleteStaff()">确认删除</button>
 </div>
-
+</div>
+</div>
 
 <!-- 费用凭证弹窗 -->
 <div class="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 opacity-0 pointer-events-none transition-opacity duration-300" id="fee-voucher-modal" onclick="closeFeeVoucher()">
@@ -2749,6 +2757,7 @@ tailwind.config = {
 <div class="flex items-center justify-between mb-4"><h3 class="font-headline-sm text-headline-sm">费用凭证</h3><button class="material-symbols-outlined text-secondary" onclick="closeFeeVoucher()">close</button></div>
 <div class="w-full aspect-[3/4] rounded-2xl overflow-hidden bg-slate-surface mb-4"><img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1ly3F_OWU1DwJNi7LZRJcA_XJWHuG6L1zGrRvTLJ-cYscmrZg61zc3rxDe9TpqE2BaVSnbOTVsR6mRabW8faJqS12rj_V2BDOe6VZS3Zu5eTjKTPbL2oTkIfbEgJmSrK_jLS9LsuTMKG-EMCOy0ZDU6ffe93IdyyGPE3O6DAJs_qB8EnyLK8jEmzM9SRM5cN0SUlHoM5JwAcNf7ll9VQxX4nmiGlpVqISfu_5bEuZJXZW1ekuloIQROji-VNF2K2tFlvyqjXfKKQ"></div>
 <p class="font-label-sm text-secondary text-center">高速路桥费发票 · ¥35.00</p>
+</div>
 </div>
 
 <!-- 企业支付确认弹窗 -->
@@ -2761,6 +2770,8 @@ tailwind.config = {
 <button class="flex-1 h-14 border border-slate-surface rounded-full font-label-md active:scale-95 transition-all" onclick="cancelEnterprisePay()">取消</button>
 <button class="flex-1 h-14 bg-obsidian-deep text-white rounded-full font-label-md active:scale-95 transition-all" onclick="confirmEnterprisePay()">确认支付</button>
 </div>
+</div>
+</div>
 
 <!-- 支付取消确认弹窗 -->
 <div class="fixed inset-0 z-[115] flex items-center justify-center bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300" id="pay-cancel-modal" onclick="closePayCancelModal(event)">
@@ -2772,6 +2783,10 @@ tailwind.config = {
 <button class="flex-1 h-14 border border-slate-surface rounded-full font-label-md active:scale-95 transition-all" onclick="closePayCancelModal()">继续支付</button>
 <button class="flex-1 h-14 bg-obsidian-deep text-white rounded-full font-label-md active:scale-95 transition-all" onclick="confirmPayCancel()">确认返回</button>
 </div>
+</div>
+</div>
+
+<!-- 身份切换弹窗 -->
 <div class="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300" id="identity-modal" onclick="hideIdentityModal(event)">
 <div class="w-full bg-white rounded-t-[32px] p-stack-md pb-12 transform translate-y-full transition-transform duration-300" onclick="event.stopPropagation()">
 <div class="w-12 h-1 bg-surface-container-high rounded-full mx-auto mb-6"></div>
@@ -2790,18 +2805,6 @@ tailwind.config = {
 <div class="flex gap-3">
 <button class="flex-1 h-14 border border-slate-surface rounded-full font-label-md active:scale-95 transition-all" onclick="hideIdentityModal()">取消</button>
 <button class="flex-1 h-14 bg-obsidian-deep text-white rounded-full font-label-md active:scale-95 transition-all" onclick="confirmIdentity()">确认</button>
-</div>
-
-</div>
-
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 </div>
