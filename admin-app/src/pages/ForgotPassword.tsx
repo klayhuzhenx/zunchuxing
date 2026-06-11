@@ -10,7 +10,8 @@ export default function ForgotPassword() {
   const [captchaDone, setCaptchaDone] = useState(false);
   const [smsCode, setSmsCode] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [oldPassword] = useState('old123456'); // 模拟原密码
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
 
@@ -145,22 +146,23 @@ export default function ForgotPassword() {
               { minLength: 6, message: '密码至少6位' },
               { maxLength: 20, message: '密码不超过20位' },
               { match: /^(?=.*[a-zA-Z])(?=.*\d).+$/, message: '密码需包含字母和数字' },
-              { validator: (value, callback) => {
-                if (value === oldPassword) { callback('新密码不能与原密码相同'); }
-                callback();
-              }},
             ]}>
-              <Input.Password prefix={<IconLock />} placeholder="6-20位字母+数字组合" />
+              <Input.Password prefix={<IconLock />} placeholder="6-20位字母+数字组合"
+                onChange={(v) => setNewPassword(v)} />
             </Form.Item>
             <Form.Item field="confirmPassword" rules={[
               { required: true, message: '请确认新密码' },
-              { validator: (value, callback) => {
-                const form = document.querySelector('form');
-                // Simple check against newPassword field
-                callback();
-              }},
+              {
+                validator: (value, callback) => {
+                  if (value && value !== newPassword) {
+                    callback('两次输入的密码不一致');
+                  }
+                  callback();
+                },
+              },
             ]}>
-              <Input.Password prefix={<IconLock />} placeholder="请确认新密码" />
+              <Input.Password prefix={<IconLock />} placeholder="请确认新密码"
+                onChange={(v) => setConfirmPassword(v)} />
             </Form.Item>
             <Form.Item style={{ marginTop: 24 }}>
               <Button type="primary" htmlType="submit" long>重置密码</Button>

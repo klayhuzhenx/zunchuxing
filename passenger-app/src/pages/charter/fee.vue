@@ -8,7 +8,7 @@
         <view class="total-bg" :style="{ background: car.imageGradient }" />
         <view class="total-mask" />
         <view class="total-info">
-          <text class="total-label">包车出行 · 预计总额</text>
+          <text class="total-label">包车出行 · 总额</text>
           <view class="total-row">
             <text class="total-symbol">¥</text>
             <text class="total-value">{{ totalText }}</text>
@@ -32,30 +32,24 @@
 
           <view class="bill-row">
             <view class="bill-info">
-              <text class="bill-sub-label">夜间附加</text>
-              <text class="bill-meta">0:00-5:00 出发（基础价 × 20%）</text>
-            </view>
-            <text class="bill-amount">¥{{ nightFee }}</text>
-          </view>
-
-          <view class="bill-row">
-            <view class="bill-info">
-              <text class="bill-sub-label">远调费</text>
-              <text class="bill-meta">跨城跨区车辆调补差</text>
-            </view>
-            <text class="bill-amount">¥200</text>
-          </view>
-
-          <view class="bill-row">
-            <view class="bill-info">
-              <text class="bill-sub-label">超时费（预估）</text>
+              <text class="bill-sub-label">等待费</text>
+              <text class="bill-meta">免费 15 分钟，超出 ¥1/分钟</text>
             </view>
             <text class="bill-amount">¥0</text>
           </view>
 
           <view class="bill-row">
             <view class="bill-info">
-              <text class="bill-sub-label">超公里费（预估）</text>
+              <text class="bill-sub-label">超时长费</text>
+              <text class="bill-meta">¥100 / 小时</text>
+            </view>
+            <text class="bill-amount">¥0</text>
+          </view>
+
+          <view class="bill-row">
+            <view class="bill-info">
+              <text class="bill-sub-label">超公里费</text>
+              <text class="bill-meta">¥5 / 公里</text>
             </view>
             <text class="bill-amount">¥0</text>
           </view>
@@ -130,8 +124,7 @@ const pkg = computed(() => pkgMap[pkgId.value] || pkgMap['a-f-pro']);
 
 const subtotal = computed(() => pkg.value.price * days.value);
 const subtotalText = computed(() => subtotal.value.toLocaleString());
-const nightFee = computed(() => Math.round(subtotal.value * 0.2));
-const total = computed(() => subtotal.value + nightFee.value + 200);
+const total = computed(() => subtotal.value);
 const totalText = computed(() => total.value.toLocaleString());
 
 const onShowRule = () => {

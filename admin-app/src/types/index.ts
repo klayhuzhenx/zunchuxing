@@ -125,6 +125,7 @@ export interface Driver {
   id: string; code: string; name: string; phone: string;
   idCard: string; licenseNo?: string; licenseType: string;
   licenseImage?: string;
+  licenseImages?: string[];
   licenseExpiry: string; gender: 'male' | 'female'; birthDate?: string;
   photo?: string; remark?: string;
   gpsLocation?: string; gpsUpdatedAt?: string;
@@ -191,22 +192,46 @@ export interface TodoItem {
 export interface TrendData { date: string; orders: number; revenue: number; }
 
 // ===== 运营配置 =====
+// 取消规则梯度：每档完全自定义时间区间和扣费比例
+export interface CancelTier {
+  fromHours: number;  // 距出发 ≥ X 小时
+  toHours: number;    // 距出发 < X 小时
+  pct: number;        // 扣费比例 1-100
+}
+
 export interface PricingRule {
   id: string; modelId: string; modelName: string;
-  tier?: string; // 'basic'|'premium'|'ultimate' for charter
+  tier?: string; // package name for charter, undefined for rental
   halfDayPrice?: number; dayPrice: number;
   serviceContent?: string;
-  cancelFreeMins: number; cancelFreeHours: number;
+  // 新取消规则：免费阈值 + 自定义梯度数组 + 超时档
+  cancelFreeHours: number;
+  cancelTiers?: CancelTier[];   // 自定义梯度（多档）
+  cancelOverduePct?: number;    // 超时档比例
+  // 旧字段保留兼容
+  cancelFreeMins: number;
+  cancelTier1Pct?: number;
+  cancelTier2Pct?: number;
+  cancelTier3Pct?: number;
   cancelMidHigh: number; cancelMidLow: number;
   cancelMidPct: number; cancelHighPct: number;
   overtimeRate: number; extraMileageRate: number;
+  waitFreeMins?: number; waitRate?: number;
+  benefitTagIds?: string[];
   remark?: string;
   status: 'active' | 'inactive';
 }
 
 export interface VehicleModel {
   id: string; name: string; brand: string; seats: number; category: string;
-  image?: string; vehicleCount: number; status: 'active' | 'inactive';
+  displayName?: string;     // 说明名字（乘客端展示）
+  image?: string;
+  tagIds?: string[];        // 车型标签
+  vehicleCount: number; status: 'active' | 'inactive';
+}
+
+export interface BenefitTag {
+  id: string; name: string; icon: string; status: 'active' | 'inactive'; order?: number;
 }
 
 export interface BenefitTemplate {
@@ -217,6 +242,32 @@ export interface BenefitTemplate {
 }
 
 export interface QuotaAlertConfig { threshold: number; frequency: string; }
+
+export interface PlatformTimeoutConfig {
+  paymentTimeoutMinutes: number;  // 默认 20 分钟
+  dispatchTimeoutHours: number;   // 默认 2 小时
+}
+
+export interface OpsCity {
+  id: string; name: string; regionCount: number; status: 'active' | 'inactive';
+}
+
+export interface OpsRegion {
+  id: string; name: string; city: string; vehicleIds: string[];
+  status: 'active' | 'inactive'; updatedAt: string;
+}
+
+export interface ServiceAgreement {
+  id: string; name: string; type: 'service' | 'privacy' | 'business';
+  version: string; content: string;
+  status: 'published' | 'draft';
+  updatedAt: string; operator: string;
+  history?: { version: string; updatedAt: string; operator: string; content: string }[];
+}
+
+export interface FeeType {
+  id: string; name: string; remark?: string; status: 'active' | 'inactive';
+}
 
 // ===== 数据分析 =====
 export interface OverviewMetric {

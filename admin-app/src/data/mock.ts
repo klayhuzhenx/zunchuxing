@@ -3,6 +3,7 @@ import type {
   Order, DriverOrder, Driver, EnterpriseBill, BillOrderItem, BillRefundItem, Transaction,
   DashboardStats, TodoItem, TrendData,
   Vehicle, DaySchedule,
+  BenefitTag, PlatformTimeoutConfig, OpsCity, ServiceAgreement, FeeType,
 } from '../types';
 
 // ===== 当前登录用户 =====
@@ -503,4 +504,55 @@ export const onlineUsers: OnlineUser[] = [
   { id: 'OU001', username: 'zhangyunying', name: '张运营', role: 'super_admin', loginTime: '2026-06-09 08:30', ip: '192.168.1.100', device: 'Chrome / macOS', duration: '2h 15m' },
   { id: 'OU002', username: 'liyunying', name: '李运营', role: 'ops_admin', loginTime: '2026-06-09 09:15', ip: '192.168.1.101', device: 'Chrome / Windows', duration: '1h 30m' },
   { id: 'OU003', username: 'wangcaiwu', name: '王财务', role: 'finance_admin', loginTime: '2026-06-08 16:45', ip: '192.168.1.102', device: 'Edge / Windows', duration: '18h 0m' },
+];
+
+// ===== 车型标签库（与权益标签独立）=====
+export const vehicleTags: BenefitTag[] = [
+  { id: 'VT001', name: '头等舱座椅', icon: '💺', status: 'active', order: 1 },
+  { id: 'VT002', name: '5G车载WiFi', icon: '📶', status: 'active', order: 2 },
+  { id: 'VT003', name: '分区空调', icon: '❄️', status: 'active', order: 3 },
+  { id: 'VT004', name: '行政座椅', icon: '🪑', status: 'active', order: 4 },
+];
+
+// ===== 权益标签库（C8-04） =====
+export const benefitTags: BenefitTag[] = [
+  { id: 'BT001', name: '免费饮品', icon: '🥤', status: 'active', order: 1 },
+  { id: 'BT002', name: 'WiFi', icon: '📶', status: 'active', order: 2 },
+  { id: 'BT003', name: '儿童座椅', icon: '🪑', status: 'active', order: 3 },
+  { id: 'BT004', name: '尊享迎宾', icon: '✨', status: 'active', order: 4 },
+  { id: 'BT005', name: '商务接待', icon: '💼', status: 'active', order: 5 },
+];
+
+// ===== 平台级超时（C8-05） =====
+export const platformTimeoutConfig: PlatformTimeoutConfig = {
+  paymentTimeoutMinutes: 20,
+  dispatchTimeoutHours: 2,
+};
+
+// ===== 城市管理（C8-12） =====
+export const opsCities: OpsCity[] = [
+  { id: 'CT001', name: '深圳', regionCount: 2, status: 'active' },
+  { id: 'CT002', name: '上海', regionCount: 1, status: 'active' },
+  { id: 'CT003', name: '广州', regionCount: 0, status: 'active' },
+  { id: 'CT004', name: '北京', regionCount: 0, status: 'inactive' },
+];
+
+// ===== 协议管理（C8-14） =====
+export const serviceAgreements: ServiceAgreement[] = [
+  { id: 'AG001', name: '尊出行用户服务协议', type: 'service', version: 'V2.1', content: '<h2>第一条 总则</h2><p>欢迎使用尊出行平台...</p>', status: 'published', updatedAt: '2026-05-01 10:00', operator: '张运营',
+    history: [
+      { version: 'V2.0', updatedAt: '2025-12-01 09:00', operator: '张运营', content: '<p>V2.0 内容...</p>' },
+      { version: 'V1.0', updatedAt: '2025-06-01 09:00', operator: '李运营', content: '<p>V1.0 内容...</p>' },
+    ] },
+  { id: 'AG002', name: '隐私政策', type: 'privacy', version: 'V1.3', content: '<h2>个人信息收集</h2><p>我们承诺...</p>', status: 'published', updatedAt: '2026-04-15 14:30', operator: '张运营' },
+  { id: 'AG003', name: '包车服务条款', type: 'business', version: 'V1.0', content: '<h2>包车服务说明</h2>', status: 'draft', updatedAt: '2026-06-08 11:00', operator: '李运营' },
+];
+
+// ===== 费用类型（C8-15） =====
+export const feeTypes: FeeType[] = [
+  { id: 'FT001', name: '高速费', remark: '高速公路通行费用', status: 'active' },
+  { id: 'FT002', name: '停车费', remark: '行程中产生的停车费用', status: 'active' },
+  { id: 'FT003', name: '洗车费', remark: '行程结束后的车辆清洁费', status: 'active' },
+  { id: 'FT004', name: '桥梁通行费', remark: '过桥过隧费用', status: 'active' },
+  { id: 'FT005', name: '过夜费', remark: '司机异地过夜补贴', status: 'inactive' },
 ];

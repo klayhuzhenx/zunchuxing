@@ -1,10 +1,10 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card, Table, Tag, Button, Select, Space, Tabs, Modal, Message, Input, Drawer, Descriptions, InputNumber, DatePicker, Upload,
 } from '@arco-design/web-react';
 import { IconDownload, IconUpload } from '@arco-design/web-react/icon';
 import { enterpriseBills, billOrderItems, billRefundItems, transactions } from '../../data/mock';
-import type { EnterpriseBill, Transaction, SettlementStatus, TransactionType } from '../../types';
+import type { EnterpriseBill, Transaction, SettlementStatus, TransactionType, TransactionStatus } from '../../types';
 
 const settlementMap: Record<SettlementStatus, { label: string; color: string }> = {
   pending: { label: '待结算', color: 'orangered' },
@@ -18,11 +18,32 @@ const txnTypeMap: Record<TransactionType, { label: string; color: string }> = {
   extra_payment: { label: '补款', color: 'orangered' },
 };
 
+const txnStatusMap: Record<TransactionStatus, { label: string; color: string }> = {
+  success: { label: '成功', color: 'green' },
+  failed: { label: '失败', color: 'red' },
+  processing: { label: '处理中', color: 'arcoblue' },
+};
+
+// 计算上月（YYYY-MM）— 当月账单不展示
+const lastMonth = (() => {
+  const d = new Date();
+  d.setDate(1); d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+})();
+
+// 模拟结算记录历史（实际由后端返回）
+interface SettlementRecord { id: string; billId: string; amount: number; voucher: string; operator: string; time: string; }
+const mockSettlementRecords: SettlementRecord[] = [
+  { id: 'SR001', billId: 'B003', amount: 11300, voucher: 'voucher_b003.pdf', operator: '王财务', time: '2026-06-05 10:30' },
+  { id: 'SR002', billId: 'B004', amount: 3900, voucher: 'voucher_b004_p1.pdf', operator: '王财务', time: '2026-06-08 14:20' },
+];
+
 
 // ===== 企业账单 Tab =====
 function BillTab() {
-  const [bills] = useState<EnterpriseBill[]>(enterpriseBills);
-  const [monthFilter, setMonthFilter] = useState('2026-06');
+  const [bills, setBills] = useState<EnterpriseBill[]>(enterpriseBills);
+  const [settleRecords, setSettleRecords] = useState<SettlementRecord[]>(mockSettlementRecords);
+  const [monthFilter, setMonthFilter] = useState(lastMonth);
   const [settleFilter, setSettleFilter] = useState<string[]>([]);
   const [enterpriseFilter, setEnterpriseFilter] = useState('');
   const [detailVisible, setDetailVisible] = useState(false);
@@ -31,16 +52,28 @@ function BillTab() {
   const [settleAmount, setSettleAmount] = useState<number>(0);
   const [settleFile, setSettleFile] = useState<File | null>(null);
   const [settleConfirmVisible, setSettleConfirmVisible] = useState(false);
-  const [genBillVisible, setGenBillVisible] = useState(false);
-  const [genBillMonth, setGenBillMonth] = useState('2026-07');
+
+  // 当前月（YYYY-MM）— 不在筛选选项中展示
+  const currentMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+
+  // 月份选项：仅展示已生成的历史月份（不含当月）
+  const monthOptions = useMemo(() => {
+    const months = [...new Set(bills.map(b => b.month))]
+      .filter(m => m !== currentMonth)
+      .sort((a, b) => b.localeCompare(a));
+    return months.map(m => ({ label: m, value: m }));
+  }, [bills, currentMonth]);
 
   const filtered = useMemo(() => {
-    let result = bills;
+    let result = bills.filter(b => b.month !== currentMonth); // 当月账单不展示
     if (monthFilter) result = result.filter(b => b.month === monthFilter);
     if (settleFilter.length > 0) result = result.filter(b => settleFilter.includes(b.status));
     if (enterpriseFilter) result = result.filter(b => b.enterpriseName.includes(enterpriseFilter));
     return result;
-  }, [bills, monthFilter, settleFilter, enterpriseFilter]);
+  }, [bills, monthFilter, settleFilter, enterpriseFilter, currentMonth]);
 
   const summary = useMemo(() => ({
     consumption: filtered.reduce((s, b) => s + b.consumption, 0),
@@ -67,18 +100,27 @@ function BillTab() {
   };
 
   const handleSettleSubmit = () => {
+    if (!selectedBill) return;
+    const newPending = selectedBill.pendingAmount - settleAmount;
+    const newSettled = selectedBill.settledAmount + settleAmount;
+    const newStatus: SettlementStatus = newPending <= 0 ? 'settled' : 'partial';
+
+    setBills(prev => prev.map(b => b.id === selectedBill.id
+      ? { ...b, pendingAmount: newPending, settledAmount: newSettled, status: newStatus }
+      : b));
+
+    setSettleRecords(prev => [...prev, {
+      id: `SR${Date.now()}`,
+      billId: selectedBill.id,
+      amount: settleAmount,
+      voucher: settleFile?.name || '凭证.pdf',
+      operator: '王财务',
+      time: new Date().toISOString().replace('T', ' ').slice(0, 16),
+    }]);
+
     setSettleConfirmVisible(false);
     setSettleVisible(false);
     Message.success('结算已确认');
-  };
-
-  const handleGenerateBill = () => {
-    if (bills.some(b => b.month === genBillMonth)) {
-      Message.warning(`${genBillMonth} 账单已存在，无需重复生成`);
-      return;
-    }
-    Message.loading('账单生成中…');
-    setTimeout(() => { Message.success(`${genBillMonth} 账单已生成`); setGenBillVisible(false); }, 800);
   };
 
   const columns = [
@@ -106,13 +148,12 @@ function BillTab() {
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
         <Space size={12} wrap>
           <Select placeholder="账单月份" style={{ width: 140 }} value={monthFilter} onChange={setMonthFilter}
-            options={['2026-04', '2026-05', '2026-06'].map(m => ({ label: m, value: m }))} allowClear />
+            options={monthOptions} allowClear />
           <Select placeholder="结算状态" style={{ width: 200 }} mode="multiple" value={settleFilter} onChange={setSettleFilter}
             options={[{ label: '待结算', value: 'pending' }, { label: '部分结算', value: 'partial' }, { label: '已结算', value: 'settled' }]} />
           <Select placeholder="企业" style={{ width: 160 }} value={enterpriseFilter || undefined} onChange={v => setEnterpriseFilter(v || '')} allowClear showSearch
             options={[...new Set(bills.map(b => b.enterpriseName))].map(n => ({ label: n, value: n }))} />
           <div style={{ flex: 1 }} />
-          <Button type="outline" onClick={() => setGenBillVisible(true)}>刷新</Button>
           <Button icon={<IconDownload />} type="outline" onClick={() => Message.success('导出成功')}>导出</Button>
         </Space>
       </Card>
@@ -199,19 +240,26 @@ function BillTab() {
                 ) : <div style={{ color: '#86909c', textAlign: 'center', padding: 24 }}>当月无限度变动</div>;
               })()}
             </Card>
+
+            {/* 结算记录 — 仅部分结算/已结算账单展示 */}
+            {(selectedBill.status === 'partial' || selectedBill.status === 'settled') && (
+              <Card title="结算记录" size="small" style={{ marginBottom: 16 }}>
+                {(() => {
+                  const records = settleRecords.filter(r => r.billId === selectedBill.id);
+                  return records.length > 0 ? (
+                    <Table columns={[
+                      { title: '结算时间', dataIndex: 'time', width: 160 },
+                      { title: '结算金额', width: 120, render: (_: unknown, r: SettlementRecord) => <span style={{ color: '#165DFF', fontWeight: 500 }}>¥{r.amount.toLocaleString()}</span> },
+                      { title: '操作人', dataIndex: 'operator', width: 100 },
+                      { title: '客户支付凭证', dataIndex: 'voucher', render: (v: string) => <a onClick={() => Message.info(`预览凭证：${v}`)}>{v}</a> },
+                    ]} data={records} rowKey="id" pagination={false} size="small" />
+                  ) : <div style={{ color: '#86909c', textAlign: 'center', padding: 24 }}>暂无结算记录</div>;
+                })()}
+              </Card>
+            )}
           </div>
         )}
       </Drawer>
-
-      {/* Generate Bill Modal */}
-      <Modal title="生成账单" visible={genBillVisible}
-        onOk={handleGenerateBill}
-        onCancel={() => setGenBillVisible(false)}
-      >
-        <p style={{ marginBottom: 12 }}>系统每月1日自动生成上月账单，也可手动触发生成。当月账单不展示。</p>
-        <Select placeholder="选择月份" style={{ width: '100%' }} value={genBillMonth} onChange={setGenBillMonth}
-          options={['2026-04', '2026-05', '2026-06', '2026-07'].map(m => ({ label: m, value: m }))} />
-      </Modal>
 
       {/* Settle Modal */}
       <Modal title="确认结算" visible={settleVisible}
@@ -276,7 +324,14 @@ function TransactionTab() {
     if (methodFilter.length > 0) result = result.filter(t => methodFilter.includes(t.paymentMethod));
     if (keyword) {
       const kw = keyword.toLowerCase();
-      result = result.filter(t => t.txnNo.toLowerCase().includes(kw) || t.orderNo.toLowerCase().includes(kw) || t.party.toLowerCase().includes(kw));
+      // 关键字：流水号 / 订单号 / 乘客姓名 / 手机号 / 企业名称（party 字段已含姓名+企业，需补手机号过滤）
+      result = result.filter(t =>
+        t.txnNo.toLowerCase().includes(kw) ||
+        t.orderNo.toLowerCase().includes(kw) ||
+        t.party.toLowerCase().includes(kw) ||
+        // 通过订单号关联匹配乘客手机号（mock：从 orders 反查会循环引用，这里用简单字符串匹配）
+        kw.replace(/\D/g, '').length >= 3 && t.party.replace(/\D/g, '').includes(kw.replace(/\D/g, ''))
+      );
     }
     if (txnDateRange) {
       const [s, e] = txnDateRange;
@@ -313,7 +368,7 @@ function TransactionTab() {
       {/* Filters */}
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
         <Space size={12} wrap>
-          <Input placeholder="流水号/订单号/交易方" style={{ width: 240 }} value={keyword} onChange={setKeyword} allowClear />
+          <Input placeholder="流水号/订单号/乘客/手机号/企业" style={{ width: 240 }} value={keyword} onChange={setKeyword} allowClear />
           <Select placeholder="交易类型" style={{ width: 180 }} mode="multiple" value={typeFilter} onChange={setTypeFilter}
             options={[{ label: '支付', value: 'payment' }, { label: '退款', value: 'refund' }, { label: '补款', value: 'extra_payment' }]} />
           <Select placeholder="支付方式" style={{ width: 200 }} mode="multiple" value={methodFilter} onChange={setMethodFilter}
@@ -324,9 +379,25 @@ function TransactionTab() {
           <span style={{ color: '#86909c' }}>~</span>
           <Input placeholder="金额≤" style={{ width: 100 }} value={amountMax} onChange={setAmountMax} allowClear />
           <div style={{ flex: 1 }} />
-          <Button icon={<IconDownload />}>导出</Button>
+          <Button icon={<IconDownload />} onClick={() => Message.success('导出成功')}>导出</Button>
         </Space>
       </Card>
+
+      {/* 流水汇总（C7-06） */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
+        <Card bodyStyle={{ padding: '16px 20px' }}>
+          <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>支付总额</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#1d2129' }}>¥{summary.pay.toLocaleString()}</div>
+        </Card>
+        <Card bodyStyle={{ padding: '16px 20px' }}>
+          <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>退款总额</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#F53F3F' }}>¥{summary.refund.toLocaleString()}</div>
+        </Card>
+        <Card bodyStyle={{ padding: '16px 20px' }}>
+          <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>净收入</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: summary.net >= 0 ? '#00B42A' : '#F53F3F' }}>¥{summary.net.toLocaleString()}</div>
+        </Card>
+      </div>
 
       <Card bodyStyle={{ padding: 0 }}>
         <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 1300 }} pagination={{ pageSize: 15, showTotal: true }} stripe />

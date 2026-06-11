@@ -97,14 +97,13 @@ export default function Dashboard() {
     { title: '在线司机', value: `${stats.onlineDrivers}/${stats.totalDrivers}`, link: '/drivers', visible: roleVisible(['super_admin', 'ops_admin']) },
   ].filter(c => c.visible);
 
-  const todos: TodoItem[] = [
-    { id: 'T1', type: 'dispatch', title: '待派车订单', count: stats.pendingDispatch, subtitle: '最近出发：06-08 07:00 王雪梅', priority: 'urgent', link: '/orders?tab=pending_dispatch' },
-    { id: 'T2', type: 'dispatch_urgent', title: '调度临近超时（≤2.5h）', count: 1, subtitle: '距出发不足 2.5 小时的未派车订单', priority: 'urgent', link: '/orders?tab=pending_dispatch' },
-    { id: 'T3', type: 'doc_audit', title: '待审核证件', count: 0, subtitle: '司机/车辆证件待审核', priority: 'normal', link: '/drivers' },
-    { id: 'T4', type: 'enterprise_audit', title: '待审核企业入驻', count: 2, priority: 'important', link: '/enterprise?status=pending' },
-    { id: 'T5', type: 'refund', title: '退款待执行', count: 1, subtitle: '已确认取消但退款未完成', priority: 'important', link: '/finance' },
-    { id: 'T6', type: 'quota_alert', title: '额度告急企业', count: 2, subtitle: '剩余额度低于 ¥2,000 的企业', priority: 'important', link: '/enterprise?quota=low' },
+  // 待派车订单卡片数据
+  const pendingDispatchOrders = [
+    { orderNo: 'ZC20260608-0001', time: '06-08 07:00', route: '南山区科技园 → 福田区会展中心', passenger: '王雪梅' },
+    { orderNo: 'ZC20260607-0010', time: '06-08 09:00', route: '福田区华强北 → 南山区华侨城', passenger: '林小红' },
   ];
+
+  const todos: TodoItem[] = [];
 
   const priorityColor: Record<string, string> = { urgent: 'red', important: 'orangered', normal: 'arcoblue' };
   const hasTodos = todos.some(t => t.count > 0);
@@ -174,7 +173,28 @@ export default function Dashboard() {
             extra={<Text type="secondary" style={{ fontSize: 12 }}>共 {todos.filter(t => t.count > 0).length} 项</Text>}
             style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
           >
-            {!hasTodos ? (
+            {/* 待派车订单卡片（独立区块，可滚动） */}
+            {stats.pendingDispatch > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 8 }}>
+                  🚗 待派车订单（{stats.pendingDispatch} 笔）
+                </div>
+                <div style={{ maxHeight: 180, overflow: 'auto' }}>
+                  {pendingDispatchOrders.map((o, i) => (
+                    <div key={i} onClick={() => navigate('/orders?tab=pending_start')}
+                      style={{ cursor: 'pointer', padding: '10px 12px', marginBottom: 8, background: '#FFECE8', border: '1px solid #FBACA3', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 12, color: '#86909c' }}>{o.orderNo}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{o.passenger} · {o.time}</div>
+                        <div style={{ fontSize: 11, color: '#86909c', marginTop: 2 }}>{o.route}</div>
+                      </div>
+                      <IconRight style={{ color: '#F53F3F', fontSize: 14 }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!hasTodos && stats.pendingDispatch === 0 ? (
               <div style={{ textAlign: 'center', padding: 40, color: '#86909c', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 今日无待办事项
               </div>

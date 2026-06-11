@@ -1,205 +1,86 @@
 <template>
-  <view class="page">
-    <view class="page-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
-      <view class="header-row">
-        <text class="page-title">消息中心</text>
-        <text class="header-action" @click="markAllRead">全部已读</text>
-      </view>
-    </view>
-
-    <view v-if="messages.length > 0" class="list">
-      <view
-        v-for="msg in messages"
-        :key="msg.id"
-        class="message-card"
-        :class="{ unread: !msg.read }"
-        @click="readMessage(msg)"
-      >
-        <view v-if="!msg.read" class="msg-dot"></view>
-        <view class="msg-content">
-          <text class="msg-title">{{ msg.title }}</text>
-          <text class="msg-desc">{{ msg.desc }}</text>
-          <text class="msg-time">{{ msg.time }}</text>
+  <view class="root">
+    <view class="header" :style="{ paddingTop: top + 'px' }">
+      <view class="hbar">
+        <view class="hleft" @click="back">
+          <text class="material-symbols-outlined hicon">arrow_back</text>
+          <text class="htitle">消息中心</text>
         </view>
-        <text class="material-symbols-outlined msg-arrow">chevron_right</text>
+        <text class="hread" @click="markAllRead">全部已读</text>
       </view>
     </view>
 
-    <view v-else class="empty-state">
-      <text class="material-symbols-outlined empty-icon">mail</text>
-      <text class="empty-text">暂无消息</text>
-    </view>
-
-    <!-- 清空按钮 -->
-    <view v-if="messages.length > 0" class="footer-actions">
-      <button class="clear-btn" @click="clearAll">清空消息</button>
+    <view class="body">
+      <view v-for="m in list" :key="m.id" class="card" :class="{ read: !m.unread }" @click="onTap(m)">
+        <view class="ctop">
+          <view class="ctags">
+            <view class="tag" :class="'tag-'+m.type"><text class="ttx">{{ m.type==='charter'?'包车出行':'租车出行' }}</text></view>
+            <view v-if="m.unread" class="dot" />
+          </view>
+          <text class="ctime">{{ m.time }}</text>
+        </view>
+        <text class="ctitle">{{ m.title }}</text>
+        <text class="cdesc">{{ m.desc }}</text>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
+const top = ref(0);
+onMounted(() => { top.value = uni.getSystemInfoSync().statusBarHeight || 0; });
+const back = () => uni.navigateBack();
 
-const statusBarHeight = ref(0);
-
-const messages = ref([
-  { id: '1', title: '派车成功', desc: '您的包车出行订单 ZC-20260608-001 已成功分配司机，司机将在约定时间到达上车地点。', time: '10分钟前', read: false },
-  { id: '2', title: '行程即将开始', desc: '您预订的包车出行将于明天 07:00 从合肥南站出发，请提前做好准备。', time: '2小时前', read: false },
-  { id: '3', title: '行程结束 · 待补款', desc: '您的包车出行已结束，因超出约定里程产生额外费用 ¥500.00，请尽快完成补款。', time: '3小时前', read: false },
-  { id: '4', title: '感谢选择尊出行', desc: '您的行程已完成，感谢选择尊出行。期待再次为您服务。', time: '2天前', read: true },
-  { id: '5', title: '企业额度调整通知', desc: '贵司的出行额度已由运营方调整，当前总额度为 ¥200,000.00。', time: '5天前', read: true },
+const list = reactive([
+  { id:'m1', type:'charter', title:'派车成功', desc:'您的订单已由苏A·88888 黑色迈巴赫承运，司机师傅正赶往出发地点...', time:'10分钟前', unread:true, linkTrip:'charter', linkStatus:'pending-assigned' },
+  { id:'m2', type:'charter', title:'行程开始', desc:'您的8小时包车行程已正式开始，如需协助请联系专属管家。', time:'1小时前', unread:true, linkTrip:'charter', linkStatus:'ongoing' },
+  { id:'m3', type:'rental', title:'还车成功', desc:'车辆验交手续已完成，押金将在3-7个工作日内原路退回。', time:'昨天', unread:false, linkTrip:'rental', linkStatus:'completed' },
+  { id:'m4', type:'charter', title:'感谢您的选择', desc:'本次行程已圆满结束，期待与您的下一次尊贵相遇。', time:'3天前', unread:false, linkTrip:'charter', linkStatus:'completed' },
 ]);
 
-onMounted(() => {
-  const sysInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = sysInfo.statusBarHeight || 0;
-});
+const markAllRead = () => { list.forEach(m => m.unread = false); uni.showToast({ title:'全部已读', icon:'none' }); };
 
-const readMessage = (msg: any) => {
-  msg.read = true;
-  uni.showToast({ title: `查看: ${msg.title}`, icon: 'none' });
-};
-
-const markAllRead = () => {
-  messages.value.forEach((m) => (m.read = true));
-  uni.showToast({ title: '已全部标记为已读', icon: 'none' });
-};
-
-const clearAll = () => {
-  messages.value = [];
-  uni.showToast({ title: '消息已清空', icon: 'none' });
+const onTap = (m: any) => {
+  m.unread = false;
+  const url = m.linkTrip === 'charter' ? '/pages/trips/detail-charter' : '/pages/trips/detail-rental';
+  uni.navigateTo({ url: `${url}?status=${m.linkStatus}` });
 };
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  background: #F5F5F5;
-}
+.root { min-height: 100vh; background: #F9F9F9; }
+.header { position: sticky; top: 0; z-index: 50; background: #F9F9F9; }
+.hbar { height: 56px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+.hleft { display: flex; align-items: center; gap: 16px; }
+.hleft:active { opacity: 0.7; }
+.hicon { font-size: 24px; color: #000; }
+.htitle { font-size: 20px; font-weight: 700; color: #000; }
+.hread { font-size: 13px; font-weight: 500; color: #0057FF; }
+.hread:active { opacity: 0.7; }
 
-.page-header {
-  background: #FFFFFF;
-  padding: 16px 24px 8px;
-}
+.body { padding: 24px 24px 40px; display: flex; flex-direction: column; gap: 16px; }
 
-.header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+.card { background: #FFF; border: 1px solid #F2F2F2; border-radius: 32px; padding: 24px; }
+.card:active { transform: scale(0.98); }
+.card.read { opacity: 0.6; }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #000000;
-}
+.ctop { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.ctags { display: flex; align-items: center; gap: 8px; }
+.tag { padding: 4px 12px; background: #F2F2F2; border-radius: 9999px; }
+.ttx { font-size: 11px; color: #86868B; }
+.dot { width: 8px; height: 8px; background: #FF4D4F; border-radius: 50%; }
+.ctime { font-size: 11px; color: #86868B; opacity: 0.6; flex-shrink: 0; }
 
-.header-action {
-  font-size: 14px;
-  color: #0057FF;
-  font-weight: 500;
-}
-
-/* ===== 消息列表 ===== */
-.list {
-  padding: 16px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.message-card {
-  background: #FFFFFF;
-  border-radius: 20px;
-  padding: 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-}
-
-.message-card.unread {
-  background: #FAFAFA;
-}
-
-.msg-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background: #F53F3F;
-  flex-shrink: 0;
-  margin-top: 5px;
-}
-
-.msg-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.msg-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #1D2129;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.msg-desc {
-  font-size: 13px;
+.ctitle { font-size: 20px; font-weight: 600; color: #000; display: block; margin-bottom: 8px; }
+.cdesc {
+  font-size: 15px;
   color: #86868B;
-  display: block;
-  margin-bottom: 4px;
-  line-height: 1.5;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   overflow: hidden;
-}
-
-.msg-time {
-  font-size: 12px;
-  color: #C9CDD4;
-}
-
-.msg-arrow {
-  font-size: 20px;
-  color: #C9CDD4;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-/* ===== 底部操作 ===== */
-.footer-actions {
-  padding: 24px;
-}
-
-.clear-btn {
-  width: 100%;
-  height: 48px;
-  border-radius: 24px;
-  font-size: 15px;
-  border: 1px solid #E5E6EB;
-  background: #FFFFFF;
-  color: #F53F3F;
-  line-height: 48px;
-}
-
-/* ===== 空状态 ===== */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80px 24px;
-}
-
-.empty-icon {
-  font-size: 48px;
-  color: #C9CDD4;
-  margin-bottom: 12px;
-}
-
-.empty-text {
-  font-size: 15px;
-  color: #C9CDD4;
+  text-overflow: ellipsis;
+  word-break: break-all;
 }
 </style>

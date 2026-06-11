@@ -1,0 +1,119 @@
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --bg-card: #1a1a1e;
+  --bg-input: #242429;
+  --gold: #D4AF37;
+  --gold-light: rgba(212, 175, 55, 0.15);
+  --gold-border: rgba(212, 175, 55, 0.3);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
+  --text-disabled: rgba(255, 255, 255, 0.25);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.05);
+  --success: #00B42A;
+  --warning: #FF7D00;
+  --danger: #F53F3F;
+  --info: #165DFF;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%; width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'HarmonyOS Sans', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#root { max-width: 480px; margin: 0 auto; position: relative; }
+
+a { color: inherit; text-decoration: none; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Arco dark theme overrides */
+.driver-app-dark {
+  --color-bg-1: var(--bg-primary);
+  --color-bg-2: var(--bg-secondary);
+  --color-bg-3: var(--bg-card);
+  --color-bg-4: var(--bg-input);
+  --color-bg-5: #2a2a30;
+  --color-text-1: var(--text-primary);
+  --color-text-2: var(--text-secondary);
+  --color-text-3: var(--text-tertiary);
+  --color-text-4: var(--text-disabled);
+  --color-border-1: var(--border);
+  --color-border-2: var(--border-light);
+  --color-fill-1: rgba(255,255,255,0.04);
+  --color-fill-2: rgba(255,255,255,0.08);
+  --color-fill-3: rgba(255,255,255,0.12);
+}
+
+.driver-app-dark .arco-btn-primary {
+  background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;
+}
+.driver-app-dark .arco-btn-primary:hover { background: #c9a52f; border-color: #c9a52f; }
+.driver-app-dark .arco-btn-primary.arco-btn-disabled { background: rgba(212,175,55,0.3); border-color: transparent; color: rgba(0,0,0,0.4); }
+
+.driver-app-dark .arco-input-wrapper,
+.driver-app-dark .arco-textarea-wrapper {
+  background: var(--bg-input); border-color: var(--border);
+}
+.driver-app-dark .arco-input-wrapper:hover,
+.driver-app-dark .arco-textarea-wrapper:hover { border-color: var(--gold-border); }
+.driver-app-dark .arco-input-wrapper.arco-input-focus,
+.driver-app-dark .arco-textarea-wrapper.arco-textarea-focus { border-color: var(--gold); }
+.driver-app-dark .arco-input { color: var(--text-primary); }
+.driver-app-dark .arco-input::placeholder { color: var(--text-tertiary); }
+
+.driver-app-dark .arco-modal-content { background: var(--bg-secondary); }
+.driver-app-dark .arco-modal-header { border-bottom-color: var(--border); }
+.driver-app-dark .arco-modal-title { color: var(--text-primary); }
+.driver-app-dark .arco-modal-footer { border-top-color: var(--border); }
+
+.driver-app-dark .arco-tag-green { background: rgba(0,180,42,0.15); color: var(--success); }
+.driver-app-dark .arco-tag-red { background: rgba(245,63,63,0.15); color: var(--danger); }
+.driver-app-dark .arco-tag-orange { background: rgba(255,125,0,0.15); color: var(--warning); }
+.driver-app-dark .arco-tag-blue { background: rgba(22,93,255,0.15); color: var(--info); }
+
+.driver-app-dark .arco-empty .arco-empty-description { color: var(--text-tertiary); }
+
+/* Page transitions */
+.page { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Card */
+.card {
+  background: var(--bg-card); border-radius: var(--radius); padding: 16px;
+  border: 1px solid var(--border);
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;
+}
+.status-badge.green { background: rgba(0,180,42,0.12); color: var(--success); }
+.status-badge.orange { background: rgba(255,125,0,0.12); color: var(--warning); }
+.status-badge.blue { background: rgba(22,93,255,0.12); color: #4080FF; }
+.status-badge.gray { background: rgba(255,255,255,0.06); color: var(--text-tertiary); }
+.status-badge.red { background: rgba(245,63,63,0.12); color: var(--danger); }
+
+/* Gold accent line */
+.gold-line {
+  width: 32px; height: 3px; background: var(--gold); border-radius: 2px;
+}
+
+/* Page wrapper */
+.page-wrapper {
+  height: 100%; display: flex; flex-direction: column;
+  padding: 0 16px; overflow-y: auto;
+}

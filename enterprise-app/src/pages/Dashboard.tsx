@@ -1,5 +1,9 @@
-import { Card, Grid, Statistic, Table, Tag, Typography } from '@arco-design/web-react';
-import { mockDashboard, mockWeekTrend, mockOrders } from '../data/mock';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, Grid, Statistic, Table, Tag, Typography, Button, Space, Message } from '@arco-design/web-react';
+import { IconRefresh, IconRight } from '@arco-design/web-react/icon';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { mockDashboard, mockMonthTrend, mockOrders } from '../data/mock';
 import type { Order } from '../types';
 
 const { Row, Col } = Grid;
@@ -24,75 +28,75 @@ const orderColumns = [
   }},
 ];
 
-function SimpleLineChart({ data }: { data: { date: string; orders: number }[] }) {
-  const w = 600; const h = 200; const pad = { top: 24, right: 20, bottom: 28, left: 32 };
-  const maxVal = Math.max(...data.map(d => d.orders), 1);
-  const pw = w - pad.left - pad.right;
-  const ph = h - pad.top - pad.bottom;
-  const stepX = pw / (data.length - 1);
-  const points = data.map((d, i) => `${pad.left + i * stepX},${pad.top + ph - (d.orders / maxVal) * ph}`).join(' ');
-  const yTicks = [0, 1, 2, 3, 4, 5];
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto' }}>
-      {yTicks.map(v => {
-        const y = pad.top + ph - (v / maxVal) * ph;
-        return (
-          <g key={v}>
-            <line x1={pad.left} y1={y} x2={w - pad.right} y2={y} stroke="#f0f0f0" strokeDasharray="3 3" />
-            <text x={pad.left - 6} y={y + 4} textAnchor="end" fill="#86909c" fontSize="11">{v}</text>
-          </g>
-        );
-      })}
-      {data.map((d, i) => (
-        <text key={d.date} x={pad.left + i * stepX} y={h - 6} textAnchor="middle" fill="#86909c" fontSize="11">{d.date}</text>
-      ))}
-      <polyline points={points} fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      {data.map((d, i) => {
-        const cx = pad.left + i * stepX;
-        const cy = pad.top + ph - (d.orders / maxVal) * ph;
-        return (
-          <g key={d.date}>
-            <circle cx={cx} cy={cy} r={d.orders === maxVal ? 9 : 5} fill="#fff" stroke={d.orders === maxVal ? '#D4AF37' : '#000'} strokeWidth={2} />
-            <text x={cx} y={cy - 12} textAnchor="middle" fill="#1D2129" fontSize="12" fontWeight={600}>{d.orders}</text>
-          </g>
-        );
-      })}
-      <defs>
-        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#D4AF37" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={`${pad.left},${h - pad.bottom} ${points} ${pad.left + pw},${h - pad.bottom}`} fill="url(#areaGrad)" />
-    </svg>
-  );
-}
-
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const [tick, setTick] = useState(0);
+  const [spinning, setSpinning] = useState(false);
+  useEffect(() => {
+    const timer = setInterval(() => setTick(k => k + 1), 300000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    setSpinning(true);
+    setTimeout(() => { setSpinning(false); Message.success('数据已刷新'); }, 600);
+  }, []);
+
   const d = mockDashboard;
-  const recentOrders = mockOrders.slice(0, 10);
+  const activeOrders = mockOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
 
   return (
-    <div>
-      <Title heading={5} style={{ margin: '0 0 16px' }}>工作台</Title>
+    <div key={tick}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Title heading={5} style={{ margin: 0 }}>工作台</Title>
+        <Button icon={<IconRefresh spin={spinning} />} onClick={handleRefresh}>刷新数据</Button>
+      </div>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}><Card><Statistic title="剩余额度" value={d.remainingQuota} prefix="¥" precision={0} styleValue={{ color: d.remainingQuota < 20000 ? '#F53F3F' : '#00B42A' }} /></Card></Col>
-        <Col span={6}><Card><Statistic title="本月消费" value={d.monthConsumption} prefix="¥" precision={0} /></Card></Col>
-        <Col span={6}><Card><Statistic title="本月订单" value={d.monthOrders} suffix="笔" /></Card></Col>
-        <Col span={6}><Card><Statistic title="在职员工" value={d.activeEmployees} suffix="人" /></Card></Col>
+        <Col span={6}>
+          <Card bodyStyle={{ padding: '16px 20px' }}>
+            <Statistic title="剩余额度" value={d.remainingQuota} prefix="¥" precision={0}
+              styleValue={{
+                color: d.remainingQuota < 20000 ? '#F53F3F' : '#00B42A',
+                animation: d.remainingQuota < 20000 ? 'pulse 1.5s ease-in-out infinite' : undefined,
+              }} />
+          </Card>
+        </Col>
+        <Col span={6}><Card bodyStyle={{ padding: '16px 20px' }}><Statistic title="本月消费" value={d.monthConsumption} prefix="¥" precision={0} /></Card></Col>
+        <Col span={6}><Card bodyStyle={{ padding: '16px 20px' }}><Statistic title="本月订单" value={d.monthOrders} suffix="笔" /></Card></Col>
+        <Col span={6}><Card bodyStyle={{ padding: '16px 20px' }}><Statistic title="在职员工" value={d.activeEmployees} suffix="人" /></Card></Col>
       </Row>
 
-      <Card title="近 7 日用车订单趋势" style={{ marginBottom: 16 }}>
-        <SimpleLineChart data={mockWeekTrend} />
+      <Card title="近 30 日用车订单趋势" bodyStyle={{ padding: '12px 20px' }} style={{ marginBottom: 16 }}>
+        <ResponsiveContainer width="100%" height={320}>
+          <AreaChart data={mockMonthTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="orderGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#86909c' }} axisLine={false} tickLine={false} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#86909c' }} axisLine={false} tickLine={false} width={28} />
+            <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e5e6eb' }}
+              formatter={(value: number) => [`${value} 笔`, '订单数']} />
+            <Area type="monotone" dataKey="orders" stroke="#D4AF37" strokeWidth={2.5} fill="url(#orderGrad)"
+              dot={{ r: 3, fill: '#D4AF37', stroke: '#fff', strokeWidth: 2 }} />
+          </AreaChart>
+        </ResponsiveContainer>
       </Card>
 
-      <Card title="最近用车" bodyStyle={{ padding: '12px 0' }}>
-        {recentOrders.length > 0 ? (
-          <Table columns={orderColumns} data={recentOrders} rowKey="id" pagination={false} size="small" />
+      <Card title="进行中订单" bodyStyle={{ padding: '12px 0' }}
+        extra={
+          <Button type="text" size="small" onClick={() => navigate('/orders')}>
+            查看全部 <IconRight style={{ fontSize: 12 }} />
+          </Button>
+        }>
+        {activeOrders.length > 0 ? (
+          <Table columns={orderColumns} data={activeOrders} rowKey="id" pagination={false} size="small" />
         ) : (
-          <div style={{ textAlign: 'center', padding: 40, color: '#86909c' }}>暂无用车记录</div>
+          <div style={{ textAlign: 'center', padding: 40, color: '#86909c' }}>暂无进行中订单</div>
         )}
       </Card>
     </div>

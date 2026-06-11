@@ -3,7 +3,10 @@
     <!-- 顶部 sticky header -->
     <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="header-inner">
-        <text class="header-title">尊出行</text>
+        <view>
+          <text class="header-title">尊出行</text>
+          <text v-if="enterpriseName" class="header-enterprise">{{ enterpriseName }}</text>
+        </view>
       </view>
     </view>
 
@@ -79,10 +82,17 @@ import { ref, onMounted } from 'vue';
 import TabBar from '@/components/tab-bar.vue';
 
 const statusBarHeight = ref(0);
+// P3-01：企业身份展示
+const enterpriseName = ref('');
 
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync();
   statusBarHeight.value = sysInfo.statusBarHeight || 0;
+  // 读取登录态 + 企业身份（占位 — 后续接入后端）
+  const token = uni.getStorageSync('token');
+  if (token) {
+    enterpriseName.value = '华为技术有限公司'; // 模拟
+  }
 });
 
 const onMenu = () => {
@@ -91,15 +101,23 @@ const onMenu = () => {
 
 const goCharter = () => uni.navigateTo({ url: '/pages/charter/index' });
 const goRental = () => uni.navigateTo({ url: '/pages/rental/index' });
-const goOwnerCert = () => uni.showToast({ title: '尊界车主认证', icon: 'none' });
+const goOwnerCert = () => uni.navigateTo({ url: '/pages/profile/cert' });
 </script>
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh;
+  height: 100vh;
   background: #F9F9F9;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== Main ===== */
+.main {
+  flex: 1;
+  height: 0;
+  padding-bottom: 24px;
 }
 
 /* ===== Header ===== */
@@ -148,12 +166,6 @@ const goOwnerCert = () => uni.showToast({ title: '尊界车主认证', icon: 'no
   font-weight: 700;
   letter-spacing: -0.01em;
   color: #000000;
-}
-
-/* ===== Main ===== */
-.main {
-  flex: 1;
-  padding-bottom: 24px;
 }
 
 .section {
@@ -401,5 +413,13 @@ const goOwnerCert = () => uni.showToast({ title: '尊界车主认证', icon: 'no
   font-weight: 500;
   letter-spacing: 0.05em;
   color: #FFFFFF;
+}
+
+.header-enterprise {
+  display: block;
+  font-size: 12px;
+  color: #86868B;
+  font-weight: 500;
+  margin-top: 2px;
 }
 </style>

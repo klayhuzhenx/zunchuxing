@@ -93,15 +93,31 @@
           </view>
         </view>
 
-        <!-- 协议 -->
+        <!-- P2-02：管理员密码 -->
+        <view class="form-group">
+          <text class="form-label">管理员密码</text>
+          <view class="form-field">
+            <input
+              v-model="form.password"
+              class="form-input"
+              type="password"
+              maxlength="20"
+              placeholder="6-20位字母+数字，用于企业端PC登录"
+              placeholder-class="form-placeholder"
+            />
+          </view>
+        </view>
+
+        <!-- 协议 — P2-08：3份协议 -->
         <view class="agreement" @click="agreed = !agreed">
           <view class="checkbox" :class="{ checked: agreed }">
             <text v-if="agreed" class="material-symbols-outlined check-icon">check</text>
           </view>
           <text class="agreement-text">
             我已阅读并同意
-            <text class="agreement-link">《企业入驻协议》</text>
-            及相关的服务条款与隐私政策
+            <text class="agreement-link">《用户服务协议》</text>
+            <text class="agreement-link">《隐私政策》</text>
+            <text class="agreement-link">《企业用户注册协议》</text>
           </text>
         </view>
 
@@ -143,12 +159,17 @@
 import { ref, onUnmounted } from 'vue';
 import Navbar from '@/components/navbar.vue';
 
+// P2-04：手机号正则
+const PHONE_REG = /^1[3-9]\d{9}$/;
+const CHINESE_NAME_REG = /^[一-龥]{2,20}$/;
+
 const form = ref({
   companyName: '',
   creditCode: '',
   contactName: '',
   phone: '',
   code: '',
+  password: '',  // P2-02
 });
 
 const agreed = ref(false);
@@ -161,47 +182,54 @@ onUnmounted(() => {
 
 const onSendCode = () => {
   if (countdown.value > 0) return;
-  if (!/^1\d{10}$/.test(form.value.phone)) {
-    uni.showToast({ title: '请输入正确的手机号', icon: 'none' });
+  if (!PHONE_REG.test(form.value.phone)) {
+    uni.showToast({ title: '请输入正确的手机号码', icon: 'none' });
     return;
   }
   countdown.value = 60;
   uni.showToast({ title: '验证码已发送', icon: 'none' });
   timer = setInterval(() => {
     countdown.value--;
-    if (countdown.value <= 0 && timer) {
-      clearInterval(timer);
-      timer = null;
-    }
+    if (countdown.value <= 0 && timer) { clearInterval(timer); timer = null; }
   }, 1000);
 };
 
 const onSubmit = () => {
-  if (!form.value.companyName) {
-    uni.showToast({ title: '请填写企业名称', icon: 'none' });
+  // P2-07：企业名称 2-60 字
+  if (!form.value.companyName || form.value.companyName.length < 2 || form.value.companyName.length > 60) {
+    uni.showToast({ title: '企业名称应为 2-60 字', icon: 'none' });
     return;
   }
+  // P2-03 跳过（信用代码仅长度检查不变）
   if (!form.value.creditCode || form.value.creditCode.length !== 18) {
-    uni.showToast({ title: '请填写正确的统一社会信用代码', icon: 'none' });
+    uni.showToast({ title: '请填写 18 位统一社会信用代码', icon: 'none' });
     return;
   }
-  if (!form.value.contactName) {
-    uni.showToast({ title: '请填写联系人姓名', icon: 'none' });
+  // P2-06：联系人中文姓名 2-20 字
+  if (!CHINESE_NAME_REG.test(form.value.contactName)) {
+    uni.showToast({ title: '请输入正确的中文姓名', icon: 'none' });
     return;
   }
-  if (!/^1\d{10}$/.test(form.value.phone)) {
-    uni.showToast({ title: '请填写正确的手机号', icon: 'none' });
+  // P2-02：管理员密码 6-20 位字母+数字
+  if (!/^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]{6,20}$/.test(form.value.password)) {
+    uni.showToast({ title: '密码需 6-20 位，且包含字母和数字', icon: 'none' });
     return;
   }
-  if (!form.value.code) {
-    uni.showToast({ title: '请输入验证码', icon: 'none' });
+  if (!PHONE_REG.test(form.value.phone)) {
+    uni.showToast({ title: '请输入正确的手机号码', icon: 'none' });
+    return;
+  }
+  if (!/^\d{6}$/.test(form.value.code)) {
+    uni.showToast({ title: '请输入6位验证码', icon: 'none' });
     return;
   }
   if (!agreed.value) {
     uni.showToast({ title: '请阅读并同意入驻协议', icon: 'none' });
     return;
   }
-  uni.redirectTo({ url: '/pages/enterprise/status' });
+  // P2-05：手机号重复申请检查（占位 — 后续接入后端校验）
+  uni.showToast({ title: '提交成功，请等待审核', icon: 'success' });
+  setTimeout(() => { uni.redirectTo({ url: '/pages/enterprise/status' }); }, 800);
 };
 </script>
 
@@ -476,6 +504,19 @@ const onSubmit = () => {
 .benefits-text {
   font-size: 15px;
   line-height: 22px;
+  color: #86868B;
+}
+
+/* ===== 城市选择器 ===== */
+.form-input-select {
+  flex: 1;
+  font-size: 17px;
+  line-height: 26px;
+  color: #1A1C1C;
+  &.placeholder { color: #86868B; }
+}
+.form-select-arrow {
+  font-size: 20px;
   color: #86868B;
 }
 </style>

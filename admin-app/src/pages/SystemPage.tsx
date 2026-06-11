@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 import {
-  Card, Table, Tag, Button, Select, Space, Modal, Message, Input, Form, DatePicker, Checkbox,
+  Card, Table, Tag, Button, Select, Space, Modal, Message, Input, Form, DatePicker, Empty,
 } from '@arco-design/web-react';
 import { IconSearch, IconPlus } from '@arco-design/web-react/icon';
 import { operatorAccounts, loginLogs, operationLogs, onlineUsers, currentUser } from '../data/mock';
-import type { OperatorAccount, AccountRole, LoginLog, OperationLog, OnlineUser } from '../types';
+import type { OperatorAccount, AccountRole, OnlineUser } from '../types';
 
 const roleMap: Record<AccountRole, { label: string; color: string }> = {
   super_admin: { label: '超级管理员', color: 'gold' },
@@ -25,9 +25,24 @@ const areaOptions = [
 const moduleMap = ['企业客户', '订单管理', '车辆管理', '司机管理', '财务管理', '运营配置', '系统管理'];
 const typeMap = ['新增', '编辑', '审核', '派车', '改派', '停用', '启用', '调整额度', '结算确认', '配置修改', '重置密码'];
 
+// D10-02：校验正则
+const ACCOUNT_REGEX = /^[a-zA-Z0-9]{6,20}$/;
+const PHONE_REGEX = /^1[3-9]\d{9}$/;
+const PASSWORD_REGEX = /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]{6,20}$/;
+
+// D10-06：默认近 30 天
+const getDefault30DaysRange = (): [string, string] => {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - 30);
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return [fmt(start), fmt(end)];
+};
+
 // ===== 账号管理 =====
 export function AccountsPage() {
-  const [accounts] = useState(operatorAccounts);
+  // D10-10：用 state 维护账号列表，新增/编辑后真实更新
+  const [accounts, setAccounts] = useState<OperatorAccount[]>(operatorAccounts);
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [keyword, setKeyword] = useState('');
@@ -38,6 +53,7 @@ export function AccountsPage() {
   const [toggleVisible, setToggleVisible] = useState(false);
   const [toggleTarget, setToggleTarget] = useState<OperatorAccount | null>(null);
   const [addForm] = Form.useForm();
+  const [editForm] = Form.useForm();
 
   const filtered = useMemo(() => {
     let r = accounts;
@@ -46,6 +62,67 @@ export function AccountsPage() {
     if (keyword) r = r.filter(a => a.username.includes(keyword) || a.name.includes(keyword) || a.phone.includes(keyword));
     return r;
   }, [accounts, roleFilter, statusFilter, keyword]);
+
+  // D10-02：新增账号校验
+  const handleAdd = async () => {
+    try {
+      const v = await addForm.validate();
+      // 唯一性校验
+      if (accounts.some(a => a.username === v.username)) {
+        Message.error('该账号已被使用');
+        return;
+      }
+      if (accounts.some(a => a.phone === v.phone)) {
+        Message.error('该手机号已被其他账号绑定');
+        return;
+      }
+      // D10-10：真实写入列表
+      const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+      const newAccount: OperatorAccount = {
+        id: `A${Date.now()}`,
+        username: v.username, name: v.name, phone: v.phone,
+        role: v.role, areas: v.areas,
+        status: 'active', createdAt: now,
+      };
+      setAccounts([newAccount, ...accounts]);
+      setAddVisible(false);
+      addForm.resetFields();
+      Message.success('账号创建成功，初始密码已短信通知该手机号');
+    } catch { /* 校验失败 */ }
+  };
+
+  const handleEdit = async () => {
+    try {
+      const v = await editForm.validate();
+      if (!selected) return;
+      // 手机号不可与其他账号重复
+      if (accounts.some(a => a.phone === v.phone && a.id !== selected.id)) {
+        Message.error('该手机号已被其他账号绑定');
+        return;
+      }
+      setAccounts(accounts.map(a => a.id === selected.id ? { ...a, ...v } : a));
+      setEditVisible(false);
+      Message.success('修改已保存');
+    } catch { /* */ }
+  };
+
+  // D10-08 类似保护：超管不可停用自己
+  const handleToggleStatus = () => {
+    if (!toggleTarget) return;
+    if (toggleTarget.status === 'active') {
+      if (toggleTarget.username === currentUser.account) {
+        Message.warning('超级管理员不可停用自己的账号');
+        setToggleVisible(false); setToggleTarget(null);
+        return;
+      }
+      setAccounts(accounts.map(a => a.id === toggleTarget.id ? { ...a, status: 'disabled' } : a));
+      Message.success('账号已停用');
+    } else {
+      setAccounts(accounts.map(a => a.id === toggleTarget.id ? { ...a, status: 'active' } : a));
+      Message.success('账号已启用');
+    }
+    setToggleVisible(false); setToggleTarget(null);
+  };
 
   const columns = [
     { title: '账号', dataIndex: 'username', width: 130 },
@@ -58,7 +135,11 @@ export function AccountsPage() {
     {
       title: '操作', width: 240, fixed: 'right' as const, render: (_: unknown, r: OperatorAccount) => (
         <Space size={4}>
-          <Button type="text" size="small" onClick={() => { setSelected(r); setEditVisible(true); }}>编辑</Button>
+          <Button type="text" size="small" onClick={() => {
+            setSelected(r);
+            editForm.setFieldsValue({ name: r.name, phone: r.phone, role: r.role, areas: r.areas });
+            setEditVisible(true);
+          }}>编辑</Button>
           <Button type="text" size="small" onClick={() => { setSelected(r); setResetVisible(true); }}>重置密码</Button>
           {r.status === 'active'
             ? <Button type="text" size="small" status="danger" onClick={() => { setToggleTarget(r); setToggleVisible(true); }}>停用</Button>
@@ -78,41 +159,75 @@ export function AccountsPage() {
             options={[{ label: '正常', value: 'active' }, { label: '已停用', value: 'disabled' }]} />
           <Input prefix={<IconSearch />} placeholder="账号/姓名/手机号" style={{ width: 220 }} value={keyword} onChange={setKeyword} allowClear />
           <div style={{ flex: 1 }} />
-          <Button type="primary" onClick={() => setAddVisible(true)}>新增账号</Button>
+          <Button type="primary" icon={<IconPlus />} onClick={() => setAddVisible(true)}>新增账号</Button>
         </Space>
       </Card>
       <Card bodyStyle={{ padding: 0 }}>
-        <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 1200 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
+        <Table
+          columns={columns} data={filtered} rowKey="id" scroll={{ x: 1200 }}
+          pagination={{ pageSize: 15, showTotal: true }} stripe
+          // D10-09：定制空状态文案
+          noDataElement={<Empty description="暂无符合条件的账号" />}
+        />
       </Card>
 
-      {/* 新增账号 */}
-      <Modal title="新增账号" visible={addVisible} onOk={() => { setAddVisible(false); Message.success('账号创建成功'); }} onCancel={() => setAddVisible(false)}>
+      {/* 新增账号 — D10-02/03/04 业务校验 */}
+      <Modal title="新增账号" visible={addVisible} onOk={handleAdd}
+        onCancel={() => { setAddVisible(false); addForm.resetFields(); }}>
         <Form form={addForm} layout="vertical">
-          <Form.Item label="账号" field="username" rules={[{ required: true }]}><Input placeholder="6-20位字母数字" /></Form.Item>
-          <Form.Item label="姓名" field="name" rules={[{ required: true }]}><Input placeholder="真实姓名" /></Form.Item>
-          <Form.Item label="手机号" field="phone" rules={[{ required: true }]}><Input placeholder="11位手机号" /></Form.Item>
-          <Form.Item label="角色" field="role" rules={[{ required: true }]}>
+          <Form.Item label="账号" field="username" rules={[
+            { required: true, message: '请填写账号' },
+            { match: ACCOUNT_REGEX, message: '账号为 6-20 位字母数字组合' },
+          ]}>
+            <Input placeholder="6-20 位字母数字" maxLength={20} />
+          </Form.Item>
+          <Form.Item label="姓名" field="name" rules={[
+            { required: true, message: '请填写姓名' },
+            { maxLength: 20, message: '姓名不能超过 20 字' },
+          ]}>
+            <Input placeholder="真实姓名" maxLength={20} />
+          </Form.Item>
+          <Form.Item label="手机号" field="phone" rules={[
+            { required: true, message: '请填写手机号' },
+            { match: PHONE_REGEX, message: '请输入正确的手机号' },
+          ]}>
+            <Input placeholder="11 位手机号" maxLength={11} />
+          </Form.Item>
+          <Form.Item label="角色" field="role" rules={[{ required: true, message: '请选择角色' }]}>
             <Select options={Object.entries(roleMap).map(([k, v]) => ({ label: v.label, value: k }))} />
           </Form.Item>
           <Form.Item label="关联运营区域" field="areas">
             <Select mode="multiple" placeholder="选择运营区域（可多选，不选默认全部区域）" options={areaOptions} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item label="初始密码" field="password" rules={[{ required: true }]}><Input.Password placeholder="8-20位，含字母和数字" /></Form.Item>
+          {/* D10-03：6-20 位 + D10-02 含字母数字校验 */}
+          <Form.Item label="初始密码" field="password" rules={[
+            { required: true, message: '请填写初始密码' },
+            { match: PASSWORD_REGEX, message: '密码为 6-20 位，需包含字母和数字' },
+          ]}>
+            <Input.Password placeholder="6-20 位，含字母和数字" />
+          </Form.Item>
         </Form>
       </Modal>
 
-      {/* 编辑账号 */}
-      <Modal title="编辑账号" visible={editVisible} onOk={() => { setEditVisible(false); Message.success('修改已保存'); }} onCancel={() => setEditVisible(false)}>
+      {/* 编辑账号 — D10-02 复用校验 */}
+      <Modal title="编辑账号" visible={editVisible} onOk={handleEdit}
+        onCancel={() => { setEditVisible(false); editForm.resetFields(); }}>
         {selected && (
-          <Form layout="vertical">
+          <Form form={editForm} layout="vertical">
             <Form.Item label="账号"><Input value={selected.username} disabled /></Form.Item>
-            <Form.Item label="姓名"><Input defaultValue={selected.name} /></Form.Item>
-            <Form.Item label="手机号"><Input defaultValue={selected.phone} /></Form.Item>
-            <Form.Item label="角色">
-              <Select defaultValue={selected.role} options={Object.entries(roleMap).map(([k, v]) => ({ label: v.label, value: k }))} />
+            <Form.Item label="姓名" field="name" rules={[
+              { required: true, message: '请填写姓名' },
+              { maxLength: 20 },
+            ]}><Input maxLength={20} /></Form.Item>
+            <Form.Item label="手机号" field="phone" rules={[
+              { required: true, message: '请填写手机号' },
+              { match: PHONE_REGEX, message: '请输入正确的手机号' },
+            ]}><Input maxLength={11} /></Form.Item>
+            <Form.Item label="角色" field="role" rules={[{ required: true }]}>
+              <Select options={Object.entries(roleMap).map(([k, v]) => ({ label: v.label, value: k }))} />
             </Form.Item>
-            <Form.Item label="运营区域">
-              <Select mode="multiple" defaultValue={selected.areas || []} placeholder="选择运营区域" options={areaOptions} style={{ width: '100%' }} />
+            <Form.Item label="运营区域" field="areas">
+              <Select mode="multiple" placeholder="选择运营区域" options={areaOptions} style={{ width: '100%' }} />
             </Form.Item>
           </Form>
         )}
@@ -122,117 +237,107 @@ export function AccountsPage() {
       <Modal
         title={toggleTarget?.status === 'active' ? `停用账号 — ${toggleTarget?.username || ''}` : `启用账号 — ${toggleTarget?.username || ''}`}
         visible={toggleVisible}
-        onOk={() => {
-          if (!toggleTarget) return;
-          if (toggleTarget.status === 'active') {
-            // 超管不可停用自己
-            if (toggleTarget.username === currentUser.account) {
-              Message.warning('超级管理员不可停用自己的账号');
-              setToggleVisible(false); setToggleTarget(null);
-              return;
-            }
-            Message.success('账号已停用');
-          } else {
-            Message.success('账号已启用');
-          }
-          setToggleVisible(false); setToggleTarget(null);
-        }}
+        onOk={handleToggleStatus}
         onCancel={() => { setToggleVisible(false); setToggleTarget(null); }}
         okText="确认"
         okButtonProps={toggleTarget?.status === 'active' ? { status: 'danger' } : { status: 'success' }}
       >
         {toggleTarget?.status === 'active' ? (
-          <p>确认停用账号 <strong>{toggleTarget?.username}</strong>（{toggleTarget?.name}）？停用后该账号无法登录，当前登录态立即失效。</p>
+          <p>确认停用账号 <strong>{toggleTarget?.username}</strong>（{toggleTarget?.name}）？停用后该账号无法登录，<strong style={{ color: '#F53F3F' }}>当前登录态立即失效</strong>。</p>
         ) : (
           <p>确认启用账号 <strong>{toggleTarget?.username}</strong>（{toggleTarget?.name}）？</p>
         )}
       </Modal>
 
-      {/* 重置密码 */}
-      <Modal title="重置密码" visible={resetVisible} onOk={() => { setResetVisible(false); Message.success('密码已重置，新密码已短信通知'); }} onCancel={() => setResetVisible(false)}>
-        {selected && <p>确认重置 <strong>{selected.username}</strong> 的登录密码？</p>}
+      {/* 重置密码 — D10-12 增加登录态失效提示 */}
+      <Modal title="重置密码" visible={resetVisible}
+        onOk={() => { setResetVisible(false); Message.success('密码已重置，新密码已短信通知'); }}
+        onCancel={() => setResetVisible(false)}>
+        {selected && (
+          <>
+            <p>确认重置 <strong>{selected.username}</strong>（{selected.name}）的登录密码？</p>
+            <p style={{ color: '#F53F3F', fontSize: 13, marginTop: 8 }}>
+              ⚠ 重置后新密码将通过短信发送至 {selected.phone}，<strong>该账号当前登录态立即失效</strong>。
+            </p>
+          </>
+        )}
       </Modal>
     </div>
   );
 }
 
-// ===== 角色管理 =====
+// ===== 角色管理 — D10-01：改为只读展示，删除编辑权限功能 =====
 export function RolesPage() {
-  const allModules = ['工作台', '企业客户管理', '订单管理', '车辆管理', '司机管理', '财务管理', '运营配置', '数据分析与报表', '系统管理'];
-  const [roles, setRoles] = useState([
-    { role: 'super_admin' as AccountRole, name: '超级管理员', desc: '全部模块可见，可管理系统管理', modules: [...allModules] },
-    { role: 'ops_admin' as AccountRole, name: '运营管理员', desc: '业务管理（工作台、企业、订单、车辆、司机、运营配置）', modules: ['工作台', '企业客户管理', '订单管理', '车辆管理', '司机管理', '运营配置'] },
-    { role: 'finance_admin' as AccountRole, name: '财务管理员', desc: '财务（工作台、财务管理、数据分析）', modules: ['工作台', '财务管理', '数据分析与报表'] },
-    { role: 'cs_admin' as AccountRole, name: '客服管理员', desc: '工作台、订单（仅查看）', modules: ['工作台', '订单管理（只读）'] },
-  ]);
-  const [editRole, setEditRole] = useState<AccountRole | null>(null);
-  const [editModules, setEditModules] = useState<string[]>([]);
-
-  const openEdit = (roleEntry: typeof roles[0]) => {
-    if (roleEntry.role === 'super_admin') {
-      Message.info('超级管理员拥有全部权限，不可变更');
-      return;
-    }
-    setEditRole(roleEntry.role);
-    setEditModules([...roleEntry.modules]);
-  };
-
-  const saveEdit = () => {
-    setRoles(prev => prev.map(r => r.role === editRole ? { ...r, modules: editModules } : r));
-    setEditRole(null);
-    Message.success('角色权限已更新');
-  };
+  // 权限矩阵按需求 §10.2.2 静态展示
+  const roleData: { role: AccountRole; name: string; desc: string; modules: string[] }[] = [
+    {
+      role: 'super_admin', name: '超级管理员',
+      desc: '全部模块可见，可管理系统管理',
+      modules: ['工作台', '企业客户管理', '订单管理（全部）', '派车/改派', '车辆管理', '司机管理', '财务管理', '运营配置', '数据报表', '系统管理'],
+    },
+    {
+      role: 'ops_admin', name: '运营管理员',
+      desc: '业务管理（工作台、企业、订单、车辆、司机、运营配置）',
+      modules: ['工作台', '企业客户管理', '订单管理（全部）', '派车/改派', '车辆管理', '司机管理', '运营配置', '数据报表'],
+    },
+    {
+      role: 'finance_admin', name: '财务管理员',
+      desc: '财务（工作台、财务管理、数据分析）',
+      modules: ['工作台', '订单管理（只读）', '财务管理', '数据报表'],
+    },
+    {
+      role: 'cs_admin', name: '客服管理员',
+      desc: '工作台、订单（仅查看）',
+      modules: ['工作台（仅待办）', '订单管理（只读）', '数据报表'],
+    },
+  ];
 
   const columns = [
-    { title: '角色', width: 130, render: (_: unknown, r: typeof roles[0]) => <Tag color={roleMap[r.role].color}>{r.name}</Tag> },
-    { title: '编码', width: 140, render: (_: unknown, r: typeof roles[0]) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.role}</span> },
+    { title: '角色', width: 130, render: (_: unknown, r: typeof roleData[0]) => <Tag color={roleMap[r.role].color}>{r.name}</Tag> },
+    { title: '编码', width: 140, render: (_: unknown, r: typeof roleData[0]) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.role}</span> },
     { title: '说明', dataIndex: 'desc', ellipsis: true },
-    { title: '权限范围', width: 440, render: (_: unknown, r: typeof roles[0]) => <Space size={4} wrap>{r.modules.map(m => <Tag key={m} size="small">{m}</Tag>)}</Space> },
-    {
-      title: '操作', width: 80, render: (_: unknown, r: typeof roles[0]) => (
-        <Button type="text" size="small" onClick={() => openEdit(r)}>
-          {r.role === 'super_admin' ? '查看' : '编辑权限'}
-        </Button>
-      ),
-    },
+    { title: '权限范围', width: 540, render: (_: unknown, r: typeof roleData[0]) => <Space size={4} wrap>{r.modules.map(m => <Tag key={m} size="small">{m}</Tag>)}</Space> },
   ];
 
   return (
     <div>
-      <Card title="角色管理" bodyStyle={{ padding: 0 }}>
-        <Table columns={columns} data={roles} rowKey="role" pagination={false} />
+      <Card title="角色管理" bodyStyle={{ padding: 0 }}
+        extra={<span style={{ color: '#86909c', fontSize: 12 }}>角色与权限矩阵不支持运营端自定义修改，如需调整由系统开发侧配置</span>}>
+        <Table columns={columns} data={roleData} rowKey="role" pagination={false} />
       </Card>
-
-      <Modal
-        title={`编辑角色权限 — ${editRole ? roleMap[editRole].label : ''}`}
-        visible={!!editRole}
-        onOk={saveEdit}
-        onCancel={() => setEditRole(null)}
-      >
-        <p style={{ color: '#86909c', fontSize: 13, marginBottom: 16 }}>
-          勾选该角色可访问的模块。超级管理员拥有全部权限且不可变更。
-        </p>
-        <Checkbox.Group
-          direction="vertical"
-          value={editModules}
-          onChange={v => setEditModules(v as string[])}
-          options={allModules.map(m => ({ label: m, value: m }))}
-        />
-      </Modal>
     </div>
   );
 }
 
-// ===== 登录日志 =====
+// ===== 登录日志 — D10-05/06 =====
 export function LoginLogsPage() {
   const [logs] = useState(loginLogs);
   const [keyword, setKeyword] = useState('');
+  const [accountFilter, setAccountFilter] = useState<string>('');
+  const [resultFilter, setResultFilter] = useState<string[]>([]);
+  // D10-06：默认近 30 天
+  const [dateRange, setDateRange] = useState<[string, string]>(getDefault30DaysRange());
+
+  const accountOptions = useMemo(() => {
+    return [...new Set(logs.map(l => l.username))]
+      .filter(u => u !== 'unknown')
+      .map(u => ({ label: u, value: u }));
+  }, [logs]);
 
   const filtered = useMemo(() => {
     let r = logs;
-    if (keyword) r = r.filter(l => l.username.includes(keyword) || l.ip.includes(keyword) || l.name.includes(keyword));
+    if (keyword) r = r.filter(l => l.ip.includes(keyword));
+    if (accountFilter) r = r.filter(l => l.username === accountFilter);
+    if (resultFilter.length > 0) r = r.filter(l => resultFilter.includes(l.result));
+    if (dateRange.length === 2) {
+      const [s, e] = dateRange;
+      r = r.filter(l => {
+        const d = l.time.split(' ')[0];
+        return d >= s && d <= e;
+      });
+    }
     return r;
-  }, [logs, keyword]);
+  }, [logs, keyword, accountFilter, resultFilter, dateRange]);
 
   const columns = [
     { title: '账号', dataIndex: 'username', width: 130 },
@@ -247,32 +352,62 @@ export function LoginLogsPage() {
   return (
     <div>
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
-        <Space size={12}>
-          <DatePicker.RangePicker style={{ width: 260 }} placeholder={['开始时间', '结束时间']} />
-          <Input prefix={<IconSearch />} placeholder="账号/IP" style={{ width: 220 }} value={keyword} onChange={setKeyword} allowClear />
+        <Space size={12} wrap>
+          <DatePicker.RangePicker style={{ width: 260 }}
+            value={dateRange}
+            onChange={(_, ds) => setDateRange(ds[0] && ds[1] ? [ds[0], ds[1]] : getDefault30DaysRange())}
+            placeholder={['开始时间', '结束时间']} />
+          {/* D10-05：账号下拉 */}
+          <Select placeholder="账号" style={{ width: 160 }} showSearch allowClear
+            value={accountFilter || undefined}
+            onChange={v => setAccountFilter(v || '')}
+            options={accountOptions} />
+          {/* D10-05：登录结果多选 */}
+          <Select placeholder="登录结果" style={{ width: 160 }} mode="multiple"
+            value={resultFilter} onChange={setResultFilter}
+            options={[{ label: '成功', value: 'success' }, { label: '失败', value: 'failed' }]} />
+          <Input prefix={<IconSearch />} placeholder="IP 地址" style={{ width: 200 }} value={keyword} onChange={setKeyword} allowClear />
         </Space>
       </Card>
       <Card bodyStyle={{ padding: 0 }} title="登录日志（保留180天，只读）">
-        <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 1000 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
+        <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 1000 }}
+          pagination={{ pageSize: 15, showTotal: true }} stripe
+          noDataElement={<Empty description="暂无符合条件的登录记录" />} />
       </Card>
     </div>
   );
 }
 
-// ===== 操作日志 =====
+// ===== 操作日志 — D10-06/07 =====
 export function OperationLogsPage() {
   const [logs] = useState(operationLogs);
   const [modFilter, setModFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [accountFilter, setAccountFilter] = useState<string>('');
   const [keyword, setKeyword] = useState('');
+  const [dateRange, setDateRange] = useState<[string, string]>(getDefault30DaysRange());
+
+  // D10-07：操作日志账号下拉
+  const accountOptions = useMemo(() => {
+    return [...new Set(logs.map(l => l.operator))]
+      .map(op => ({ label: op, value: op }));
+  }, [logs]);
 
   const filtered = useMemo(() => {
     let r = logs;
     if (modFilter.length) r = r.filter(l => modFilter.includes(l.module));
     if (typeFilter.length) r = r.filter(l => typeFilter.includes(l.type));
-    if (keyword) r = r.filter(l => l.operator.includes(keyword) || l.target.includes(keyword) || l.detail.includes(keyword));
+    if (accountFilter) r = r.filter(l => l.operator === accountFilter);
+    if (keyword) r = r.filter(l => l.target.includes(keyword) || l.detail.includes(keyword));
+    if (dateRange.length === 2) {
+      const [s, e] = dateRange;
+      r = r.filter(l => {
+        const d = l.time.split(' ')[0];
+        return d >= s && d <= e;
+      });
+    }
     return r;
-  }, [logs, modFilter, typeFilter, keyword]);
+  }, [logs, modFilter, typeFilter, accountFilter, keyword, dateRange]);
 
   const columns = [
     { title: '操作时间', dataIndex: 'time', width: 170 },
@@ -288,24 +423,50 @@ export function OperationLogsPage() {
     <div>
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
         <Space size={12} wrap>
-          <DatePicker.RangePicker style={{ width: 260 }} placeholder={['开始时间', '结束时间']} />
+          <DatePicker.RangePicker style={{ width: 260 }}
+            value={dateRange}
+            onChange={(_, ds) => setDateRange(ds[0] && ds[1] ? [ds[0], ds[1]] : getDefault30DaysRange())}
+            placeholder={['开始时间', '结束时间']} />
+          {/* D10-07：账号下拉 */}
+          <Select placeholder="账号" style={{ width: 180 }} showSearch allowClear
+            value={accountFilter || undefined}
+            onChange={v => setAccountFilter(v || '')}
+            options={accountOptions} />
           <Select placeholder="操作模块" style={{ width: 200 }} mode="multiple" value={modFilter} onChange={setModFilter}
             options={moduleMap.map(m => ({ label: m, value: m }))} />
           <Select placeholder="操作类型" style={{ width: 200 }} mode="multiple" value={typeFilter} onChange={setTypeFilter}
             options={typeMap.map(t => ({ label: t, value: t }))} />
-          <Input prefix={<IconSearch />} placeholder="操作人/对象" style={{ width: 200 }} value={keyword} onChange={setKeyword} allowClear />
+          <Input prefix={<IconSearch />} placeholder="操作对象" style={{ width: 180 }} value={keyword} onChange={setKeyword} allowClear />
         </Space>
       </Card>
       <Card bodyStyle={{ padding: 0 }} title="操作日志（保留180天，只读）">
-        <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 1300 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
+        <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 1300 }}
+          pagination={{ pageSize: 15, showTotal: true }} stripe
+          noDataElement={<Empty description="暂无符合条件的操作记录" />} />
       </Card>
     </div>
   );
 }
 
-// ===== 在线用户 =====
+// ===== 在线用户 — D10-08：超管不可强制下线自己 =====
 export function OnlineUsersPage() {
-  const [users] = useState(onlineUsers);
+  const [users, setUsers] = useState<OnlineUser[]>(onlineUsers);
+
+  const handleForceLogout = (r: OnlineUser) => {
+    // D10-08：超管不可强制下线自己当前会话
+    if (r.username === currentUser.account) {
+      Message.warning('不可强制下线自己的当前会话');
+      return;
+    }
+    Modal.confirm({
+      title: `强制下线 — ${r.username}`,
+      content: `确认强制下线账号 ${r.username}（${r.name}）？该账号当前未保存的工作将丢失。`,
+      onOk: () => {
+        setUsers(prev => prev.filter(u => u.id !== r.id));
+        Message.success('账号已强制下线');
+      },
+    });
+  };
 
   const columns = [
     { title: '账号', dataIndex: 'username', width: 130 },
@@ -318,130 +479,28 @@ export function OnlineUsersPage() {
     {
       title: '操作', width: 110, render: (_: unknown, r: OnlineUser) => (
         <Button type="text" size="small" status="danger"
-          onClick={() => {
-            Modal.confirm({
-              title: `强制下线 — ${r.username}`,
-              content: `确认强制下线账号 ${r.username}？该账号当前未保存的工作将丢失。`,
-              onOk: () => Message.success(`账号已强制下线`),
-            });
-          }}>强制下线</Button>
+          disabled={r.username === currentUser.account}
+          onClick={() => handleForceLogout(r)}>
+          {r.username === currentUser.account ? '当前会话' : '强制下线'}
+        </Button>
       ),
     },
   ];
 
   return (
     <Card bodyStyle={{ padding: 0 }} title="当前在线用户">
-      <Table columns={columns} data={users} rowKey="id" scroll={{ x: 1100 }} pagination={false} stripe />
+      <Table columns={columns} data={users} rowKey="id" scroll={{ x: 1100 }} pagination={false} stripe
+        noDataElement={<Empty description="暂无在线用户" />} />
     </Card>
   );
 }
 
-
-// ===== 城市管理 =====
+// D10-11：CityManagementPage 已迁移至 §8 运营配置 ConfigPage。此处保留导出占位以兼容路由，但不再渲染
 export function CityManagementPage() {
-  const [cities, setCities] = useState([
-    { id: 'C001', name: '深圳', regionCount: 2, status: 'active' as const },
-    { id: 'C002', name: '上海', regionCount: 1, status: 'active' as const },
-    { id: 'C003', name: '广州', regionCount: 0, status: 'active' as const },
-    { id: 'C004', name: '北京', regionCount: 0, status: 'active' as const },
-  ]);
-  const [addVisible, setAddVisible] = useState(false);
-  const [editVisible, setEditVisible] = useState(false);
-  const [editTarget, setEditTarget] = useState<typeof cities[0] | null>(null);
-  const [nameInput, setNameInput] = useState('');
-  const [keyword, setKeyword] = useState('');
-
-  const filtered = useMemo(() => {
-    if (!keyword) return cities;
-    return cities.filter(c => c.name.includes(keyword));
-  }, [cities, keyword]);
-
-  const handleAdd = () => {
-    if (!nameInput.trim()) { Message.warning('请输入城市名称'); return; }
-    if (nameInput.length > 20) { Message.warning('城市名称不能超过20字'); return; }
-    if (cities.some(c => c.name === nameInput.trim())) { Message.warning('该城市已存在'); return; }
-    const newCity = { id: 'C' + String(cities.length + 1).padStart(3, '0'), name: nameInput.trim(), regionCount: 0, status: 'active' as const };
-    setCities([...cities, newCity]);
-    setAddVisible(false); setNameInput('');
-    Message.success('城市保存成功');
-  };
-
-  const handleEdit = () => {
-    if (!editTarget || !nameInput.trim()) return;
-    if (nameInput.length > 20) { Message.warning('城市名称不能超过20字'); return; }
-    if (cities.some(c => c.name === nameInput.trim() && c.id !== editTarget.id)) { Message.warning('该城市已存在'); return; }
-    setCities(cities.map(c => c.id === editTarget.id ? { ...c, name: nameInput.trim() } : c));
-    setEditVisible(false); setEditTarget(null); setNameInput('');
-    Message.success('城市已更新');
-  };
-
-  const openEdit = (city: typeof cities[0]) => {
-    setEditTarget(city);
-    setNameInput(city.name);
-    setEditVisible(true);
-  };
-
-  const toggleStatus = (city: typeof cities[0]) => {
-    const newStatus = city.status === 'active' ? 'inactive' : 'active';
-    const msg = newStatus === 'inactive' ? '停用后该城市下所有区域将自动停用' : '启用后下属区域需手动逐一启用';
-    Modal.confirm({
-      title: newStatus === 'inactive' ? `停用城市「${city.name}」` : `启用城市「${city.name}」`,
-      content: msg,
-      onOk: () => {
-        setCities(cities.map(c => c.id === city.id ? { ...c, status: newStatus as 'active' | 'inactive' } : c));
-        Message.success(newStatus === 'inactive' ? '城市已停用' : '城市已启用');
-      },
-    });
-  };
-
-  const columns = [
-    { title: '城市名称', dataIndex: 'name', width: 150 },
-    { title: '区域数', dataIndex: 'regionCount', width: 80 },
-    { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '已启用' : '已停用'}</Tag> },
-    {
-      title: '操作', width: 140, render: (_: unknown, r: typeof cities[0]) => (
-        <Space size={4}>
-          <Button type="text" size="small" onClick={() => openEdit(r)}>编辑</Button>
-          {r.status === 'active'
-            ? <Button type="text" size="small" status="warning" onClick={() => toggleStatus(r)}>停用</Button>
-            : <Button type="text" size="small" status="success" onClick={() => toggleStatus(r)}>启用</Button>}
-        </Space>
-      ),
-    },
-  ];
-
   return (
-    <div>
-      <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
-        <Space size={12}>
-          <Input prefix={<IconSearch />} placeholder="搜索城市名称" style={{ width: 200 }} value={keyword} onChange={setKeyword} allowClear />
-          <div style={{ flex: 1 }} />
-          <Button type="primary" icon={<IconPlus />} onClick={() => { setNameInput(''); setAddVisible(true); }}>新增城市</Button>
-        </Space>
-      </Card>
-      <Card bodyStyle={{ padding: 0 }} title="城市管理">
-        <Table columns={columns} data={filtered} rowKey="id" pagination={false} />
-        <div style={{ padding: '12px 16px', color: '#86909c', fontSize: 12 }}>
-          提示：新增运营区域前需先配置城市。停用城市后该城市下所有区域自动停用。城市无单独删除功能。
-        </div>
-      </Card>
-
-      <Modal title="新增城市" visible={addVisible} onOk={handleAdd} onCancel={() => setAddVisible(false)}>
-        <Form layout="vertical">
-          <Form.Item label="城市名称" rules={[{ required: true, message: '请输入城市名称' }]}>
-            <Input placeholder="输入城市名称，≤20字" maxLength={20} value={nameInput} onChange={setNameInput} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal title="编辑城市" visible={editVisible} onOk={handleEdit} onCancel={() => setEditVisible(false)}>
-        <Form layout="vertical">
-          <Form.Item label="城市名称" rules={[{ required: true, message: '请输入城市名称' }]}>
-            <Input placeholder="输入城市名称，≤20字" maxLength={20} value={nameInput} onChange={setNameInput} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+    <Card>
+      <Empty description={<>城市管理已迁移至 <a href="/config?tab=areas">运营配置 → 运营区域</a></>} />
+    </Card>
   );
 }
 

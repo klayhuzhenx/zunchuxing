@@ -143,8 +143,59 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
   // Per-row vehicle picker state
   const [rowPickerTarget, setRowPickerTarget] = useState<string>('');
 
+  // 冲突检测：检查日程行是否有车辆/司机当日冲突
+  const hasConflict = (date: string, plate?: string, driverName?: string) => {
+    const dayNum = parseInt(date.split('-')[2], 10);
+    const vehicleConflict = plate && (vehicleOccupation[plate] || []).some(t => t.date === dayNum);
+    const driverConflict = driverName && (driverOccupation[driverName] || []).some(t => t.date === dayNum);
+    return { vehicleConflict, driverConflict, hasAny: !!(vehicleConflict || driverConflict) };
+  };
+
+  const conflictRows = useMemo(() => {
+    if (isRental || !order) return [];
+    if (mode === 'same') {
+      return scheduleRows.filter(r => hasConflict(r.date, vehicle, driver).hasAny);
+    }
+    return scheduleRows.filter(r => hasConflict(r.date, rowVehicles[r._key], rowDrivers[r._key]).hasAny);
+  }, [isRental, order, mode, vehicle, driver, rowVehicles, rowDrivers, scheduleRows]);
+
+  // 应用于全部日程：把第一行的车辆/司机覆盖到所有行
+  const applyToAll = () => {
+    if (scheduleRows.length === 0) { Message.warning('暂无日程'); return; }
+    const firstKey = scheduleRows[0]._key;
+    const v = rowVehicles[firstKey]; const vm = rowVehicleModels[firstKey]; const d = rowDrivers[firstKey];
+    if (!v && !d) { Message.warning('请先在第一行选择车辆和司机'); return; }
+    const nextV: Record<string,string> = {}; const nextVM: Record<string,string> = {}; const nextD: Record<string,string> = {};
+    scheduleRows.forEach(row => {
+      if (v) { nextV[row._key] = v; nextVM[row._key] = vm || ''; }
+      if (d) nextD[row._key] = d;
+    });
+    setRowVehicles(nextV); setRowVehicleModels(nextVM); setRowDrivers(nextD);
+    Message.success('已应用于全部日程');
+  };
+
+  // 重置为默认：清空所有行选择
+  const resetAll = () => {
+    setRowVehicles({}); setRowVehicleModels({}); setRowDrivers({});
+    setVehicle(''); setVehicleModel(''); setDriver('');
+    setDeliveryDriver(''); setPickupDriver('');
+    Message.success('已重置');
+  };
+
+  const handleSubmitWithConfirm = () => {
+    if (conflictRows.length > 0) {
+      Modal.confirm({
+        title: '存在派车冲突',
+        content: `部分日期存在冲突（${conflictRows.map(r => r.date).join('、')}），确认仍要派车吗？`,
+        onOk: handleSubmit,
+      });
+      return;
+    }
+    handleSubmit();
+  };
+
   return (
-    <Modal title={order?.status==='pending_dispatch'?'派车':'改派'} visible={visible} onOk={handleSubmit} onCancel={onClose} style={{width:960}} okText="确认派车">
+    <Modal title={order?.status==='pending_dispatch'?'派车':'改派'} visible={visible} onOk={handleSubmitWithConfirm} onCancel={onClose} style={{width:960}} okText="确认派车">
       {order && <div style={{display:'flex',gap:20}}>
         <div style={{flex:'0 0 250px',borderRight:'1px solid #e5e6eb',paddingRight:20}}>
           <Text type="secondary" style={{fontSize:12,marginBottom:8,display:'block'}}>订单概览</Text>
@@ -191,29 +242,49 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
                       {driver?<Tag color="green">{driver}</Tag>:<span style={{color:'#c9cdd4',fontSize:13}}>点击选择司机</span>}</div></div>
                 </>
               ):(
-                <Table
-                  columns={[
-                    {title:'日期',dataIndex:'date',width:110},
-                    {title:'时段',dataIndex:'timeRange',width:110},
-                    {title:'车辆',width:160,render:(_:unknown,row:{_key:string})=>(
-                      rowVehicles[row._key]
-                        ? <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer'}} onClick={()=>{setRowPickerTarget(row._key);setShowVehiclePicker(true);}}>
-                            <Tag color="green" size="small">{rowVehicles[row._key]}</Tag>
-                            <span style={{fontSize:11,color:'#86909c'}}>{rowVehicleModels[row._key]||''}</span>
-                          </div>
-                        : <Button size="mini" type="dashed" onClick={()=>{setRowPickerTarget(row._key);setShowVehiclePicker(true);}}>选车</Button>
-                    )},
-                    {title:'司机',width:150,render:(_:unknown,row:{_key:string})=>(
-                      <Select placeholder="选择司机" value={rowDrivers[row._key]||undefined} onChange={v=>setRowDrivers(prev=>({...prev,[row._key]:v}))} options={allDrivers.map(d=>({label:d,value:d}))} style={{width:'100%'}} size="small" allowClear />
-                    )},
-                  ]}
-                  data={scheduleRows} rowKey="_key" pagination={false} size="small" style={{marginBottom:16}} />
+                <>
+                  <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:8}}>
+                    <Button size="mini" onClick={applyToAll}>应用于全部日程</Button>
+                    <Button size="mini" onClick={resetAll}>重置为默认</Button>
+                  </div>
+                  <Table
+                    columns={[
+                      {title:'日期',dataIndex:'date',width:110,render:(v:string,row:{_key:string})=>{
+                        const c = hasConflict(v, rowVehicles[row._key], rowDrivers[row._key]);
+                        return c.hasAny ? <Space size={4}><span>{v}</span><Tag color="red" size="small">冲突</Tag></Space> : v;
+                      }},
+                      {title:'时段',dataIndex:'timeRange',width:110},
+                      {title:'车辆',width:160,render:(_:unknown,row:{_key:string})=>{
+                        const c = hasConflict(scheduleRows.find(r=>r._key===row._key)?.date || '', rowVehicles[row._key]);
+                        const cellStyle = c.vehicleConflict ? { background: '#FFECE8', padding: '2px 4px', borderRadius: 2 } : {};
+                        return rowVehicles[row._key]
+                          ? <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',...cellStyle}} onClick={()=>{setRowPickerTarget(row._key);setShowVehiclePicker(true);}}>
+                              <Tag color={c.vehicleConflict?'red':'green'} size="small">{rowVehicles[row._key]}</Tag>
+                              <span style={{fontSize:11,color:'#86909c'}}>{rowVehicleModels[row._key]||''}</span>
+                            </div>
+                          : <Button size="mini" type="dashed" onClick={()=>{setRowPickerTarget(row._key);setShowVehiclePicker(true);}}>选车</Button>;
+                      }},
+                      {title:'司机',width:150,render:(_:unknown,row:{_key:string})=>{
+                        const c = hasConflict(scheduleRows.find(r=>r._key===row._key)?.date || '', undefined, rowDrivers[row._key]);
+                        return <div style={c.driverConflict ? { background: '#FFECE8', padding: 2, borderRadius: 2 } : {}}>
+                          <Select placeholder="选择司机" value={rowDrivers[row._key]||undefined} onChange={v=>setRowDrivers(prev=>({...prev,[row._key]:v}))} options={allDrivers.map(d=>({label:d,value:d}))} style={{width:'100%'}} size="small" allowClear />
+                        </div>;
+                      }},
+                    ]}
+                    data={scheduleRows} rowKey="_key" pagination={false} size="small" style={{marginBottom:16}} />
+                </>
               )}
             </>
           )}
 
           <div style={{marginTop:16}}><Text type="secondary" style={{fontSize:12,marginBottom:4,display:'block'}}>派车备注</Text>
             <Input.TextArea placeholder="选填" value={remark} onChange={setRemark} maxLength={200} showWordLimit rows={2} /></div>
+
+          {conflictRows.length > 0 && (
+            <div style={{marginTop:12,padding:'8px 12px',background:'#FFECE8',border:'1px solid #FBACA3',borderRadius:4,fontSize:12,color:'#F53F3F'}}>
+              ⚠ 检测到 {conflictRows.length} 条日程存在冲突（{conflictRows.map(r=>r.date).join('、')}），点击「确认派车」可继续提交。
+            </div>
+          )}
         </div>
       </div>}
       <VehiclePicker visible={showVehiclePicker} onClose={()=>setShowVehiclePicker(false)}

@@ -9,7 +9,12 @@ export default function Login() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [captchaDone, setCaptchaDone] = useState(false);
+  const [account, setAccount] = useState('');
+  const [password, setPassword] = useState('');
   const navigate = useNavigate();
+
+  // 按钮是否禁用：账号或密码为空、或极验未完成
+  const btnDisabled = !account.trim() || !password.trim() || !captchaDone;
 
   const handleCaptcha = () => {
     setCaptchaDone(true);
@@ -24,11 +29,23 @@ export default function Login() {
       }
       await form.validate(['account', 'password']);
       setLoading(true);
+      // 模拟登录请求
       await new Promise(r => setTimeout(r, 800));
+      // 模拟账号锁定场景
+      if (account === 'locked') {
+        Message.error('账号已锁定，请联系超级管理员');
+        setLoading(false);
+        return;
+      }
       Message.success('登录成功');
       navigate('/', { replace: true });
-    } catch {
-      Message.error('账号或密码错误');
+    } catch (e: unknown) {
+      // 区分表单校验失败 / 网络异常
+      if (e instanceof Error && e.message === 'Network Error') {
+        Message.error('网络异常，请重试');
+      } else {
+        Message.error('账号或密码错误');
+      }
     } finally {
       setLoading(false);
     }
@@ -45,19 +62,26 @@ export default function Login() {
           <Text type="secondary">运营管理后台</Text>
         </div>
 
-        <Form form={form} layout="vertical" size="large">
+        <Form form={form} layout="vertical" size="large" onValuesChange={(changed) => {
+          if ('account' in changed) setAccount(changed.account || '');
+          if ('password' in changed) setPassword(changed.password || '');
+        }}>
           <Form.Item field="account" rules={[
             { required: true, message: '请输入账号' },
             { match: /^[a-zA-Z0-9_]{4,20}$/, message: '4-20位字母/数字/下划线' },
           ]}>
-            <Input prefix={<IconUser />} placeholder="请输入账号" />
+            <Input prefix={<IconUser />} placeholder="请输入账号"
+              onChange={(v) => setAccount(v)} />
           </Form.Item>
 
           <Form.Item field="password" rules={[
             { required: true, message: '请输入密码' },
             { minLength: 6, message: '密码至少6位' },
+            { maxLength: 20, message: '密码不超过20位' },
+            { match: /^(?=.*[a-zA-Z])(?=.*\d).+$/, message: '密码需包含字母和数字' },
           ]}>
-            <Input.Password prefix={<IconLock />} placeholder="请输入密码" />
+            <Input.Password prefix={<IconLock />} placeholder="请输入密码"
+              onChange={(v) => setPassword(v)} />
           </Form.Item>
 
           {/* 模拟极验验证 */}
@@ -83,7 +107,8 @@ export default function Login() {
           </div>
 
           <Form.Item>
-            <Button type="primary" htmlType="button" long loading={loading} onClick={handleLogin}>
+            <Button type="primary" htmlType="button" long loading={loading}
+              disabled={btnDisabled && !loading} onClick={handleLogin}>
               登 录
             </Button>
           </Form.Item>

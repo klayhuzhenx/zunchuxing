@@ -12,6 +12,7 @@ export interface Employee {
 // ===== 订单 =====
 export type OrderType = 'charter' | 'rental';
 export type OrderStatus = 'unpaid' | 'pending_dispatch' | 'pending_start' | 'ongoing' | 'completed' | 'cancelled' | 'pending_extra';
+export type PaymentMethod = 'enterprise_credit' | 'alipay' | 'wechat';
 
 export interface DaySchedule {
   date: string; timeRange: string;
@@ -20,10 +21,20 @@ export interface DaySchedule {
   status: 'ongoing' | 'not_started' | 'completed';
 }
 
+export interface OrderReview {
+  driverRating: number; vehicleRating: number; serviceRating: number;
+  comment?: string;
+}
+
 export interface Order {
   id: string; orderNo: string; type: OrderType; status: OrderStatus; subStatus?: string;
   passengerName: string; passengerPhone: string;
   passengerRole?: string;
+  userIdentity?: 'personal' | 'enterprise_employee';
+  enterpriseName?: string;
+  enterpriseOrderName?: string;
+  passengerNote?: string;
+  internalNote?: string;
   // 包车
   startTime?: string; endTime?: string; days?: number;
   pickupAddress?: string; dropoffAddress?: string;
@@ -38,16 +49,23 @@ export interface Order {
   // 通用
   driverName?: string; driverPhone?: string;
   plateNo?: string; carModel?: string;
+  paymentMethod?: PaymentMethod;
   baseFee: number; overtimeFee: number; overmileageFee: number;
   paidAmount: number; refundAmount: number;
   cancelReason?: string;
+  review?: OrderReview;
+  feeExtraDetail?: FeeExtraDetail;
   createdAt: string; paymentTime?: string;
 }
 
 // ===== 额度与消费 =====
+export type TripType = 'charter' | 'rental';
+
 export interface ConsumptionRecord {
   id: string; time: string; type: 'consume' | 'refund';
-  amount: number; orderNo: string; passengerName: string; description: string;
+  amount: number; orderNo: string; passengerName: string;
+  tripType: TripType;
+  description: string;
 }
 
 export interface QuotaChangeRecord {
@@ -107,4 +125,49 @@ export interface DashboardData {
   remainingQuota: number; monthConsumption: number;
   monthOrders: number; activeEmployees: number;
   recentOrders: Order[];
+}
+
+// ===== 费用明细详情 =====
+export interface WaitFeeDetail {
+  driverArriveTime?: string; driverArriveAddr?: string;
+  passengerPickupTime?: string;
+  waitMinutes: number; freeMinutes: number;
+  excessMinutes: number; rate: number; amount: number;
+}
+
+export interface OvertimeDetail {
+  date: string; actualStart: string; actualEnd: string;
+  totalMinutes: number; packageMinutes: number;
+  excessMinutes: number; rate: number; amount: number;
+}
+
+export interface ExcessMileageDetail {
+  date: string;
+  startMileage: number; endMileage: number;
+  startImage?: string; endImage?: string;
+  totalKm: number; packageKm: number;
+  excessKm: number; rate: number; amount: number;
+}
+
+export interface OtherFeeDetail {
+  id: string; type: string; amount: number;
+  voucherImage?: string; voucherTime?: string;
+}
+
+export interface FeeExtraDetail {
+  waitFee?: WaitFeeDetail;
+  overtimeDetails?: OvertimeDetail[];
+  excessMileageDetails?: ExcessMileageDetail[];
+  otherFees?: OtherFeeDetail[];
+}
+
+// ===== 出车单 =====
+export type DriverOrderStatus = 'not_started' | 'in_progress' | 'pending_settlement' | 'completed' | 'cancelled';
+
+export interface DriverOrder {
+  id: string; driverOrderNo: string; orderNo: string;
+  driverName: string; driverPhone: string;
+  plateNo: string; carModel: string;
+  tripDate: string; plannedTimeRange: string;
+  status: DriverOrderStatus;
 }

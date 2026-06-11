@@ -1,6 +1,7 @@
 # 尊出行 · 乘客端 uniApp 架构文档
 
 > 基于 HTML 原型 `系统原型设计/passenger-app.html` 还原，uniApp 3.0 + Vue 3 + SCSS
+> 最后更新：2026-06-09
 
 ---
 
@@ -8,305 +9,204 @@
 
 ```
 passenger-app/src/
-├── App.vue                    # 全局样式 + Material Symbols + typography 工具类
-├── uni.scss                   # 设计 token 系统 (颜色/字体/间距/圆角/阴影)
-├── pages.json                 # 路由注册 (无 tabBar，自定义组件实现)
-├── manifest.json              # uniApp 多端打包配置
+├── App.vue                    # 全局样式 + Material Symbols + typography class
+├── uni.scss                   # 设计 token (颜色/字体/间距/圆角/阴影)
+├── pages.json                 # 路由注册
 ├── components/                # 公共组件
-│   ├── navbar.vue             # 导航栏 (浅色/深色/透明 三主题，左标题/居中)
-│   ├── tab-bar.vue            # 底部 2tab 自定义导航 (服务/我的)
-│   ├── bottom-sheet.vue       # 通用底部抽屉 (mask+body+footer，支持 v-model)
-│   └── m-icon.vue             # Material Symbols 图标封装 (size/color/fill/weight)
+│   ├── navbar.vue             # 导航栏 (light/dark/transparent 主题)
+│   ├── tab-bar.vue            # 底部 2tab 导航 (服务/我的)
+│   ├── bottom-sheet.vue       # 通用底部抽屉 (v-model + mask + footer)
+│   └── m-icon.vue             # Material Symbols 图标封装
 ├── pages/
-│   ├── index/                 # 首页 (服务入口)
-│   │   └── index.vue
-│   ├── login/                 # 验证码登录
-│   │   └── index.vue
-│   ├── charter/               # 包车出行模块
-│   │   ├── index.vue          # 起终点 + 车型 tab + 尊崇礼遇 + 套餐 sheet + 日期 sheet
-│   │   ├── confirm.vue        # 确认订单 (行程/乘车人/支付/备注/协议)
-│   │   ├── pay.vue            # 微信/支付宝聚合支付独立页
-│   │   ├── fee.vue            # 费用明细 (计时费/附加费/说明)
-│   │   └── success.vue        # 下单成功 (paid/pending 两态 + 倒计时)
-│   ├── rental/                # 租车出行模块
-│   │   ├── index.vue          # 取还车 + 车型 tab + 服务说明 + 取还车日期 sheet
-│   │   ├── confirm.vue        # 确认订单 (取还车/驾驶人/驾驶证/尊享权益/支付)
+│   ├── index/index.vue        # 首页
+│   ├── login/index.vue        # 验证码登录
+│   ├── charter/               # 包车出行 ✅
+│   │   ├── index.vue          # 起终点+车型tab+套餐sheet+日期时间sheet
+│   │   ├── confirm.vue        # 确认订单(行程/乘车人/支付/备注/协议)
+│   │   ├── pay.vue            # 聚合支付页(支持source=charter|rental)
 │   │   ├── fee.vue            # 费用明细
-│   │   └── success.vue        # 下单成功 (paid/pending 两态)
+│   │   └── success.vue        # 下单成功(paid/pending两态+倒计时)
+│   ├── rental/                # 租车出行 ✅
+│   │   ├── index.vue          # 取还车+车型tab+服务说明+日期sheet
+│   │   ├── confirm.vue        # 确认订单(驾驶人切换+驾驶证+尊享权益+支付)
+│   │   ├── fee.vue            # 费用明细(日租费/超里程/远调费)
+│   │   └── success.vue        # 下单成功(paid/pending两态)
 │   ├── address/               # 地址选址
-│   │   ├── search.vue         # 搜索地址 + 历史记录 + 地图选点入口
-│   │   └── map.vue            # 地图选点 (CSS 模拟地图 + 附近候选 + 确认)
+│   │   ├── search.vue         # 搜索+历史+地图选点入口
+│   │   └── map.vue            # CSS模拟地图+附近候选+确认
 │   ├── enterprise/            # 企业入驻
-│   │   ├── register.vue       # 企业入驻表单 + 专属权益卡
+│   │   ├── register.vue       # 企业入驻表单+专属权益卡
 │   │   └── status.vue         # 入驻审核状态
-│   ├── trips/                 # 行程列表 (待建)
-│   └── profile/               # 我的 (待建)
+│   └── profile/               # 我的 ✅
+│       ├── index.vue          # 用户信息+身份切换sheet+功能grid+权益+设置
+│       ├── settings.vue       # 头像/手机/邮箱 + 清单/共享/导出/权限 + 退出
+│       ├── collection.vue     # 个人信息收集清单
+│       ├── share.vue          # 第三方信息共享清单
+│       └── permission.vue     # 个人信息权限管理(toggle开关)
 ```
 
 ---
 
-## 2. 设计 Token 系统
+## 2. 已完成的完整链路
 
-位置: `src/uni.scss`，与原型 `tailwind.config.theme` 对齐。
+### 2.1 包车出行
+home → charter/index → 选套餐sheet → charter/confirm → pay/success
 
-| 类别 | 变量 | 值 | 用途 |
-|---|---|---|---|
-| **品牌黑** | `$color-obsidian-deep` | `#000000` | 主按钮、黑卡背景 |
-| **品牌金** | `$color-heritage-gold` | `#D4AF37` | 会员标签、金色点缀 |
-| **品牌蓝** | `$color-premium-blue` | `#0057FF` | 链接、费用明细入口 |
-| **表面色** | `$color-surface` | `#F9F9F9` | 页面背景 |
-| **卡片白** | `$color-surface-container-lowest` | `#FFFFFF` | 信息卡、输入区背景 |
-| **文字主色** | `$color-text-primary` | `#1A1C1C` | 标题、正文 |
-| **文字辅色** | `$color-text-secondary` | `#86868B` | 描述、提示 |
-| **排版** | `$font-display-lg-mobile-size` | `28px / 36px / 700` | 大标题 |
-| | `$font-headline-sm-mobile-size` | `20px / 28px / 600` | 卡片标题 |
-| | `$font-body-lg-size` | `17px / 26px / 400` | 正文 |
-| | `$font-label-md-size` | `13px / 18px / 500` | 标签 |
-| **圆角** | `$radius-card` | `32px` | 信息卡 |
-| | `$radius-xl` | `24px` | 输入框/按钮 |
-| **间距** | `$spacing-container-margin` | `24px` | 全局左右边距 |
+### 2.2 租车出行
+home → rental/index → 选车型日期sheet → rental/confirm → pay/success
+
+### 2.3 认证 + 我的
+login → home | 企业入驻 → enterprise/register → status
+我的 → 身份切换sheet + 设置 → 收集清单/三方共享/权限管理
 
 ---
 
 ## 3. 公共组件 API
 
 ### 3.1 navbar
-
-| Prop | 类型 | 默认值 | 说明 |
+| Prop | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `title` | string | `''` | 标题文字 |
-| `showBack` | boolean | `false` | 是否显示返回按钮 |
-| `theme` | `'light'`\|`'dark'`\|`'transparent'` | `'light'` | 配色主题 |
-| `align` | `'left'`\|`'center'` | `'left'` | 标题对齐方式 |
-| `sticky` | boolean | `false` | 是否 sticky 定位 |
-| `bgColor` | string | `''` | 自定义背景色 |
-| `fallbackUrl` | string | `'/pages/index/index'` | 无返回栈时跳转 |
-
-Slot: `left`, `right` — 自定义左右插槽
-
-Event: `@back` — 点返回时触发
+| title | string | '' | 标题 |
+| showBack | boolean | false | 返回按钮 |
+| theme | light/dark/transparent | light | 配色 |
+| align | left/center | left | 标题对齐 |
 
 ### 3.2 tab-bar
-
 | Prop | 类型 | 说明 |
 |---|---|---|
-| `current` | `'home'`\|`'profile'` | 当前激活 tab |
-
-点击非当前 tab → `uni.redirectTo` 切换
+| current | home/profile | 当前激活tab |
 
 ### 3.3 bottom-sheet
-
-| Prop | 类型 | 默认值 | 说明 |
+| Prop | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `modelValue` | boolean | — | 开关(支持 v-model) |
-| `title` | string | `''` | 标题 |
-| `closable` | boolean | `true` | 是否显示关闭按钮 |
-| `showHandle` | boolean | `true` | 是否显示顶部把手 |
-| `maxHeight` | string | `'85vh'` | 最大高度 |
-| `closeOnMask` | boolean | `true` | 点击遮罩是否关闭 |
+| modelValue | boolean | — | 支持v-model |
+| title | string | '' | 标题 |
+| maxHeight | string | 85vh | 最大高度 |
+| closable | boolean | true | 关闭按钮 |
+| showHandle | boolean | true | 顶部把手 |
 
-Slot: `default` — 内容区 | `header` — 自定义标题栏 | `footer` — 底部固定区
-
-Event: `@close`
+Slot: default / header / footer
 
 ### 3.4 m-icon
-
-| Prop | 类型 | 默认值 | 说明 |
+| Prop | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `name` | string | — | Material Symbols 图标名 |
-| `size` | number/string | `24` | 图标大小(不含单位时视为 px) |
-| `color` | string | `''` | 填充颜色 |
-| `fill` | boolean | `false` | 图标变体 FILL=1 |
-| `weight` | number | `400` | 字重 |
+| name | string | — | 图标名 |
+| size | number/string | 24 | 大小 |
+| color | string | '' | 颜色 |
+| fill | boolean | false | FILL=1变体 |
 
 ---
 
-## 4. 页面路由表 (pages.json)
+## 4. 布局规范（⭐ 必读，禁止再犯）
 
-| path | navStyle | 说明 |
+### 4.1 有固定 footer 的页面（如详情页、确认页）
+
+```scss
+.root { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.header { flex-shrink: 0; /* paddingTop 加在这里 */ }
+.body { flex: 1; overflow-y: auto; }   /* ← view + overflow，绝不用 scroll-view */
+.footer { flex-shrink: 0; }            /* ← flex 子元素，绝不用 position:fixed */
+```
+
+### 4.2 无固定 footer 的页面（如设置页、列表页）
+
+```scss
+.root { min-height: 100vh; /* 自然滚动，不锁高度 */ }
+```
+
+### 4.3 三大铁律
+
+| # | 规则 | 原因 |
 |---|---|---|
-| `pages/index/index` | custom | 首页 |
-| `pages/profile/index` | custom | 我的 (待建) |
-| `pages/login/index` | custom | 验证码登录 |
-| `pages/enterprise/register` | custom | 企业入驻表单 |
-| `pages/enterprise/status` | custom | 入驻审核状态 |
-| `pages/charter/index` | custom | 包车出行 |
-| `pages/charter/confirm` | custom | 包车确认订单 |
-| `pages/charter/pay` | custom | 聚合支付页 |
-| `pages/charter/fee` | custom | 包车费用明细 |
-| `pages/charter/success` | custom | 包车下单成功 |
-| `pages/rental/index` | custom | 租车出行 |
-| `pages/rental/confirm` | custom | 租车确认订单 |
-| `pages/rental/fee` | custom | 租车费用明细 |
-| `pages/rental/success` | custom | 租车下单成功 |
-| `pages/address/search` | custom | 地址搜索 |
-| `pages/address/map` | custom | 地图选点 |
-| `pages/trips/index` | custom | 行程列表 (待建) |
-| `pages/enterprise/index` | custom | 企业管理 (待建) |
-| `pages/invoice/index` | custom | 电子发票 (待建) |
-| `pages/messages/index` | custom | 消息中心 (待建) |
+| 1 | **H5 绝不用 `scroll-view`** | uni-app scroll-view 在 H5 不遵守 flex:1，会按内容撑开溢出 |
+| 2 | **`paddingTop` 绝不加在 `height:100vh` 的容器上** | 100vh + paddingTop > 100%，必然溢出 |
+| 3 | **fixed footer 改为 flex 子元素** | fixed 脱离文档流，body 需要手动算 paddingBottom 容易出错 |
 
 ---
 
 ## 5. 跨页面数据流
 
-### 5.1 地址选址 (storage 通信)
-
+### 5.1 地址选址 (storage)
 ```
-包车/租车页        →    地址搜索页       →     地图选点页
- (setStorageSync)       (navigateTo)           (navigateBack delta:2)
-                                                      ↓
-包车/租车页 onShow ←    写入 'address-pick-result'   + 清除 key
- (读+回填+删除)
+页面 setStorageSync('address-pick-field', 'xxx')
+  → address/search?field=xxx → onPickItem 写入 address-pick-result
+  → 页面 onShow 读取回填 + 删除
 ```
+field 支持: `origin` / `destination` / `rental-pickup` / `rental-return`
 
-`address-pick-field` 区分来源: `origin` / `destination` / `rental-pickup` / `rental-return`
-
-### 5.2 支付流程 (URL params 贯穿)
-
+### 5.2 支付流程 (URL params)
 ```
-确认订单页 → [企业] showModal 确认/取消 → success?status=paid|pending
-          → [微信/支付宝] navigateTo pay.vue
-                              ↓ 确认支付 → success?status=paid
-                              ↓ 点关闭 → 确认离开? → success?status=pending
-```
-
-### 5.3 套餐车型参数传递
-
-```
-charter/index (sheet) → confirm — url params:
-  carIdx / pkgId / days / dateIso / time / origin / destination
-
-rental/index (sheet) → confirm — url params:
-  carIdx / days / pickup / return / pickupDate / returnDate
+confirm → [企业] showModal → success?status=paid|pending
+       → [微信/支付宝] navigateTo pay.vue?source=charter|rental
+           ├─ 确认支付 → success?status=paid
+           └─ X关闭 → 确认离开 → success?status=pending
 ```
 
 ---
 
-## 6. 导航流程
+## 6. 路由表
 
-### 6.1 包车出行完整链路
-
-```
-home → charter/index
-       ├─ 起终点 (点→address/search → address/map)
-       ├─ 3 车型 tab (切换车型→默认选该车型第5个套餐)
-       ├─ 尊崇礼遇 (黑卡展示)
-       └─ [选择套餐] → bottom-sheet
-            ├─ 3 车型 tab
-            ├─ 3×2 套餐 grid (半日租/日租 × 尊享基础/尊荣高级/尊御顶级)
-            ├─ 包含权益 chips (基础→基础 / 高级→+茶点 / 顶级→+茶点+香槟)
-            ├─ 日期+时间 (日期grid 4×3 + 时间 picker-view 滚轮)
-            ├─ 包车天数 stepper
-            ├─ 预估总额 + 费用明细 → [下一步]
-            └─ → charter/confirm
-                 ├─ 车型 hero
-                 ├─ 行程信息 (起终点 + 日期 + 车型套餐)
-                 ├─ 乘车人 [切换] → bottom-sheet (本人/列表/添加)
-                 ├─ 支付方式 (微信/支付宝/企业)
-                 ├─ 备注 textarea
-                 ├─ 协议 checkbox
-                 └─ [确认下单]
-                      ├─ 企业 → showModal → success(paid|pending)
-                      └─ 微信/支付宝 → charter/pay
-                           ├─ [确认支付] → success(paid)
-                           └─ [返回] → showModal→离开→success(pending)
-
-charter/success
-├─ status=paid:   绿色 check_circle + "下单成功" + 匹配司机 dots + "查看订单详情"
-└─ status=pending: 橙色 schedule + "订单待支付" + 30分钟倒计时胶囊 + "立即支付"按钮
-     └─ [立即支付] → 企业→showModal / 微信支付宝→pay.vue
-```
-
-### 6.2 租车出行完整链路
-
-```
-home → rental/index
-       ├─ 取还车 (点→address/search)
-       ├─ 3 车型 tab (每车型含 dayPrice/kmPerDay/features)
-       ├─ 服务说明卡 (3 项)
-       └─ [选择车型与日期] → bottom-sheet
-            ├─ 3 车型 tab + 车型图 + 单价标签
-            ├─ 取车日期 + 还车日期 (各自独立 bottom-sheet : grid 4×3+天)
-            │   └─ 还车日期不可早于取车日期
-            ├─ 租车天数 (自动计算 = 还车-取车)
-            ├─ 超里程提示
-            ├─ 预估总额 + 费用明细 → [下一步]
-            └─ → rental/confirm
-                 ├─ 车型 hero (含 "尊界车主专享" 标签)
-                 ├─ 取还车信息 (绿色/红色圆点 + 日期 + 天数)
-                 ├─ 驾驶人 [切换] → bottom-sheet (本人/他人+表单)
-                 ├─ 驾驶证上传 (正页/副页 虚线卡片占位)
-                 ├─ 尊享权益 (黑色渐变卡 + "使用权益"按钮)
-                 ├─ 支付方式 (微信/支付宝/企业)
-                 ├─ 备注 textarea
-                 ├─ 协议 checkbox
-                 └─ [确认下单] → 同包车支付链 → success(paid|pending)
-
-rental/success
-├─ status=paid:   绿色 + "下单成功" + "订单已生成，等待派车..." + Awaiting Vehicle Dispatch
-└─ status=pending: 橙色 + "订单待支付" + 30分钟倒计时 + "立即支付"按钮
-```
-
-### 6.3 认证链路
-
-```
-login (验证码登录 + 微信快捷登录 + 企业入口)
-  ├─ 登录成功 → home
-  └─ 企业入驻 → enterprise/register (表单 + 验证码 + 专属权益卡)
-       └─ 提交成功 → enterprise/status (审核中 + 预计反馈时间 + 返回登录/客服)
-```
+| path | 状态 |
+|---|---|
+| pages/index/index | ✅ |
+| pages/profile/index | ✅ |
+| pages/profile/settings | ✅ |
+| pages/profile/collection | ✅ |
+| pages/profile/share | ✅ |
+| pages/profile/permission | ✅ |
+| pages/login/index | ✅ |
+| pages/enterprise/register | ✅ |
+| pages/enterprise/status | ✅ |
+| pages/charter/index | ✅ |
+| pages/charter/confirm | ✅ |
+| pages/charter/pay | ✅ |
+| pages/charter/fee | ✅ |
+| pages/charter/success | ✅ |
+| pages/rental/index | ✅ |
+| pages/rental/confirm | ✅ |
+| pages/rental/fee | ✅ |
+| pages/rental/success | ✅ |
+| pages/address/search | ✅ |
+| pages/address/map | ✅ |
+| pages/trips/index | ⬜ 待建 |
+| pages/enterprise/index | ⬜ 待建 |
+| pages/invoice/index | ⬜ 待建 |
+| pages/messages/index | ⬜ 待建 |
 
 ---
 
-## 7. 重复使用模式
+## 7. 待处理事项
 
-### 7.1 车型数据模型
+### 高优先级
 
-所有车型页面共用以下结构：
+| # | 事项 | 原型位置 | 说明 |
+|---|---|---|---|
+| 1 | **预约用车 booking** | SCREEN: BOOKING (line 339-743) | index + confirm + fee + success 四个页面，含途经点、时间选择器、乘车人切换 |
+| 2 | **行程列表 trips** | SCREEN: 我的行程列表 (line 1367) | 包车/租车订单卡片列表，tab 切换状态筛选 |
+| 3 | **行程详情 trip-detail** | SCREEN: 包车订单详情 (line 1653) / 租车订单详情 (line 1795) | 订单信息展示 + 行程追踪入口 |
 
-```ts
-type Car = {
-  id: string;
-  name1: string;       // 第一行tab文字
-  name2: string;       // 第二行tab文字
-  fullName: string;    // 完整车名
-  tagline: string;     // 一句话描述
-  imageGradient: string; // 渐变占位图 (实际用 <image> 替换)
-  features: { icon: string; text: string }[];
-};
-```
+### 中优先级
 
-包车扩展: `packages: Pkg[] (tier / spec / price / duration)`
-租车扩展: `dayPrice: number / kmPerDay: number`
+| # | 事项 | 原型位置 | 说明 |
+|---|---|---|---|
+| 4 | **消息中心 messages** | SCREEN: 消息中心列表 (line 2580) + 消息详情 (line 2624) | 消息列表 + 详情页 |
+| 5 | **电子发票 invoice** | SCREEN: 电子发票列表 (line 2394) + 选择开票订单 (line 2462) + 填写发票信息 (line 2487) + 发票详情 (line 2524) | 4 个页面 |
+| 6 | **企业管理 enterprise** | SCREEN: 企业管理首页 (line 2644) + 员工管理 (line 2673) + 添加员工 (line 2703) + 额度消费记录 (line 2720) | 4 个页面 |
+| 7 | **车主认证 owner-cert** | SCREEN: OWNER CERTIFICATION (line 2836) | 尊界车主身份认证表单 |
 
-### 7.2 价格/套餐面板
+### 低优先级
 
-包车: `pkg.price × days`
-租车: `dayPrice × totalDays` (totalDays = 还车日期 - 取车日期)
-
-结算公式均在 sheet footer 中，通过 `computed` 计算。
-
-### 7.3 支付面板
-
-统一入口: `charter/pay.vue` 和 `rental/pay.vue` (可考虑合并为一个 `pages/pay/index.vue`，通过 `source=charter|rental` 参数区分返回路径)
-
----
-
-## 8. 待建页面清单
-
-| 模块 | 页面 | 状态 |
+| # | 事项 | 说明 |
 |---|---|---|
-| 租车 | rental/confirm.vue | ⬜ 待建 |
-| 租车 | rental/fee.vue | ⬜ 待建 |
-| 租车 | rental/success.vue | ⬜ 待建 |
-| 行程 | trips/index.vue | ⬜ 待建 |
-| 我的 | profile/index.vue | ⬜ 待建 |
-| 用车 | booking 预约用车 + confirm + fee + success | ⬜ 待建 |
-| 用车 | 途经点弹窗 / 时间选择器 | ⬜ 待建 |
-| 设置 | settings/index.vue | ⬜ 待建 |
-| 消息 | messages/index.vue + detail | ⬜ 待建 |
-| 发票 | invoice/* | ⬜ 待建 |
-| 订单详情 | trip-detail-charter / trip-detail-rental | ⬜ 待建 |
-| 行程追踪 | trip-tracking.vue | ⬜ 待建 |
-| 车主认证 | owner-cert.vue | ⬜ 待建 |
+| 8 | 行程追踪 trip-tracking | 实时地图 + 司机信息 + 行程进度 |
+| 9 | 驾驶证上传 (租车) | 当前为占位 toast，需接入真实上传 |
+| 10 | 支付确认页 pay-confirm | 原型 SCREEN: 支付确认 (line 1907) |
+| 11 | 实名认证/个人身份认证 | 原型身份切换弹窗中"个人身份"对应的认证流程 |
+
+---
+
+## 8. 已删除页面
+
+| 页面 | 原因 |
+|---|---|
+| pages/profile/info.vue | 用户要求删除，信息合并到 settings 页（加了邮箱字段） |

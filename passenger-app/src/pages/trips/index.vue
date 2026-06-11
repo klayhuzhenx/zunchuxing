@@ -1,313 +1,262 @@
 <template>
-  <view class="page">
-    <!-- 页面头部 -->
-    <view class="page-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
-      <text class="page-title">我的行程</text>
+  <view class="root">
+    <view class="header" :style="{ paddingTop: top + 'px' }">
+      <view class="hbar" @click="back">
+        <text class="material-symbols-outlined hicon">arrow_back</text>
+        <text class="htitle">我的行程</text>
+      </view>
     </view>
 
-    <!-- 状态 Tab -->
-    <scroll-view scroll-x class="tab-bar" :show-scrollbar="false" enhanced>
-      <text
-        v-for="t in tabs"
-        :key="t.key"
-        class="tab-item"
-        :class="{ active: activeTab === t.key }"
-        @click="activeTab = t.key"
-      >
-        {{ t.label }}
-      </text>
-    </scroll-view>
+    <view class="body">
+      <!-- 搜索 -->
+      <view class="search">
+        <text class="material-symbols-outlined sicon">search</text>
+        <input v-model="keyword" class="sinput" placeholder="搜索订单" placeholder-class="sph" />
+      </view>
 
-    <!-- 订单列表 -->
-    <view class="list">
-      <view v-if="filteredTrips.length > 0" class="trip-cards">
-        <view
-          v-for="trip in filteredTrips"
-          :key="trip.id"
-          class="trip-card"
-        >
-          <view class="card-top">
-            <text class="trip-tag" :class="trip.type">{{ trip.typeLabel }}</text>
-            <text class="trip-status" :class="trip.statusClass">{{ trip.status }}</text>
-          </view>
-          <text class="trip-route">{{ trip.from }} → {{ trip.to }}</text>
-          <view class="trip-meta">
-            <text>{{ trip.date }}</text>
-            <text class="trip-amount">¥{{ trip.price.toLocaleString() }}</text>
+      <!-- tab -->
+      <scroll-view scroll-x class="tabs" :show-scrollbar="false">
+        <view v-for="t in tabs" :key="t.key" class="tab" :class="{ on: tab === t.key }" @click="tab = t.key">
+          <text class="tt">{{ t.label }}</text>
+        </view>
+      </scroll-view>
+
+      <!-- 列表 -->
+      <view v-if="list.length > 0" class="cards">
+        <view v-for="(o, i) in list" :key="i" class="card" :class="{ dim: o.s === 'cancelled' || o.s === 'completed' }" @click="detail(o)">
+          <!-- head -->
+          <view class="ch">
+            <view class="ci">
+              <text class="cg" :class="o.t === 'charter' ? 'gold' : 'black'">{{ o.t === 'charter' ? '包车出行' : '租车出行' }}</text>
+              <text class="cr">{{ o.route }}</text>
+            </view>
+            <text class="cs" :class="sc(o.s)">
+              <text v-if="o.s === 'ongoing'" class="sdot" />{{ sl(o) }}
+            </text>
           </view>
 
-          <!-- 操作按钮 -->
-          <view v-if="trip.actions && trip.actions.length > 0" class="trip-actions">
-            <button
-              v-for="(action, idx) in trip.actions"
-              :key="action"
-              class="action-btn"
-              :class="{ primary: idx === trip.actions.length - 1 }"
-              @click="handleAction(action, trip.id)"
-            >
-              {{ action }}
-            </button>
+          <!-- body info -->
+          <view class="cb">
+            <view class="ln" v-if="o.date"><text class="material-symbols-outlined li">calendar_today</text><text class="lt">{{ o.date }}</text></view>
+            <view class="ln"><text class="material-symbols-outlined li">directions_car</text><text class="lt">{{ o.car }}</text></view>
+            <view class="ln" v-if="o.drv"><text class="material-symbols-outlined li">person</text><text class="lt">{{ o.drv }}</text></view>
+          </view>
+
+          <!-- alerts -->
+          <view v-if="o.s === 'unpaid'" class="al warn"><text class="material-symbols-outlined ai">schedule</text><text class="at">剩余支付时间 {{ o.cd }}</text></view>
+          <view v-if="o.s === 'pending-pickup-undelivered'" class="al warn"><text class="material-symbols-outlined ai">local_shipping</text><text class="at">待司机将车辆送至取车点</text></view>
+          <view v-if="o.s === 'pending-pickup'" class="al ok"><text class="material-symbols-outlined ai">check_circle</text><text class="at">车辆已送达取车点，请前往确认取车</text></view>
+          <view v-if="o.s === 'pending-unassigned'" class="al warn"><text class="material-symbols-outlined ai">hourglass_top</text><text class="at">等待派车，请您耐心等待</text></view>
+          <view v-if="o.s === 'pending-assigned'" class="al info"><text class="material-symbols-outlined ai">airport_shuttle</text><text class="at">司机正在前往接驾，请保持手机畅通</text></view>
+          <view v-if="o.s === 'unpaid-extra'" class="al err"><view class="ar"><view class="alf"><text class="material-symbols-outlined ai">error_outline</text><text class="at">行程结束，差额待付</text></view><text class="ae">¥{{ o.ex }}</text></view></view>
+          <view v-if="o.s === 'cancelled'" class="al cancel"><text class="material-symbols-outlined ai">info</text><view><text class="at bld">取消原因</text><text class="at sub">{{ o.reason }}</text></view></view>
+
+          <!-- actions -->
+          <view class="ca">
+            <template v-if="o.s === 'unpaid'">
+              <view class="btn bo er" @click.stop="cancelOrder(o,i)">取消订单</view>
+              <view class="btn bf" @click.stop="goPay(o)">去支付</view>
+            </template>
+            <template v-if="o.s === 'unpaid-extra'">
+              <view class="btn bf wf" @click.stop="goPay(o)">去补款</view>
+            </template>
+            <!-- 待派车/待接驾/待取车：不展示取消按钮 -->
+            <template v-if="o.s === 'pending-pickup'">
+              <view class="btn bf wf" @click.stop="takeCar(o)">确认取车</view>
+            </template>
+            <template v-if="o.s === 'completed'">
+              <view class="btn bo" @click.stop="goInvoice">开发票</view>
+              <view class="btn bf" @click.stop="review">评价行程</view>
+            </template>
+            <template v-if="o.s === 'cancelled'">
+              <view class="btn bf wf" @click.stop="redoOrder(o)">重新下单</view>
+            </template>
           </view>
         </view>
       </view>
 
-      <!-- 空状态 -->
-      <view v-else class="empty-state">
-        <text class="material-symbols-outlined empty-icon">receipt_long</text>
-        <text class="empty-text">暂无相关行程</text>
+      <view v-else class="empty">
+        <text class="material-symbols-outlined eico">inbox</text>
+        <text class="etx">暂无订单</text>
       </view>
     </view>
-
-    <view class="safe-bottom"></view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 
-const statusBarHeight = ref(0);
+type S = 'unpaid'|'unpaid-extra'|'pending-unassigned'|'pending-assigned'|'pending-pickup-undelivered'|'pending-pickup'|'ongoing'|'completed'|'cancelled';
+type O = { t:'charter'|'rental'; s:S; route:string; date:string; car:string; drv:string; cd:string; ex:string; reason:string; ci:number; pi:string; dy:number };
+
+const top = ref(0); const keyword = ref(''); const tab = ref('all');
+onMounted(() => { top.value = uni.getSystemInfoSync().statusBarHeight || 0; });
 
 const tabs = [
-  { key: 'all', label: '全部' },
-  { key: 'unpaid', label: '待支付' },
-  { key: 'pending', label: '待派车' },
-  { key: 'ongoing', label: '行程中' },
-  { key: 'done', label: '已完成' },
-  { key: 'cancelled', label: '已取消' },
+  { key:'all',label:'全部' },{ key:'unpaid',label:'待支付' },
+  { key:'pending-start',label:'待开始' },{ key:'ongoing',label:'进行中' },
+  { key:'completed',label:'已完成' },{ key:'cancelled',label:'已取消' },
 ];
 
-const activeTab = ref('all');
+const orders: O[] = [
+  { t:'charter',s:'unpaid',route:'合肥南站 → 石门路',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版 · 尊享基础',drv:'',cd:'14:59',ex:'',reason:'',ci:0,pi:'a-f-pro',dy:3 },
+  { t:'charter',s:'unpaid-extra',route:'半岛酒店 → 浦东机场 T2',date:'05-12 至 05-12 · 1天',car:'增程星辉尊享版 · 尊享基础',drv:'',cd:'',ex:'511.00',reason:'',ci:0,pi:'a-f-pro',dy:1 },
+  { t:'charter',s:'pending-unassigned',route:'天鹅湖大酒店 → 骆岗公园',date:'06-12 至 06-14 · 3天',car:'增程星辉尊享版 · 尊享基础',drv:'',cd:'',ex:'',reason:'',ci:0,pi:'a-f-pro',dy:3 },
+  { t:'charter',s:'pending-assigned',route:'政务中心 → 会展中心',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版 · 尊享基础',drv:'李师傅 · 京A12345',cd:'',ex:'',reason:'',ci:0,pi:'a-f-pro',dy:3 },
+  { t:'charter',s:'ongoing',route:'政务中心 → 会展中心',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版 · 尊享基础',drv:'李师傅 · 京A12345',cd:'',ex:'',reason:'',ci:0,pi:'a-f-pro',dy:3 },
+  { t:'charter',s:'completed',route:'半岛酒店 → 浦东机场 T2',date:'05月12日 14:30 · 2天',car:'增程星辉尊享版 · 尊享基础',drv:'',cd:'',ex:'',reason:'',ci:0,pi:'a-f-pro',dy:2 },
+  { t:'charter',s:'cancelled',route:'政务中心 → 会展中心',date:'',car:'增程星辉尊享版 · 尊享基础',drv:'',cd:'',ex:'',reason:'行程计划有变 · 已扣违约金 ¥1,566.00',ci:0,pi:'a-f-pro',dy:3 },
+  { t:'rental',s:'unpaid',route:'取车：政务中心',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版',drv:'',cd:'14:59',ex:'',reason:'',ci:0,pi:'',dy:3 },
+  { t:'rental',s:'unpaid-extra',route:'已还车：会展中心',date:'05-12 至 05-14 · 3天',car:'增程星辉尊享版',drv:'',cd:'',ex:'180.00',reason:'',ci:0,pi:'',dy:3 },
+  { t:'rental',s:'pending-unassigned',route:'取车：政务中心',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版',drv:'',cd:'',ex:'',reason:'',ci:0,pi:'',dy:3 },
+  { t:'rental',s:'pending-pickup-undelivered',route:'取车：政务中心',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版',drv:'',cd:'',ex:'',reason:'',ci:0,pi:'',dy:3 },
+  { t:'rental',s:'pending-pickup',route:'取车：政务中心',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版',drv:'',cd:'',ex:'',reason:'',ci:0,pi:'',dy:3 },
+  { t:'rental',s:'ongoing',route:'取车：政务中心',date:'06-10 至 06-12 · 3天',car:'增程星辉尊享版',drv:'',cd:'',ex:'',reason:'',ci:0,pi:'',dy:3 },
+  { t:'rental',s:'completed',route:'已还车：会展中心',date:'05月12日 14:30 · 3天',car:'增程星辉尊享版',drv:'',cd:'',ex:'',reason:'',ci:0,pi:'',dy:3 },
+  { t:'rental',s:'cancelled',route:'取车：政务中心',date:'',car:'增程星辉尊享版',drv:'',cd:'',ex:'',reason:'行程计划有变 · 已扣违约金 ¥1,125.00',ci:0,pi:'',dy:3 },
+];
 
-const allTrips = ref([
-  {
-    id: '1', type: 'charter', typeLabel: '包车出行',
-    status: '待支付', statusClass: 'unpaid',
-    from: '合肥南站', to: '石门路', date: '06-08',
-    price: 2088, tab: 'unpaid',
-    actions: ['取消', '去支付'],
-  },
-  {
-    id: '2', type: 'charter', typeLabel: '包车出行',
-    status: '待补款', statusClass: 'extra',
-    from: '半岛酒店', to: '浦东机场', date: '06-05',
-    price: 4520, tab: 'unpaid',
-    actions: ['补款'],
-  },
-  {
-    id: '3', type: 'charter', typeLabel: '包车出行',
-    status: '待派车', statusClass: 'pending',
-    from: '天鹅湖', to: '骆岗公园', date: '06-10',
-    price: 6264, tab: 'pending',
-    actions: ['取消'],
-  },
-  {
-    id: '4', type: 'charter', typeLabel: '包车出行',
-    status: '行程中', statusClass: 'ongoing',
-    from: '政务中心', to: '会展中心', date: '06-09',
-    price: 2088, tab: 'ongoing',
-    actions: [],
-  },
-  {
-    id: '5', type: 'charter', typeLabel: '包车出行',
-    status: '已完成', statusClass: 'done',
-    from: '半岛酒店', to: '浦东机场', date: '06-01',
-    price: 4520, tab: 'done',
-    actions: ['评价', '开发票'],
-  },
-  {
-    id: '6', type: 'rental', typeLabel: '租车出行',
-    status: '已完成', statusClass: 'done',
-    from: '政务中心', to: '翡翠路', date: '06-03',
-    price: 4500, tab: 'done',
-    actions: ['评价', '开发票'],
-  },
-  {
-    id: '7', type: 'charter', typeLabel: '包车出行',
-    status: '已取消', statusClass: 'cancelled',
-    from: '滨湖新区', to: '南京南站', date: '05-28',
-    price: 4176, tab: 'cancelled',
-    actions: [],
-  },
-]);
-
-const filteredTrips = computed(() => {
-  if (activeTab.value === 'all') return allTrips.value;
-  return allTrips.value.filter((t) => t.tab === activeTab.value);
-});
-
-onMounted(() => {
-  const sysInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = sysInfo.statusBarHeight || 0;
-});
-
-const handleAction = (action: string, id: string) => {
-  uni.showToast({ title: `${action} - 订单${id}`, icon: 'none' });
+const sl = (o: O) => {
+  const m: Record<string,string> = { unpaid:'待支付','unpaid-extra':'待补款','pending-unassigned':'待派车','pending-assigned':'待接驾','pending-pickup-undelivered':'待取车','pending-pickup':'待取车',ongoing:'进行中',completed:'已完成',cancelled:'已取消' };
+  return m[o.s]||o.s;
 };
+const sc = (s: S) => {
+  if (s==='unpaid'||s==='unpaid-extra'||s==='cancelled') return 'er';
+  if (s==='ongoing'||s==='completed'||s==='pending-pickup') return 'ok';
+  if (s==='pending-assigned') return 'bl';
+  return 'wn';
+};
+
+// 待派车合并到「待开始」，待取车也属于「待开始」
+const tmap: Record<string, S[]> = {
+  all:[],
+  unpaid:['unpaid','unpaid-extra'],
+  'pending-start':['pending-unassigned','pending-assigned','pending-pickup-undelivered','pending-pickup'],
+  ongoing:['ongoing'],
+  completed:['completed'],
+  cancelled:['cancelled'],
+};
+
+const list = computed(() => {
+  let r = orders;
+  if (tab.value !== 'all') { const a = tmap[tab.value]||[]; r = r.filter(o => a.includes(o.s)); }
+  if (keyword.value.trim()) { const kw = keyword.value.trim().toLowerCase(); r = r.filter(o => o.route.includes(kw)||o.car.includes(kw)); }
+  return r;
+});
+
+const back = () => uni.navigateBack();
+const detail = (o: O) => {
+  const url = o.t === 'charter' ? '/pages/trips/detail-charter' : '/pages/trips/detail-rental';
+  const params = [
+    `status=${o.s}`, `days=${o.dy}`, `car=${encodeURIComponent(o.car)}`,
+    `date=${encodeURIComponent(o.date)}`, `drv=${encodeURIComponent(o.drv)}`,
+    `ex=${o.ex}`, `no=P2026061000${Math.min(orders.indexOf(o)+1,9)}`,
+  ];
+  if (o.t === 'charter') {
+    const parts = o.route.split(' → ');
+    params.push(`origin=${encodeURIComponent(parts[0]||'')}`, `dest=${encodeURIComponent(parts[1]||'')}`,
+      `pkgTier=${encodeURIComponent(o.car.includes('·')?o.car.split('·')[1].trim():'尊享基础')}`,
+      `pkgSpec=日租 · 8h/100km`, `price=2088`);
+  } else {
+    const p = o.route.startsWith('取车：') ? o.route.slice(3) : o.route.replace('已还车：','');
+    params.push(`pickup=${encodeURIComponent(p)}`, `returnLoc=${encodeURIComponent('合肥滨湖会展中心')}`,
+      `price=1500`);
+  }
+  uni.navigateTo({ url: `${url}?${params.join('&')}` });
+};
+const cancelOrder = (o: O, i: number) => {
+  uni.showModal({ title:'取消订单', content:'确定要取消该订单吗？取消后将扣除相应违约金。', confirmText:'确认取消', cancelText:'暂不', confirmColor:'#FF4D4F',
+    success: (r: any) => { if(r.confirm){ o.s='cancelled'; o.reason='主动取消'; } } });
+};
+const goPay = (o: O) => { uni.showToast({ title:'跳转支付', icon:'none' }); };
+const takeCar = (o: O) => {
+  uni.showModal({ title:'确认取车', content:'确认已收到车辆并检查车况无误？', confirmText:'确认取车', cancelText:'稍后',
+    success: (r: any) => { if(r.confirm){ o.s='ongoing'; uni.showToast({ title:'已开始用车', icon:'none' }); } } });
+};
+const goInvoice = () => uni.navigateTo({ url:'/pages/invoice/index' });
+const review = () => uni.showToast({ title:'评价行程', icon:'none' });
+const redoOrder = (o: O) => { uni.navigateTo({ url: o.t==='charter'?'/pages/charter/index':'/pages/rental/index' }); };
 </script>
 
 <style lang="scss" scoped>
-.page {
-  min-height: 100vh;
-  background: #F5F5F5;
-}
+.root { min-height: 100vh; background: #F9F9F9; }
+.header { background: #F9F9F9; }
+.hbar { height: 56px; padding: 0 24px; display: flex; align-items: center; gap: 16px; }
+.hbar:active { opacity: 0.7; }
+.hicon { font-size: 24px; color: #000; }
+.htitle { font-size: 20px; font-weight: 700; color: #000; }
 
-/* ===== 页面头部 ===== */
-.page-header {
-  background: #FFFFFF;
-  padding: 16px 24px 4px;
-}
+.body { padding: 20px 24px 40px; }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #000000;
-}
+.search { height: 56px; background: #F2F2F2; border-radius: 24px; padding: 0 20px; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.sicon { font-size: 20px; color: #86868B; }
+.sinput { flex: 1; background: transparent; border: none; font-size: 15px; color: #1A1C1C; height: 100%; }
+.sph { color: #86868B; }
 
-/* ===== Tab 栏 ===== */
-.tab-bar {
-  white-space: nowrap;
-  padding: 16px 24px;
-  background: #FFFFFF;
-}
+.tabs { white-space: nowrap; margin-bottom: 20px; display: flex; }
+.tab { display: inline-block; padding: 0 16px 12px; border-bottom: 2px solid transparent; }
+.tab.on { border-color: #000; }
+.tt { font-size: 13px; font-weight: 500; color: #86868B; }
+.tab.on .tt { color: #000; font-weight: 700; }
 
-.tab-item {
-  display: inline-block;
-  font-size: 14px;
-  color: #86868B;
-  padding: 8px 18px;
-  margin-right: 8px;
-  border-radius: 20px;
-  background: #F2F2F2;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
+.cards { display: flex; flex-direction: column; gap: 20px; }
 
-.tab-item.active {
-  background: #000000;
-  color: #FFFFFF;
-}
+.card { background: #FFF; border: 1px solid #F2F2F2; border-radius: 32px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+.card:active { transform: scale(0.98); }
+.card.dim { opacity: 0.85; }
 
-/* ===== 卡片列表 ===== */
-.list {
-  padding: 16px 24px 40px;
-}
+.ch { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.ci { flex: 1; min-width: 0; }
+.cg { display: inline-block; font-size: 11px; padding: 4px 12px; border-radius: 9999px; margin-bottom: 8px; font-weight: 500; }
+.cg.gold { background: rgba(212,175,55,0.15); color: #D4AF37; }
+.cg.black { background: #000; color: #FFF; }
+.cr { font-size: 20px; font-weight: 600; color: #000; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs { font-size: 13px; font-weight: 600; flex-shrink: 0; margin-left: 12px; display: flex; align-items: center; gap: 4px; }
+.cs.er { color: #FF4D4F; }
+.cs.ok { color: #00B06B; }
+.cs.wn { color: #D97706; }
+.cs.bl { color: #0057FF; }
+.sdot { width: 6px; height: 6px; background: #00B06B; border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-.trip-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+.cb { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.ln { display: flex; align-items: center; gap: 8px; }
+.li { font-size: 18px; color: #86868B; }
+.lt { font-size: 15px; color: #86868B; }
 
-.trip-card {
-  background: #FFFFFF;
-  border-radius: 20px;
-  padding: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-}
+.al { padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.al.warn { background: rgba(217,119,6,0.06); }
+.al.ok { background: rgba(0,176,107,0.06); }
+.al.info { background: rgba(0,87,255,0.05); }
+.al.err { background: rgba(255,77,79,0.05); }
+.al.cancel { background: rgba(255,77,79,0.06); align-items: flex-start; }
+.ai { font-size: 18px; flex-shrink: 0; margin-top: 0; }
+.al.warn .ai { color: #D97706; }
+.al.ok .ai { color: #00B06B; }
+.al.info .ai { color: #0057FF; }
+.al.err .ai { color: #FF4D4F; }
+.al.cancel .ai { color: #93000A; }
+.at { font-size: 13px; color: #1A1C1C; }
+.al.warn .at { color: #92400E; }
+.al.ok .at { color: #065F46; }
+.al.info .at { color: #0057FF; }
+.al.err .at { color: #FF4D4F; }
+.al.cancel .at { color: #93000A; }
+.at.bld { font-weight: 600; display: block; }
+.at.sub { margin-top: 2px; opacity: 0.7; display: block; }
+.ar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.alf { display: flex; align-items: center; gap: 8px; }
+.ae { font-size: 20px; font-weight: 600; color: #FF4D4F; }
 
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
+.ca { display: flex; gap: 12px; }
+.btn { flex: 1; height: 48px; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; }
+.btn:active { opacity: 0.8; }
+.bf { background: #000; color: #FFF; }
+.bo { border: 1px solid #F2F2F2; color: #1A1C1C; }
+.bo.er { border-color: #FF4D4F; color: #FF4D4F; }
+.wf { flex: none; width: 100%; }
 
-.trip-tag {
-  font-size: 11px;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-weight: 500;
-}
-
-.trip-tag.charter {
-  background: rgba(212, 175, 55, 0.15);
-  color: #D4AF37;
-}
-
-.trip-tag.rental {
-  background: rgba(0, 0, 0, 0.08);
-  color: #000000;
-}
-
-.trip-status {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.trip-status.unpaid { color: #FF7D00; }
-.trip-status.extra { color: #F53F3F; }
-.trip-status.pending { color: #0057FF; }
-.trip-status.ongoing { color: #00B42A; }
-.trip-status.done { color: #86868B; }
-.trip-status.cancelled { color: #C9CDD4; }
-
-.trip-route {
-  font-size: 17px;
-  font-weight: 600;
-  color: #000000;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.trip-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: #86868B;
-  margin-bottom: 4px;
-}
-
-.trip-amount {
-  font-weight: 500;
-  color: #1D2129;
-}
-
-/* ===== 操作按钮 ===== */
-.trip-actions {
-  display: flex;
-  gap: 8px;
-  padding-top: 12px;
-  margin-top: 8px;
-  border-top: 1px solid #F2F2F2;
-}
-
-.action-btn {
-  flex: 1;
-  height: 40px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid #E5E6EB;
-  background: #FFFFFF;
-  color: #1D2129;
-  line-height: 40px;
-}
-
-.action-btn.primary {
-  background: #000000;
-  color: #FFFFFF;
-  border-color: #000000;
-}
-
-/* ===== 空状态 ===== */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80px 24px;
-}
-
-.empty-icon {
-  font-size: 48px;
-  color: #C9CDD4;
-  margin-bottom: 12px;
-}
-
-.empty-text {
-  font-size: 15px;
-  color: #C9CDD4;
-}
-
-.safe-bottom {
-  height: env(safe-area-inset-bottom, 0px);
-}
+.empty { display: flex; flex-direction: column; align-items: center; padding: 80px 0; }
+.eico { font-size: 48px; color: #86868B; margin-bottom: 16px; }
+.etx { font-size: 17px; color: #86868B; }
 </style>

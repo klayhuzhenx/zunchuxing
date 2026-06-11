@@ -26,7 +26,7 @@ export const mockOrders: Order[] = [
   // 包车订单
   {
     id: 'o1', orderNo: 'ZC20260608-001', type: 'charter', status: 'ongoing',
-    passengerName: '张先生', passengerPhone: '138****0000', passengerRole: '企业管理员',
+    passengerName: '张先生', passengerPhone: '138****0000', passengerRole: '企业管理员', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     startTime: '2026-06-08 07:00', endTime: '2026-06-09 18:00', days: 2,
     pickupAddress: '合肥南站东广场', dropoffAddress: '经开区石门路188号',
     passengerCount: 2, luggage: '2件',
@@ -35,77 +35,99 @@ export const mockOrders: Order[] = [
       { date: '06-09', timeRange: '08:00-18:00', vehiclePlate: '京A12345', vehicleModel: '奔驰V260L', driverName: '李师傅', driverPhone: '138****6666', status: 'not_started' },
     ],
     driverName: '李师傅', driverPhone: '138****6666', plateNo: '京A12345', carModel: '奔驰V260L',
-    baseFee: 4176, overtimeFee: 0, overmileageFee: 0, paidAmount: 4176, refundAmount: 0,
+    paymentMethod: 'enterprise_credit', baseFee: 4176, overtimeFee: 0, overmileageFee: 0, paidAmount: 4176, refundAmount: 0,
     createdAt: '2026-06-07 15:30', paymentTime: '2026-06-07 15:35',
   },
   {
     id: 'o2', orderNo: 'ZC20260605-001', type: 'charter', status: 'completed',
-    passengerName: '李女士', passengerPhone: '139****1111', passengerRole: '财务',
+    passengerName: '李女士', passengerPhone: '139****1111', passengerRole: '财务', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     startTime: '2026-06-05 09:00', endTime: '2026-06-05 18:00', days: 1,
     pickupAddress: '半岛酒店', dropoffAddress: '浦东机场T2',
     passengerCount: 1, luggage: '1件',
     driverName: '张师傅', driverPhone: '137****7777', plateNo: '沪B67890', carModel: '奥迪A8L',
-    baseFee: 3480, overtimeFee: 500, overmileageFee: 0, paidAmount: 3980, refundAmount: 0,
+    paymentMethod: 'enterprise_credit', baseFee: 3480, overtimeFee: 500, overmileageFee: 0, paidAmount: 3980, refundAmount: 0,
+    review: { driverRating: 5, vehicleRating: 5, serviceRating: 5, comment: '张师傅服务专业，准时到达，车辆整洁。' },
+    feeExtraDetail: {
+      overtimeDetails: [{ date: '2026-06-05', actualStart: '2026-06-05 09:00', actualEnd: '2026-06-05 19:00', totalMinutes: 600, packageMinutes: 540, excessMinutes: 60, rate: 100, amount: 100 }],
+      excessMileageDetails: [{ date: '2026-06-05', startMileage: 28500, endMileage: 28700, totalKm: 200, packageKm: 100, excessKm: 100, rate: 5, amount: 500 }],
+    },
     createdAt: '2026-06-04 10:00', paymentTime: '2026-06-04 10:05',
   },
   {
     id: 'o3', orderNo: 'ZC20260610-001', type: 'charter', status: 'pending_dispatch',
-    passengerName: '王先生', passengerPhone: '137****2222', passengerRole: '员工',
+    passengerName: '王先生', passengerPhone: '137****2222', passengerRole: '员工', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     startTime: '2026-06-10 08:00', endTime: '2026-06-12 18:00', days: 3,
     pickupAddress: '天鹅湖万达', dropoffAddress: '骆岗公园南门',
     passengerCount: 3, luggage: '3件',
-    baseFee: 6264, overtimeFee: 0, overmileageFee: 0, paidAmount: 6264, refundAmount: 0,
+    paymentMethod: 'alipay', baseFee: 6264, overtimeFee: 0, overmileageFee: 0, paidAmount: 6264, refundAmount: 0,
     createdAt: '2026-06-09 08:30', paymentTime: '2026-06-09 08:35',
   },
   {
     id: 'o4', orderNo: 'ZC20260601-001', type: 'charter', status: 'completed',
-    passengerName: '张先生', passengerPhone: '138****0000', passengerRole: '企业管理员',
+    passengerName: '张先生', passengerPhone: '138****0000', passengerRole: '企业管理员', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     startTime: '2026-06-01 08:00', endTime: '2026-06-01 18:00', days: 1,
     pickupAddress: '政务中心', dropoffAddress: '会展中心',
     passengerCount: 1, luggage: '0件',
     driverName: '李师傅', driverPhone: '138****6666', plateNo: '京A12345', carModel: '奔驰V260L',
-    baseFee: 2088, overtimeFee: 0, overmileageFee: 0, paidAmount: 2088, refundAmount: 0,
+    paymentMethod: 'enterprise_credit', baseFee: 2088, overtimeFee: 0, overmileageFee: 0, paidAmount: 2088, refundAmount: 0,
+    review: { driverRating: 5, vehicleRating: 5, serviceRating: 4, comment: '李师傅驾驶平稳，车内干净整洁。' },
     createdAt: '2026-05-31 16:00', paymentTime: '2026-05-31 16:10',
   },
   // 租车订单
   {
     id: 'o5', orderNo: 'ZC20260603-001', type: 'rental', status: 'completed',
-    passengerName: '赵女士', passengerPhone: '136****3333', passengerRole: '员工',
+    passengerName: '赵女士', passengerPhone: '136****3333', passengerRole: '员工', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     rentalStart: '2026-06-03', rentalEnd: '2026-06-05',
+    pickupAddress: '政务中心停车场', dropoffAddress: '翡翠路88号',
     pickupAddr: '政务中心停车场', returnAddr: '翡翠路88号',
     deliveryDriver: '赵师傅', deliveryDriverPhone: '138****8888',
     pickupDriver: '赵师傅', pickupDriverPhone: '138****8888',
     driverLicense: 'C1',
     driverName: '赵师傅', driverPhone: '138****8888', plateNo: '京A34567', carModel: '奥迪A6L',
-    baseFee: 4500, overtimeFee: 0, overmileageFee: 0, paidAmount: 4500, refundAmount: 0,
+    paymentMethod: 'wechat', baseFee: 4500, overtimeFee: 0, overmileageFee: 0, paidAmount: 4500, refundAmount: 0,
+    review: { driverRating: 5, vehicleRating: 4, serviceRating: 5, comment: '送车准时，车辆状态良好。' },
     createdAt: '2026-06-02 14:00', paymentTime: '2026-06-02 14:10',
   },
   {
     id: 'o6', orderNo: 'ZC20260607-001', type: 'rental', status: 'pending_dispatch',
-    passengerName: '刘女士', passengerPhone: '134****5555', passengerRole: '员工',
+    passengerName: '刘女士', passengerPhone: '134****5555', passengerRole: '员工', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     rentalStart: '2026-06-12', rentalEnd: '2026-06-13',
+    pickupAddress: '滨湖万达广场', dropoffAddress: '南京南站',
     pickupAddr: '滨湖万达广场', returnAddr: '南京南站',
-    baseFee: 3000, overtimeFee: 0, overmileageFee: 0, paidAmount: 3000, refundAmount: 0,
+    paymentMethod: 'enterprise_credit', baseFee: 3000, overtimeFee: 0, overmileageFee: 0, paidAmount: 3000, refundAmount: 0,
     createdAt: '2026-06-07 09:00', paymentTime: '2026-06-07 09:15',
   },
   {
     id: 'o7', orderNo: 'ZC20260528-001', type: 'charter', status: 'cancelled',
-    passengerName: '陈先生', passengerPhone: '135****4444', passengerRole: '员工',
+    passengerName: '陈先生', passengerPhone: '135****4444', passengerRole: '员工', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     startTime: '2026-05-28 07:00', endTime: '2026-05-28 18:00', days: 1,
     pickupAddress: '滨湖新区', dropoffAddress: '南京南站',
     passengerCount: 2, luggage: '2件',
     baseFee: 4176, overtimeFee: 0, overmileageFee: 0, paidAmount: 4176, refundAmount: 2088,
-    cancelReason: '行程变更',
+    paymentMethod: 'wechat', cancelReason: '行程变更',
     createdAt: '2026-05-27 10:00', paymentTime: '2026-05-27 10:05',
   },
   {
     id: 'o8', orderNo: 'ZC20260609-001', type: 'charter', status: 'pending_extra', subStatus: '待补款',
-    passengerName: '李女士', passengerPhone: '139****1111', passengerRole: '财务',
+    passengerName: '李女士', passengerPhone: '139****1111', passengerRole: '财务', userIdentity: 'enterprise_employee', enterpriseName: '腾讯科技',
     startTime: '2026-06-09 08:00', endTime: '2026-06-09 18:00', days: 1,
     pickupAddress: '半岛酒店', dropoffAddress: '浦东机场',
     passengerCount: 1, luggage: '1件',
     driverName: '王师傅', driverPhone: '139****9999', plateNo: '沪C11111', carModel: '宝马7系',
-    baseFee: 3480, overtimeFee: 500, overmileageFee: 200, paidAmount: 3480, refundAmount: 0,
+    paymentMethod: 'alipay', baseFee: 3480, overtimeFee: 500, overmileageFee: 200, paidAmount: 3480, refundAmount: 0,
+    feeExtraDetail: {
+      waitFee: { driverArriveTime: '2026-06-09 07:45', driverArriveAddr: '浦东机场T2到达层', passengerPickupTime: '2026-06-09 08:15', waitMinutes: 30, freeMinutes: 15, excessMinutes: 15, rate: 1, amount: 15 },
+      overtimeDetails: [
+        { date: '2026-06-09', actualStart: '2026-06-09 08:15', actualEnd: '2026-06-09 19:00', totalMinutes: 645, packageMinutes: 600, excessMinutes: 45, rate: 100, amount: 75 },
+      ],
+      excessMileageDetails: [
+        { date: '2026-06-09', startMileage: 28500, endMileage: 28700, totalKm: 200, packageKm: 100, excessKm: 100, rate: 5, amount: 500 },
+      ],
+      otherFees: [
+        { id: 'of1', type: '高速费', amount: 50, voucherTime: '2026-06-09 10:30' },
+        { id: 'of2', type: '停车费', amount: 30, voucherTime: '2026-06-09 14:00' },
+      ],
+    },
     createdAt: '2026-06-08 20:00', paymentTime: '2026-06-08 20:10',
   },
 ];
@@ -162,8 +184,8 @@ export function getBillDetails(month: string): { details: BillDetailItem[]; refu
 // ===== 发票 =====
 export const mockInvoices: Invoice[] = [
   { id: 'inv1', invoiceNo: 'INV202606-0001', type: '企业发票', relatedOrders: 'ZC20260605-001', amount: 3980, applicant: '李女士', appliedAt: '2026-06-06 10:00', issuedAt: '2026-06-07 14:00', status: 'issued', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'finance@tencent.com' },
-  { id: 'inv2', invoiceNo: 'INV202606-0002', type: '企业发票', relatedOrders: 'ZC20260608-001, ZC20260610-001', amount: 10440, applicant: '张先生', appliedAt: '2026-06-09 11:00', status: 'pending_approval', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'admin@tencent.com' },
-  { id: 'inv3', invoiceNo: 'INV202605-0001', type: '企业发票', relatedOrders: 'ZC20260528-001', amount: 4176, applicant: '陈先生', appliedAt: '2026-05-29 09:00', status: 'rejected', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'chen@tencent.com', rejectReason: '发票信息有误，请核对后重新提交' },
+  { id: 'inv2', invoiceNo: 'INV202606-0002', type: '企业发票', relatedOrders: 'ZC20260608-001, ZC20260610-001', amount: 10440, applicant: '张先生', appliedAt: '2026-06-09 11:00', status: 'processing', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'admin@tencent.com' },
+  { id: 'inv3', invoiceNo: 'INV202605-0001', type: '企业发票', relatedOrders: 'ZC20260528-001', amount: 4176, applicant: '陈先生', appliedAt: '2026-05-29 09:00', status: 'cancelled', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'chen@tencent.com', rejectReason: '发票信息有误，请核对后重新提交' },
 ];
 
 // ===== 工作台 =====
@@ -181,4 +203,28 @@ export const mockWeekTrend = [
   { date: '06-07', orders: 5 },
   { date: '06-08', orders: 3 },
   { date: '06-09', orders: 4 },
+];
+
+// ===== 30日趋势 =====
+export const mockMonthTrend = [
+  { date: '05-11', orders: 2 }, { date: '05-12', orders: 4 }, { date: '05-13', orders: 3 },
+  { date: '05-14', orders: 5 }, { date: '05-15', orders: 2 }, { date: '05-16', orders: 6 },
+  { date: '05-17', orders: 4 }, { date: '05-18', orders: 3 }, { date: '05-19', orders: 7 },
+  { date: '05-20', orders: 5 }, { date: '05-21', orders: 3 }, { date: '05-22', orders: 4 },
+  { date: '05-23', orders: 2 }, { date: '05-24', orders: 6 }, { date: '05-25', orders: 5 },
+  { date: '05-26', orders: 4 }, { date: '05-27', orders: 3 }, { date: '05-28', orders: 5 },
+  { date: '05-29', orders: 2 }, { date: '05-30', orders: 4 }, { date: '05-31', orders: 3 },
+  { date: '06-01', orders: 2 }, { date: '06-02', orders: 3 }, { date: '06-03', orders: 5 },
+  { date: '06-04', orders: 2 }, { date: '06-05', orders: 4 }, { date: '06-06', orders: 1 },
+  { date: '06-07', orders: 5 }, { date: '06-08', orders: 3 }, { date: '06-09', orders: 4 },
+];
+
+// ===== 关联出车单（企业视角） =====
+export const driverOrdersForEnterprise = [
+  { id: 'do1', driverOrderNo: 'DR20260608-001', orderNo: 'ZC20260608-001', driverName: '李师傅', driverPhone: '138****6666', plateNo: '京A12345', carModel: '奔驰V260L', tripDate: '2026-06-08', plannedTimeRange: '08:00-18:00', status: 'completed' },
+  { id: 'do2', driverOrderNo: 'DR20260609-002', orderNo: 'ZC20260608-001', driverName: '李师傅', driverPhone: '138****6666', plateNo: '京A12345', carModel: '奔驰V260L', tripDate: '2026-06-09', plannedTimeRange: '08:00-18:00', status: 'in_progress' },
+  { id: 'do3', driverOrderNo: 'DR20260605-001', orderNo: 'ZC20260605-001', driverName: '张师傅', driverPhone: '137****7777', plateNo: '沪B67890', carModel: '奥迪A8L', tripDate: '2026-06-05', plannedTimeRange: '09:00-18:00', status: 'completed' },
+  { id: 'do4', driverOrderNo: 'DR20260603-001', orderNo: 'ZC20260603-001', driverName: '赵师傅', driverPhone: '138****8888', plateNo: '京A34567', carModel: '奥迪A6L', tripDate: '2026-06-03', plannedTimeRange: '09:00-09:30', status: 'completed' },
+  { id: 'do5', driverOrderNo: 'DR20260609-003', orderNo: 'ZC20260609-001', driverName: '王师傅', driverPhone: '139****9999', plateNo: '沪C11111', carModel: '宝马7系', tripDate: '2026-06-09', plannedTimeRange: '08:00-18:00', status: 'pending_settlement' },
+  { id: 'do6', driverOrderNo: 'DR20260601-001', orderNo: 'ZC20260601-001', driverName: '李师傅', driverPhone: '138****6666', plateNo: '京A12345', carModel: '奔驰V260L', tripDate: '2026-06-01', plannedTimeRange: '08:00-18:00', status: 'completed' },
 ];

@@ -126,7 +126,7 @@ const STORAGE_KEY_HISTORY = 'address-history';
 const statusBarHeight = ref(0);
 const keyword = ref('');
 const autoFocus = ref(false);
-const field = ref<'origin' | 'destination'>('destination');
+const field = ref<string>('destination');
 
 /* 模拟地址库 */
 const addressLib: AddrItem[] = [
@@ -155,12 +155,12 @@ onMounted(() => {
 });
 
 onLoad((opts: Record<string, string> | undefined) => {
-  if (opts?.field === 'origin' || opts?.field === 'destination') {
+  /* 接受任意 field 值（origin/destination/rental-pickup/rental-return 等） */
+  if (opts?.field) {
     field.value = opts.field;
   } else {
-    /* 兼容 storage 方式 */
     const saved = uni.getStorageSync(STORAGE_KEY_FIELD);
-    if (saved === 'origin' || saved === 'destination') {
+    if (saved) {
       field.value = saved;
     }
   }

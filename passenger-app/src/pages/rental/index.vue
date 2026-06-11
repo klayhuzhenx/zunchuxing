@@ -68,40 +68,6 @@
         </view>
       </view>
 
-      <!-- 服务说明 -->
-      <view class="section">
-        <view class="service-card">
-          <view class="service-head">
-            <text class="material-symbols-outlined service-head-icon ms-fill">verified</text>
-            <text class="service-head-title">租车服务说明</text>
-          </view>
-          <view class="service-list">
-            <view class="service-item">
-              <text class="material-symbols-outlined service-item-icon">local_shipping</text>
-              <view class="service-item-text">
-                <text class="service-item-title">专属送取车服务</text>
-                <text class="service-item-desc">司机将车辆送至取车位置，租期结束后到还车位置取回</text>
-              </view>
-            </view>
-            <view class="service-item">
-              <text class="material-symbols-outlined service-item-icon">badge</text>
-              <view class="service-item-text">
-                <text class="service-item-title">需上传驾驶证</text>
-                <text class="service-item-desc">驾驶人本人 C1 及以上有效驾照，订单确认页提交</text>
-              </view>
-            </view>
-            <view class="service-item">
-              <text class="material-symbols-outlined service-item-icon">stars</text>
-              <view class="service-item-text">
-                <text class="service-item-title">尊界车主专享</text>
-                <text class="service-item-desc">支持尊享权益抵扣，最长可租 30 天</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <view class="bottom-spacer" />
     </scroll-view>
 
     <!-- Footer -->
@@ -126,12 +92,8 @@
         </view>
       </view>
 
-      <view class="pkg-image">
-        <view class="pkg-image-bg" :style="{ background: cars[pkgCarIdx].imageGradient }" />
-        <text class="pkg-image-label">{{ cars[pkgCarIdx].fullName }}</text>
-      </view>
 
-      <view class="pkg-price-tag">
+      <view class="pkg-price-tag pkg-price-tag-prominent">
         <text class="pkg-price-text">¥{{ cars[pkgCarIdx].dayPrice.toLocaleString() }} / 天 · 含 {{ cars[pkgCarIdx].kmPerDay }}km</text>
       </view>
 
@@ -690,73 +652,6 @@ const goConfirm = () => {
   color: #5D5F5F;
 }
 
-/* ===== 服务说明 ===== */
-.service-card {
-  background: #FFFFFF;
-  border: 1px solid #F2F2F2;
-  border-radius: 32px;
-  padding: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-}
-
-.service-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.service-head-icon {
-  font-size: 22px;
-  color: #D4AF37;
-}
-
-.service-head-title {
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-  color: #000000;
-}
-
-.service-list {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.service-item {
-  display: flex;
-  gap: 16px;
-}
-
-.service-item-icon {
-  font-size: 24px;
-  color: #5D5F5F;
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.service-item-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.service-item-title {
-  font-size: 17px;
-  line-height: 26px;
-  font-weight: 500;
-  color: #000000;
-}
-
-.service-item-desc {
-  font-size: 11px;
-  line-height: 16px;
-  color: #86868B;
-}
-
-/* ===== Footer ===== */
 .footer {
   position: fixed;
   bottom: 0;
@@ -825,44 +720,24 @@ const goConfirm = () => {
   font-weight: 700;
 }
 
-.pkg-image {
-  position: relative;
-  width: 100%;
-  height: 144px;
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.pkg-image-bg {
-  position: absolute;
-  inset: 0;
-}
-
-.pkg-image-label {
-  position: absolute;
-  bottom: 12px;
-  left: 16px;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.05em;
-}
-
 .pkg-price-tag {
-  display: inline-block;
-  padding: 8px 16px;
-  background: #F2F2F2;
-  border-radius: 9999px;
-  margin-bottom: 16px;
+  display: block;
+  padding: 20px;
+  background: #000;
+  border-radius: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.pkg-price-tag-prominent {
+  margin-bottom: 20px;
 }
 
 .pkg-price-text {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  color: #000000;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  color: #FFF;
 }
 
 .pkg-row {

@@ -32,11 +32,11 @@
           <view class="route-info">
             <view class="route-row">
               <text class="route-label">出发地</text>
-              <text class="route-text">上海市浦东国际机场 T2</text>
+              <text class="route-text">{{ form.origin || '待选择' }}</text>
             </view>
             <view class="route-row">
               <text class="route-label">目的地</text>
-              <text class="route-text">杭州市西湖区灵隐路 1 号</text>
+              <text class="route-text">{{ form.destination || '待选择' }}</text>
             </view>
           </view>
         </view>
@@ -301,11 +301,17 @@ const onAddPassenger = () => {
 const Date_safe = '202606098854';
 const orderNo = computed(() => `ZC${Date_safe}${carIdx.value}${pkgId.value.replace(/-/g, '').slice(0, 2).toUpperCase()}`);
 
+// P4-04：起止点从表单传递
+const form = ref({ origin: '', destination: '' });
+
 onLoad((opts: Record<string, string> | undefined) => {
   if (opts) {
     if (opts.carIdx !== undefined) carIdx.value = parseInt(opts.carIdx, 10) || 0;
     if (opts.pkgId) pkgId.value = opts.pkgId;
     if (opts.days) days.value = parseInt(opts.days, 10) || 1;
+    // P4-04：从 query 参数读取地址（后续接入地图选点后通过 query 传递完整地址）
+    if (opts.origin) form.value.origin = decodeURIComponent(opts.origin);
+    if (opts.destination) form.value.destination = decodeURIComponent(opts.destination);
   }
 });
 
@@ -355,6 +361,7 @@ const buildSuccessUrl = (status: 'paid' | 'pending') => {
 /* 拼装跳转 pay 页面参数 */
 const buildPayUrl = () => {
   const params = [
+    `source=charter`,
     `method=${payMethod.value}`,
     `total=${encodeURIComponent(totalText.value)}`,
     `orderNo=${orderNo.value}`,

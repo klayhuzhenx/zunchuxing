@@ -3,7 +3,7 @@ import {
   Card, Table, Tag, Button, Input, Select, Space, Tabs, Drawer, Descriptions,
   Timeline, Empty, Message, Modal, DatePicker,
 } from '@arco-design/web-react';
-import { IconSearch } from '@arco-design/web-react/icon';
+import { IconSearch, IconStar, IconStarFill } from '@arco-design/web-react/icon';
 import { orders, driverOrders } from '../../data/mock';
 import type { Order, OrderStatus, OrderType, PaymentMethod } from '../../types';
 import DispatchModal from '../../components/DispatchModal';
@@ -26,7 +26,7 @@ const statusMap: Record<OrderStatus, { label: string; color: string }> = {
   unpaid: { label: '待支付', color: 'orange' },
   pending_dispatch: { label: '待派车', color: 'red' },
   pending_start: { label: '待开始', color: 'arcoblue' },
-  ongoing: { label: '行程中', color: 'cyan' },
+  ongoing: { label: '进行中', color: 'cyan' },
   pending_extra: { label: '待补款', color: 'orangered' },
   completed: { label: '已完成', color: 'green' },
   cancelled: { label: '已取消', color: 'gray' },
@@ -48,8 +48,8 @@ const driverOrderStatusMap: Record<string, { label: string; color: string }> = {
 
 const statusTabs = [
   { key: 'all', label: '全部' }, { key: 'unpaid', label: '待支付' },
-  { key: 'pending_dispatch', label: '待派车' }, { key: 'pending_start', label: '待开始' },
-  { key: 'ongoing', label: '行程中' }, { key: 'completed', label: '已完成' },
+  { key: 'pending_start', label: '待开始' },
+  { key: 'ongoing', label: '进行中' }, { key: 'completed', label: '已完成' },
   { key: 'cancelled', label: '已取消' },
 ];
 
@@ -58,6 +58,7 @@ export default function OrderList() {
   const [activeTab, setActiveTab] = useState('all');
   const [keyword, setKeyword] = useState('');
   const [payFilter, setPayFilter] = useState<string[]>([]);
+  const [subStatusFilter, setSubStatusFilter] = useState<string[]>([]);
   const [tripDateRange, setTripDateRange] = useState<[string, string] | null>(null);
   const [orderDateRange, setOrderDateRange] = useState<[string, string] | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -68,8 +69,16 @@ export default function OrderList() {
   const filtered = useMemo(() => {
     let result = data.filter(o => o.type === orderType);
     if (activeTab !== 'all') {
-      if (activeTab === 'unpaid') result = result.filter(o => o.status === 'unpaid' || o.status === 'pending_extra');
-      else result = result.filter(o => o.status === activeTab);
+      if (activeTab === 'unpaid') {
+        // 子状态筛选：默认含「待支付」+「待补款」；勾选时仅展示选中
+        if (subStatusFilter.length > 0) {
+          result = result.filter(o => subStatusFilter.includes(o.status));
+        } else {
+          result = result.filter(o => o.status === 'unpaid' || o.status === 'pending_extra');
+        }
+      } else if (activeTab === 'pending_start') {
+        result = result.filter(o => o.status === 'pending_dispatch' || o.status === 'pending_start');
+      } else result = result.filter(o => o.status === activeTab);
     }
     if (keyword) {
       const kw = keyword.toLowerCase();
@@ -94,15 +103,45 @@ export default function OrderList() {
       result = result.filter(o => { const d = o.createdAt.split(' ')[0]; return d >= s && d <= e; });
     }
     return result;
-  }, [data, orderType, activeTab, keyword, payFilter, tripDateRange, orderDateRange]);
+  }, [data, orderType, activeTab, keyword, payFilter, subStatusFilter, tripDateRange, orderDateRange]);
 
   const openDetail = (r: Order) => { setSelectedOrder(r); setDrawerVisible(true); };
   const openDispatch = (r: Order) => { setSelectedOrder(r); setDispatchVisible(true); };
 
   const handleDispatchComplete = (orderId: string, schedules: { date: string; timeRange: string; vehiclePlate: string; vehicleModel: string; driverName?: string; driverPhone?: string }[]) => {
+    const targetOrder = data.find(o => o.id === orderId);
+    const isReassign = targetOrder && (targetOrder.status === 'pending_start' || targetOrder.status === 'ongoing');
+
+    // 改派：作废原关联司机出车单（pending_start/ongoing 之外的不动），按新日程生成新出车单
+    if (isReassign) {
+      const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+      // 1. 把现有未结束的出车单标为 cancelled
+      driverOrders.forEach(d => {
+        if (d.orderId === orderId && (d.status === 'not_started' || d.status === 'in_progress')) {
+          d.status = 'cancelled';
+        }
+      });
+      // 2. 按新日程生成新出车单（追加到全局 mock 数组）
+      schedules.forEach((s, idx) => {
+        driverOrders.push({
+          id: `D-RE-${orderId}-${idx}-${Date.now()}`,
+          driverOrderNo: `DR${s.date.replace(/-/g, '')}-${String(idx + 1).padStart(4, '0')}-RE`,
+          orderId, orderNo: targetOrder.orderNo,
+          type: targetOrder.type,
+          driverName: s.driverName || '', driverPhone: s.driverPhone || '',
+          plateNo: s.vehiclePlate, carModel: s.vehicleModel,
+          passengerName: targetOrder.passengerName, passengerPhone: targetOrder.passengerPhone,
+          tripDate: s.date, plannedTimeRange: s.timeRange,
+          status: 'not_started', dispatchTime: now,
+          pickupAddress: targetOrder.pickupAddress, dropoffAddress: targetOrder.dropoffAddress,
+        });
+      });
+    }
+
     const firstS = schedules[0];
     setData(data.map(o => o.id === orderId ? { ...o, status: 'pending_start' as OrderStatus, driverName: firstS.driverName, plateNo: firstS.vehiclePlate, carModel: firstS.vehicleModel, schedules } : o));
-    setDispatchVisible(false); Message.success('派车成功');
+    setDispatchVisible(false);
+    Message.success(isReassign ? '改派成功，原司机出车单已作废' : '派车成功');
   };
 
   const isCharter = orderType === 'charter';
@@ -170,7 +209,9 @@ export default function OrderList() {
             onChange={(_, ds) => setTripDateRange(ds && ds[0] && ds[1] ? ds as [string, string] : null)} />
           <RangePicker style={{ width: 260 }} placeholder={['下单时间起', '下单时间止']}
             onChange={(_, ds) => setOrderDateRange(ds && ds[0] && ds[1] ? ds as [string, string] : null)} />
-          {activeTab === 'unpaid' && <Select placeholder="子状态" style={{ width: 140 }} mode="multiple" options={[{ label: '待支付', value: 'unpaid' }, { label: '待补款', value: 'pending_extra' }]} />}
+          {activeTab === 'unpaid' && <Select placeholder="子状态" style={{ width: 140 }} mode="multiple"
+            value={subStatusFilter} onChange={setSubStatusFilter}
+            options={[{ label: '待支付', value: 'unpaid' }, { label: '待补款', value: 'pending_extra' }]} />}
           <div style={{ flex: 1 }} />
         </Space>
       </Card>
@@ -206,25 +247,18 @@ function OrderDetailPanel({ order }: { order: Order }) {
 
   return (
     <div>
-      {/* 基本信息（不展示状态，避免重复） */}
+      {/* 基本信息（含下单人） */}
       <Card title="基本信息" style={{ marginBottom: 16 }} size="small">
         <Descriptions column={2} size="small" data={[
           { label: '订单号', value: order.orderNo },
           { label: '订单类型', value: <Tag color={isCharter ? 'arcoblue' : 'purple'} size="small">{isCharter ? '包车出行' : '租车出行'}</Tag> },
           ...(order.status === 'pending_extra' ? [{ label: '子状态', value: <Tag color="orangered" size="small">待补款</Tag> }] : []),
-          { label: '下单时间', value: order.createdAt },
-        ]} />
-      </Card>
-
-      {/* 下单人信息 */}
-      <Card title="下单人信息" style={{ marginBottom: 16 }} size="small">
-        <Descriptions column={2} size="small" data={[
-          { label: '姓名', value: order.passengerName || '—' },
+          { label: '下单人', value: order.passengerName || '—' },
           { label: '手机号', value: order.passengerPhone },
           { label: '用户身份', value: order.userIdentity === 'enterprise_employee' ? <Tag color='arcoblue' size='small'>企业员工</Tag> : <Tag color='green' size='small'>个人</Tag> },
           ...(order.userIdentity === 'enterprise_employee' ? [{ label: '下单企业', value: order.enterpriseName || '-' }] : []),
-          ...(order.enterpriseOrderName ? [{ label: '企业订单名称', value: order.enterpriseOrderName }] : []),
           { label: '支付方式', value: payMethodMap[order.paymentMethod].label },
+          { label: '下单时间', value: order.createdAt },
         ]} />
       </Card>
 
@@ -296,15 +330,30 @@ function OrderDetailPanel({ order }: { order: Order }) {
         ]} />
       </Card>
 
-      {/* 时间节点 */}
-      <Card title="时间节点" style={{ marginBottom: 16 }} size="small">
-        <Timeline>
-          <Timeline.Item label={order.createdAt}>下单</Timeline.Item>
-          {order.paymentTime && <Timeline.Item label={order.paymentTime}>支付</Timeline.Item>}
-          {order.schedules && order.schedules.length > 0 && <Timeline.Item label="--">派车</Timeline.Item>}
-          {order.status === 'ongoing' && <Timeline.Item label="--" dotColor="cyan">行程中</Timeline.Item>}
-          {order.status === 'completed' && <Timeline.Item label="--" dotColor="green">已完成</Timeline.Item>}
-          {order.status === 'cancelled' && <Timeline.Item label="--" dotColor="gray">已取消</Timeline.Item>}
+      {/* 订单动态（按状态展示完整时间线） */}
+      <Card title="订单动态" style={{ marginBottom: 16 }} size="small">
+        <Timeline reverse>
+          <Timeline.Item label={order.createdAt}>订单已提交</Timeline.Item>
+          {order.paymentTime && <Timeline.Item label={order.paymentTime} dotColor="#00B42A">支付成功</Timeline.Item>}
+          {order.schedules && order.schedules.length > 0 && (
+            <Timeline.Item label={order.schedules[0].date} dotColor="#165DFF">
+              已派车 — {order.schedules[0].vehicleModel} · {order.schedules[0].vehiclePlate} / 司机 {order.schedules[0].driverName}
+            </Timeline.Item>
+          )}
+          {(order.status === 'ongoing' || order.status === 'completed' || order.status === 'pending_extra') && (
+            <Timeline.Item label={order.startTime || '--'} dotColor="cyan">行程开始</Timeline.Item>
+          )}
+          {order.status === 'completed' && (
+            <Timeline.Item label={order.endTime || '--'} dotColor="green">行程结束</Timeline.Item>
+          )}
+          {order.status === 'pending_extra' && (
+            <Timeline.Item label={order.endTime || '--'} dotColor="#F53F3F">
+              行程结束 — 待补款 ¥{(order.overtimeFee + order.overmileageFee).toLocaleString()}
+            </Timeline.Item>
+          )}
+          {order.status === 'cancelled' && (
+            <Timeline.Item label="--" dotColor="gray">订单已取消{order.internalNote ? ` — ${order.internalNote}` : ''}</Timeline.Item>
+          )}
         </Timeline>
       </Card>
 
@@ -338,6 +387,18 @@ function OrderDetailPanel({ order }: { order: Order }) {
           ]} />
         </Card>
       )}
+
+      {/* 操作日志 */}
+      <Card title="操作日志" style={{ marginBottom: 16 }} size="small">
+        <Timeline>
+          <Timeline.Item label={order.createdAt}>系统 · 创建订单</Timeline.Item>
+          {order.paymentTime && <Timeline.Item label={order.paymentTime}>系统 · 支付确认</Timeline.Item>}
+          {order.schedules && order.schedules.length > 0 && (
+            <Timeline.Item label={order.schedules[0].date}>张管理 · 派车（{order.schedules[0].vehiclePlate} / {order.schedules[0].driverName}）</Timeline.Item>
+          )}
+          {order.internalNote && <Timeline.Item label="--">运营 · 添加内部备注</Timeline.Item>}
+        </Timeline>
+      </Card>
 
     </div>
   );

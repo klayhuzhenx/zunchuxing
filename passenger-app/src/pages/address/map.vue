@@ -116,7 +116,7 @@ type AddrItem = {
 const STORAGE_KEY_RESULT = 'address-pick-result';
 
 const statusBarHeight = ref(0);
-const field = ref<'origin' | 'destination'>('destination');
+const field = ref<string>('destination');
 
 /* 模拟附近候选 */
 const candidates = ref<AddrItem[]>([
@@ -137,7 +137,7 @@ onMounted(() => {
 });
 
 onLoad((opts: Record<string, string> | undefined) => {
-  if (opts?.field === 'origin' || opts?.field === 'destination') {
+  if (opts?.field) {
     field.value = opts.field;
   }
 });

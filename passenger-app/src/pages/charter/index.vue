@@ -65,25 +65,6 @@
         </view>
       </view>
 
-      <!-- 尊崇礼遇 -->
-      <view class="section">
-        <view class="privilege-card">
-          <text class="privilege-title">尊崇礼遇</text>
-          <view class="privilege-list">
-            <view class="privilege-item">
-              <text class="material-symbols-outlined privilege-icon ms-fill">verified</text>
-              <text class="privilege-text">金牌管家式司机服务</text>
-            </view>
-            <view class="privilege-item">
-              <text class="material-symbols-outlined privilege-icon ms-fill">security</text>
-              <text class="privilege-text">千万级乘客意外保障险</text>
-            </view>
-          </view>
-          <view class="privilege-glow" />
-        </view>
-      </view>
-
-      <view class="bottom-spacer" />
     </scroll-view>
 
     <!-- 底部按钮 -->
@@ -110,55 +91,7 @@
       </view>
 
       <!-- 当前车型小图 -->
-      <view class="pkg-image">
-        <view class="pkg-image-bg" :style="{ background: cars[pkgCarIdx].imageGradient }" />
-        <text class="pkg-image-label">{{ cars[pkgCarIdx].fullName }}</text>
-      </view>
-
       <!-- 套餐 grid 3列x2行 -->
-      <view class="pkg-grid">
-        <view
-          v-for="pkg in cars[pkgCarIdx].packages"
-          :key="pkg.id"
-          class="pkg-item"
-          :class="{ active: selectedPkgId === pkg.id }"
-          @click="selectPkg(pkg)"
-        >
-          <text class="pkg-tier">{{ pkg.tier }}</text>
-          <text class="pkg-spec">{{ pkg.spec }}</text>
-          <text class="pkg-price">¥{{ pkg.price }}</text>
-        </view>
-      </view>
-
-      <!-- 包含权益 -->
-      <view class="pkg-section-title">包含权益</view>
-      <view class="amenity-chips">
-        <view class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">local_drink</text>
-          <text class="chip-text">免费饮用水</text>
-        </view>
-        <view class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">wifi</text>
-          <text class="chip-text">车载 WiFi</text>
-        </view>
-        <view class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">layers</text>
-          <text class="chip-text">纸巾湿巾</text>
-        </view>
-        <view v-if="hasAmenityTea" class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">restaurant</text>
-          <text class="chip-text">精致茶点</text>
-        </view>
-        <view v-if="hasAmenityChampagne" class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">celebration</text>
-          <text class="chip-text">香槟礼遇</text>
-        </view>
-        <view class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">face</text>
-          <text class="chip-text">专属管家</text>
-        </view>
-      </view>
-
       <!-- 日期 + 天数 -->
       <view class="pkg-row">
         <view class="pkg-col">
@@ -179,6 +112,49 @@
               <text class="material-symbols-outlined">add</text>
             </view>
           </view>
+        </view>
+      </view>
+
+      <!-- 套餐选择（按 tier 分组，两列并排） -->
+      <view class="pkg-group-list">
+        <view
+          v-for="group in pkgGroups"
+          :key="group.tier"
+          class="pkg-group"
+        >
+          <text class="pkg-group-tier">{{ group.tier }}</text>
+          <view class="pkg-group-row">
+            <view
+              v-for="pkg in group.pkgs"
+              :key="pkg.id"
+              class="pkg-card"
+              :class="{ active: selectedPkgId === pkg.id }"
+              @click="selectPkg(pkg)"
+            >
+              <text class="pkg-card-duration" :class="{ 'is-half': pkg.duration === 'half' }">{{ pkg.duration === 'half' ? '半日租' : '日租' }}</text>
+              <text class="pkg-card-spec">{{ pkg.duration === 'half' ? '4h' : '8h' }} / {{ pkg.duration === 'half' ? '50km' : '100km' }}</text>
+              <text class="pkg-card-price">¥{{ pkg.price }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="pkg-section-title">服务权益</view>
+      <view class="amenity-chips">
+        <view class="amenity-chip">
+          <text class="material-symbols-outlined chip-icon">layers</text>
+          <text class="chip-text">纸巾湿巾</text>
+        </view>
+        <view v-if="hasAmenityTea" class="amenity-chip">
+          <text class="material-symbols-outlined chip-icon">restaurant</text>
+          <text class="chip-text">精致茶点</text>
+        </view>
+        <view v-if="hasAmenityChampagne" class="amenity-chip">
+          <text class="material-symbols-outlined chip-icon">celebration</text>
+          <text class="chip-text">香槟礼遇</text>
+        </view>
+        <view class="amenity-chip">
+          <text class="material-symbols-outlined chip-icon">face</text>
+          <text class="chip-text">专属管家</text>
         </view>
       </view>
 
@@ -404,6 +380,21 @@ const selectedPkg = computed(() =>
 const totalText = computed(() => {
   const total = selectedPkg.value.price * form.value.days;
   return total.toLocaleString();
+});
+
+/* 套餐按 tier 分组 */
+const pkgGroups = computed(() => {
+  const pkgs = cars.value[pkgCarIdx.value].packages;
+  const order = ["尊享基础", "尊荣高级", "尊御顶级"];
+  const map = new Map<string, typeof pkgs>();
+  pkgs.forEach((p) => {
+    if (!map.has(p.tier)) map.set(p.tier, []);
+    map.get(p.tier)!.push(p);
+  });
+  return order.filter((t) => map.has(t)).map((tier) => ({
+    tier,
+    pkgs: map.get(tier)!,
+  }));
 });
 
 /* 顶级套餐附加权益 */
@@ -740,61 +731,6 @@ const goConfirm = () => {
   text-align: center;
 }
 
-/* ============ 尊崇礼遇 ============ */
-.privilege-card {
-  position: relative;
-  background: #000000;
-  border-radius: 32px;
-  padding: 20px;
-  overflow: hidden;
-}
-
-.privilege-title {
-  position: relative;
-  z-index: 1;
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-  color: #FFFFFF;
-  margin-bottom: 12px;
-}
-
-.privilege-list {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.privilege-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.privilege-icon {
-  font-size: 20px;
-  color: #D4AF37;
-}
-
-.privilege-text {
-  font-size: 15px;
-  line-height: 22px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.privilege-glow {
-  position: absolute;
-  right: -20px;
-  top: -20px;
-  width: 160px;
-  height: 160px;
-  background: rgba(0, 87, 255, 0.20);
-  border-radius: 50%;
-  filter: blur(60px);
-}
-
 /* ============ Footer 按钮 ============ */
 .footer {
   position: fixed;
@@ -867,78 +803,73 @@ const goConfirm = () => {
   font-weight: 700;
 }
 
-.pkg-image {
-  position: relative;
-  width: 100%;
-  height: 112px;
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.pkg-image-bg {
-  position: absolute;
-  inset: 0;
-}
-
-.pkg-image-label {
-  position: absolute;
-  bottom: 12px;
-  left: 16px;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.05em;
-}
-
-.pkg-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+.pkg-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-bottom: 24px;
 }
 
-.pkg-item {
+.pkg-group { }
+
+.pkg-group-tier {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.pkg-group-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pkg-card {
   background: #F2F2F2;
   border: 2px solid transparent;
-  border-radius: 20px;
-  padding: 12px 8px;
+  border-radius: 16px;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 4px;
+  gap: 3px;
   transition: all 0.15s ease;
 }
 
-.pkg-item.active {
+.pkg-card.active {
   background: #FFFFFF;
   border-color: #000000;
 }
 
-.pkg-tier {
+.pkg-card-duration {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #000000;
+}
+
+
+.pkg-card-spec {
   font-size: 11px;
   line-height: 16px;
   font-weight: 500;
   color: #5D5F5F;
 }
 
-.pkg-spec {
-  font-size: 9px;
-  line-height: 14px;
-  color: #86868B;
-}
-
-.pkg-price {
+.pkg-card-price {
   font-size: 16px;
   line-height: 22px;
   font-weight: 700;
   color: #000000;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .pkg-section-title {
+  display: block;
   font-size: 13px;
   line-height: 18px;
   font-weight: 500;

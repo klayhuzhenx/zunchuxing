@@ -2,9 +2,11 @@ import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card, Table, Tag, Button, Input, Select, Space, Modal,
-  Form, Message, Popconfirm, InputNumber,
+  Form, Message, Popconfirm, InputNumber, DatePicker,
 } from '@arco-design/web-react';
 import { IconSearch, IconPlus, IconDownload } from '@arco-design/web-react/icon';
+
+const { RangePicker } = DatePicker;
 import { enterprises, quotaChanges } from '../../data/mock';
 import type { Enterprise, EnterpriseStatus } from '../../types';
 
@@ -26,6 +28,7 @@ export default function EnterpriseList() {
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [quotaOp, setQuotaOp] = useState<string>('');
   const [quotaVal, setQuotaVal] = useState<number | undefined>();
+  const [dateRange, setDateRange] = useState<[string, string] | []>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [selectedEnterprise, setSelectedEnterprise] = useState<Enterprise | null>(null);
@@ -56,12 +59,26 @@ export default function EnterpriseList() {
     if (searchParams.get('quota') === 'low') {
       result = result.filter(e => e.remainingQuota < 2000 && e.status === 'approved');
     }
+    // 注册时间范围筛选
+    if (dateRange.length === 2 && dateRange[0] && dateRange[1]) {
+      const [start, end] = dateRange;
+      result = result.filter(e => {
+        const d = e.createdAt.split(' ')[0]; // YYYY-MM-DD
+        return d >= start && d <= end;
+      });
+    }
     return result;
-  }, [data, keyword, statusFilter, sourceFilter, quotaOp, quotaVal, searchParams]);
+  }, [data, keyword, statusFilter, sourceFilter, quotaOp, quotaVal, dateRange, searchParams]);
 
   const handleAdd = async () => {
     try {
       const values = await addForm.validate();
+      // 手机号重复校验
+      const phoneExists = data.some(e => e.contactPhone === values.contactPhone);
+      if (phoneExists) {
+        Message.error('该手机号已被其他企业使用');
+        return;
+      }
       const newEnterprise: Enterprise = {
         id: `E${String(data.length + 1).padStart(3, '0')}`,
         code: `ENT2026${String(data.length + 1).padStart(4, '0')}`,
@@ -171,10 +188,15 @@ export default function EnterpriseList() {
         <Space size={4}>
           <Button type="text" size="small" onClick={() => navigate(`/enterprise/${record.id}`)}>详情</Button>
           {record.status === 'pending' && (
-            <Button type="text" size="small" status="success" onClick={() => {
-              setData(data.map(e => e.id === record.id ? { ...e, status: 'approved' as EnterpriseStatus } : e));
-              Message.success('审核通过');
-            }}>通过</Button>
+            <Popconfirm
+              title="确定通过该企业的入驻申请吗？"
+              onOk={() => {
+                setData(data.map(e => e.id === record.id ? { ...e, status: 'approved' as EnterpriseStatus } : e));
+                Message.success('审核已通过');
+              }}
+            >
+              <Button type="text" size="small" status="success">通过</Button>
+            </Popconfirm>
           )}
           {record.status === 'approved' && (
             <>
@@ -221,6 +243,18 @@ export default function EnterpriseList() {
               <InputNumber placeholder="金额" style={{ width: 120 }} min={0}
                 value={quotaVal} onChange={v => setQuotaVal(v ?? undefined)} />
             </Space>
+            <RangePicker
+              style={{ width: 260 }}
+              placeholder={['注册起始', '注册截止']}
+              allowClear
+              onChange={(v) => {
+                if (v && v[0] && v[1]) {
+                  setDateRange([v[0], v[1]]);
+                } else {
+                  setDateRange([]);
+                }
+              }}
+            />
           </Space>
           <Space>
             <Button icon={<IconDownload />}>批量导出</Button>
@@ -267,9 +301,11 @@ export default function EnterpriseList() {
           </Form.Item>
           <Form.Item field="adminPassword" label="初始密码" rules={[
             { required: true, message: '请输入初始密码' },
-            { minLength: 6, message: '至少6位字母+数字' },
+            { minLength: 8, message: '密码至少8位' },
+            { maxLength: 20, message: '密码不超过20位' },
+            { match: /^(?=.*[a-zA-Z])(?=.*\d).+$/, message: '密码需包含字母和数字' },
           ]}>
-            <Input.Password placeholder="企业管理员登录企业端后台的初始密码" />
+            <Input.Password placeholder="8-20位字母+数字组合" />
           </Form.Item>
           <Form.Item field="remark" label="备注">
             <Input.TextArea placeholder="记录新增原因" maxLength={200} showWordLimit />

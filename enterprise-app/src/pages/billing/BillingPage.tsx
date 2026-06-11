@@ -12,8 +12,14 @@ const statusMap: Record<string, { label: string; color: string }> = {
   settled: { label: '已结算', color: 'green' },
 };
 
+// E6-01：默认上月，当月不展示
+const lastMonth = (() => {
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+})();
+
 export default function BillingPage() {
-  const [filterMonth, setFilterMonth] = useState('2026-06');
+  const [filterMonth, setFilterMonth] = useState(lastMonth);
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -78,6 +84,9 @@ export default function BillingPage() {
               <Descriptions.Item label="账单月份">{detail.month.replace('-', '年')}月</Descriptions.Item>
               <Descriptions.Item label="当期消费">¥{detail.consumption.toLocaleString()}</Descriptions.Item>
               <Descriptions.Item label="当期退款">¥{detail.refund.toLocaleString()}</Descriptions.Item>
+              {/* E6-02：已结算金额 */}
+              <Descriptions.Item label="当期退款"><span style={{ color: '#00B42A' }}>¥{detail.refund.toLocaleString()}</span></Descriptions.Item>
+              <Descriptions.Item label="已结算金额">¥{detail.settledAmount.toLocaleString()}</Descriptions.Item>
               <Descriptions.Item label="待结算总额"><strong>¥{detail.pendingAmount.toLocaleString()}</strong></Descriptions.Item>
               <Descriptions.Item label="结算状态"><Tag color={statusMap[detail.status].color} size="small">{statusMap[detail.status].label}</Tag></Descriptions.Item>
             </Descriptions>

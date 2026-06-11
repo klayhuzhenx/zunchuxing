@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card, Descriptions, Tag, Button, Space, Table, Tabs, Typography, Modal, Form,
-  Input, Message, Popconfirm, DatePicker, Empty, Statistic, Grid,
+  Input, Message, Popconfirm, DatePicker, Empty, Statistic, Grid, Upload,
+  InputNumber, Select,
 } from '@arco-design/web-react';
-import { IconLeft, IconEdit } from '@arco-design/web-react/icon';
+import { IconLeft, IconEdit, IconPlus } from '@arco-design/web-react/icon';
 import { useState, useMemo } from 'react';
 import { enterprises, quotaChanges, consumptionRecords } from '../../data/mock';
 import type { Enterprise, EnterpriseStatus } from '../../types';
@@ -29,6 +30,10 @@ export default function EnterpriseDetail() {
   const [rejectForm] = Form.useForm();
   const [showDisable, setShowDisable] = useState(false);
   const [disableForm] = Form.useForm();
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [quotaForm] = Form.useForm();
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const [licensePreview, setLicensePreview] = useState<string | null>(enterprise.licenseImage || null);
   // 消费记录日期筛选：默认当月
   const now = new Date();
   const [dateRange, setDateRange] = useState<[Date, Date]>([
@@ -97,6 +102,50 @@ export default function EnterpriseDetail() {
     Message.success('企业已启用');
   };
 
+  const handleQuota = async () => {
+    try {
+      const values = await quotaForm.validate();
+      if (!enterprise) return;
+      const amount = Number(values.amount);
+      if (values.type === 'increase') {
+        enterprise.totalQuota += amount;
+        enterprise.remainingQuota += amount;
+      } else {
+        if (amount > enterprise.remainingQuota) {
+          Message.error('调减金额不可超过剩余额度');
+          return;
+        }
+        enterprise.totalQuota -= amount;
+        enterprise.remainingQuota -= amount;
+      }
+      quotaChanges.push({
+        id: `Q${String(quotaChanges.length + 1).padStart(3, '0')}`,
+        enterpriseId: enterprise.id,
+        type: values.type,
+        amount,
+        reason: values.reason,
+        operator: '张管理',
+        createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      });
+      setShowQuotaModal(false);
+      quotaForm.resetFields();
+      Message.success('额度调整成功');
+    } catch { /* */ }
+  };
+
+  const handleLicenseUpload = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      Message.error('营业执照文件不能超过 5MB');
+      return false;
+    }
+    setLicenseFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setLicensePreview(reader.result as string);
+    reader.readAsDataURL(file);
+    Message.success('营业执照上传成功');
+    return false; // 阻止默认上传，模拟
+  };
+
   return (
     <div>
       {/* 顶部标题栏 */}
@@ -114,15 +163,8 @@ export default function EnterpriseDetail() {
               <Button status="danger" onClick={() => setShowReject(true)}>驳回</Button>
             </>
           )}
-          {enterprise.status === 'approved' && (
-            <>
-              <Button icon={<IconEdit />} onClick={() => { editForm.setFieldsValue(enterprise); setShowEdit(true); }}>编辑</Button>
-              <Button status="danger" onClick={() => setShowDisable(true)}>禁用</Button>
-            </>
-          )}
-          {enterprise.status === 'disabled' && (
-            <Button type="primary" status="success" onClick={handleEnable}>启用</Button>
-          )}
+          {enterprise.status === 'approved' && null}
+          {enterprise.status === 'disabled' && null}
           {enterprise.status === 'rejected' && (
             <Button onClick={() => { enterprise.status = 'pending'; Message.success('已重新进入审核'); }}>重新审核</Button>
           )}
@@ -158,7 +200,6 @@ export default function EnterpriseDetail() {
                 { label: '企业编号', value: enterprise.code },
                 { label: '统一社会信用代码', value: enterprise.creditCode || '-' },
                 { label: '联系人', value: `${enterprise.contactName} / ${enterprise.contactPhone}` },
-                { label: '管理员', value: enterprise.adminName ? `${enterprise.adminName} / ${enterprise.adminPhone}` : '-' },
                 { label: '员工数', value: String(enterprise.employeeCount) },
                 { label: '创建来源', value: enterprise.source === 'miniapp' ? '小程序申请' : '后台添加' },
                 { label: '注册时间', value: enterprise.createdAt },
@@ -171,12 +212,23 @@ export default function EnterpriseDetail() {
 
         <Tabs.TabPane key="consumption" title="消费记录">
           <Card>
+            {/* 三行汇总 */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+              <div style={{ padding: '12px 16px', background: '#FFF1F0', borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: '#86909c' }}>消费总额</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#F53F3F', marginTop: 4 }}>¥{consumptionTotal.toLocaleString()}</div>
+              </div>
+              <div style={{ padding: '12px 16px', background: '#E8FFEA', borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: '#86909c' }}>退款总额</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#00B42A', marginTop: 4 }}>¥{refundTotal.toLocaleString()}</div>
+              </div>
+              <div style={{ padding: '12px 16px', background: '#F2F3F5', borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: '#86909c' }}>实际消费</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#1d2129', marginTop: 4 }}>¥{(consumptionTotal - refundTotal).toLocaleString()}</div>
+              </div>
+            </div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <Text style={{ fontSize: 14, fontWeight: 500 }}>
-                  当前范围消费 <span style={{ color: '#F53F3F' }}>¥{consumptionTotal.toLocaleString()}</span>
-                  {refundTotal > 0 && <>，退款 <span style={{ color: '#00B42A' }}>¥{refundTotal.toLocaleString()}</span></>}
-                </Text>
               </div>
               <Space>
                 <RangePicker
@@ -253,6 +305,30 @@ export default function EnterpriseDetail() {
         <Form form={disableForm} layout="vertical">
           <Form.Item field="reason" label="禁用原因" rules={[{ required: true, message: '请填写禁用原因' }, { maxLength: 200 }]}>
             <Input.TextArea placeholder="请输入禁用原因" maxLength={200} showWordLimit />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 调整额度弹窗 */}
+      <Modal
+        title={`调整额度 - ${enterprise.name}`}
+        visible={showQuotaModal}
+        onOk={handleQuota}
+        onCancel={() => { setShowQuotaModal(false); quotaForm.resetFields(); }}
+        style={{ width: 480 }}
+      >
+        <Form form={quotaForm} layout="vertical">
+          <Form.Item field="type" label="调整类型" rules={[{ required: true, message: '请选择' }]}>
+            <Select options={[
+              { label: '调增', value: 'increase' },
+              { label: '调减', value: 'decrease' },
+            ]} />
+          </Form.Item>
+          <Form.Item field="amount" label="调整金额（元）" rules={[{ required: true, message: '请输入金额' }]}>
+            <InputNumber placeholder="正整数" min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item field="reason" label="调整原因" rules={[{ required: true, message: '请输入原因' }, { maxLength: 200 }]}>
+            <Input.TextArea placeholder="如：线下打款、记账纠错、赠送试用额度" maxLength={200} showWordLimit />
           </Form.Item>
         </Form>
       </Modal>

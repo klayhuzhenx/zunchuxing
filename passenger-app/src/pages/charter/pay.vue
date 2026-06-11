@@ -19,7 +19,7 @@
         <view class="merchant-logo" :class="`merchant-logo-${method}`">
           <text class="material-symbols-outlined merchant-icon">domain</text>
         </view>
-        <text class="merchant-name">尊出行 · 包车出行</text>
+        <text class="merchant-name">尊出行 · {{ source === 'rental' ? '租车出行' : '包车出行' }}</text>
         <text class="merchant-sub">上海和行科技有限公司</text>
       </view>
 
@@ -41,7 +41,7 @@
         <view class="info-divider" />
         <view class="info-row">
           <text class="info-label">商品</text>
-          <text class="info-value">包车出行 · {{ pkg.tier }}</text>
+          <text class="info-value">{{ productLabel }}</text>
         </view>
         <view class="info-divider" />
         <view class="info-row">
@@ -125,12 +125,17 @@ const statusBarHeight = ref(0);
 const method = ref<'wechat' | 'alipay'>('wechat');
 const totalText = ref('2,088.00');
 const orderNo = ref('ZC2026060988540');
+const source = ref<'charter' | 'rental'>('charter');
 const carIdx = ref(0);
 const pkgId = ref('a-f-pro');
 const days = ref(1);
 const passengerName = ref('本人 (张先生)');
 const passengerPhone = ref('138****8888');
+const productName = ref('包车出行');
 const paying = ref(false);
+
+/* 租车车型（pay 页内不用完整 carData，只拿名称） */
+const rentalCarNames = ['增程星辉尊享版', '增程星辉行政版', '增程星耀行政版'];
 
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync();
@@ -142,14 +147,23 @@ onLoad((opts: Record<string, string> | undefined) => {
   if (opts.method === 'wechat' || opts.method === 'alipay') method.value = opts.method;
   if (opts.total) totalText.value = decodeURIComponent(opts.total);
   if (opts.orderNo) orderNo.value = opts.orderNo;
+  if (opts.source === 'rental') source.value = 'rental';
   if (opts.carIdx !== undefined) carIdx.value = parseInt(opts.carIdx, 10) || 0;
   if (opts.pkgId) pkgId.value = opts.pkgId;
   if (opts.days) days.value = parseInt(opts.days, 10) || 1;
   if (opts.passenger) passengerName.value = decodeURIComponent(opts.passenger);
   if (opts.phone) passengerPhone.value = decodeURIComponent(opts.phone);
+  if (opts.product) productName.value = decodeURIComponent(opts.product);
 });
 
 const pkg = computed(() => pkgMap[pkgId.value] || pkgMap['a-f-pro']);
+const carName = computed(() => rentalCarNames[carIdx.value] || rentalCarNames[0]);
+
+/* 商品描述 */
+const productLabel = computed(() => {
+  if (source.value === 'rental') return `租车出行 · ${carName.value}`;
+  return `包车出行 · ${pkg.value.tier}`;
+});
 
 const brandTitle = computed(() => (method.value === 'wechat' ? '微信支付' : '支付宝'));
 const methodName = computed(() => (method.value === 'wechat' ? '零钱通' : '余额宝'));
@@ -159,19 +173,23 @@ const methodDesc = computed(() =>
 const methodFullName = computed(() => (method.value === 'wechat' ? '微信支付' : '蚂蚁科技'));
 const methodIcon = computed(() => (method.value === 'wechat' ? 'savings' : 'account_balance'));
 
+/* 基础参数（charter 和 rental 共用） */
+const baseParams = computed(() => [
+  `source=${source.value}`,
+  `carIdx=${carIdx.value}`,
+  `days=${days.value}`,
+  `passenger=${encodeURIComponent(passengerName.value)}`,
+  `phone=${encodeURIComponent(passengerPhone.value)}`,
+  `total=${encodeURIComponent(totalText.value)}`,
+  `orderNo=${orderNo.value}`,
+]);
+
 const buildSuccessUrl = (status: 'paid' | 'pending') => {
-  const params = [
-    `carIdx=${carIdx.value}`,
-    `pkgId=${pkgId.value}`,
-    `days=${days.value}`,
-    `status=${status}`,
-    `pay=${method.value}`,
-    `passenger=${encodeURIComponent(passengerName.value)}`,
-    `phone=${encodeURIComponent(passengerPhone.value)}`,
-    `total=${encodeURIComponent(totalText.value)}`,
-    `orderNo=${orderNo.value}`,
-  ].join('&');
-  return `/pages/charter/success?${params}`;
+  const params = [...baseParams.value, `status=${status}`, `pay=${method.value}`];
+  if (source.value === 'charter') {
+    params.push(`pkgId=${pkgId.value}`);
+  }
+  return `/pages/${source.value}/success?${params.join('&')}`;
 };
 
 const onPayConfirm = () => {

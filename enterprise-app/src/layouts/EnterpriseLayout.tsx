@@ -4,28 +4,33 @@ import { Layout, Menu, Button, Dropdown, Space, Avatar } from '@arco-design/web-
 import {
   IconDashboard, IconUserGroup, IconFile, IconSafe,
   IconDriveFile, IconDesktop, IconSettings, IconPoweroff,
-  IconMenuFold, IconMenuUnfold, IconDown,
+  IconMenuFold, IconMenuUnfold, IconDown, IconCommon,
 } from '@arco-design/web-react/icon';
 import { currentUser } from '../data/mock';
 
 const { Sider, Header, Content } = Layout;
-const { Item } = Menu;
-
-const menuItems = [
-  { key: 'dashboard', label: '工作台', icon: <IconDashboard />, path: '/' },
-  { key: 'employees', label: '员工管理', icon: <IconUserGroup />, path: '/employees' },
-  { key: 'orders', label: '订单管理', icon: <IconFile />, path: '/orders' },
-  { key: 'quota', label: '额度与消费', icon: <IconSafe />, path: '/quota' },
-  { key: 'billing', label: '账单管理', icon: <IconDesktop />, path: '/billing' },
-  { key: 'invoice', label: '发票管理', icon: <IconDriveFile />, path: '/invoice' },
-  { key: 'enterprise-info', label: '企业信息', icon: <IconSettings />, path: '/enterprise-info' },
-];
+const { Item, SubMenu } = Menu;
 
 export default function EnterpriseLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [openKeys, setOpenKeys] = useState<string[]>(['finance-group']);
   const navigate = useNavigate();
   const location = useLocation();
-  const selectedKey = location.pathname === '/' ? 'dashboard' : location.pathname.split('/')[1] || 'dashboard';
+  const pathname = location.pathname;
+
+  const selectedKey = (() => {
+    if (pathname === '/') return 'dashboard';
+    return pathname.split('/')[1] || 'dashboard';
+  })();
+
+  const handleMenuClick = (key: string) => {
+    const routeMap: Record<string, string> = {
+      dashboard: '/', employees: '/employees', orders: '/orders',
+      quota: '/quota', billing: '/billing', invoice: '/invoice',
+      'enterprise-info': '/enterprise-info',
+    };
+    navigate(routeMap[key] || '/');
+  };
 
   const userDropdown = (
     <Menu onClickMenuItem={(key) => { if (key === 'logout') navigate('/login'); }}>
@@ -36,7 +41,7 @@ export default function EnterpriseLayout() {
 
   return (
     <Layout style={{ height: '100vh' }}>
-      <Sider collapsed={collapsed} onCollapse={setCollapsed} collapsible trigger={null} breakpoint="xl"
+      <Sider collapsed={collapsed} collapsible trigger={null} breakpoint="xl"
         style={{ background: '#fff', height: '100vh', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e6eb' }}>
         <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', flexShrink: 0 }}
           onClick={() => navigate('/')}>
@@ -44,9 +49,28 @@ export default function EnterpriseLayout() {
             {collapsed ? '尊' : '尊出行 · 企业端'}
           </span>
         </div>
-        <Menu theme="light" selectedKeys={[selectedKey]} onClickMenuItem={(key) => { const m = menuItems.find(x => x.key === key); if (m) navigate(m.path); }}
-          style={{ flex: 1, overflow: 'auto', borderRight: 'none' }}>
-          {menuItems.map(m => <Item key={m.key}>{m.icon}{m.label}</Item>)}
+        <Menu
+          theme="light"
+          selectedKeys={[selectedKey]}
+          openKeys={collapsed ? [] : openKeys}
+          onClickSubMenu={(key) => {
+            setOpenKeys(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+          }}
+          onClickMenuItem={handleMenuClick}
+          style={{ flex: 1, overflow: 'auto', borderRight: 'none' }}
+        >
+          <Item key="dashboard"><IconDashboard />工作台</Item>
+          <Item key="employees"><IconUserGroup />员工管理</Item>
+          <Item key="orders"><IconFile />订单管理</Item>
+          <SubMenu
+            key="finance-group"
+            title={<span><IconSafe />财务管理</span>}
+          >
+            <Item key="quota"><IconDesktop />额度与消费</Item>
+            <Item key="billing"><IconCommon />账单管理</Item>
+            <Item key="invoice"><IconDriveFile />发票管理</Item>
+          </SubMenu>
+          <Item key="enterprise-info"><IconSettings />企业信息</Item>
         </Menu>
         <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Button type="text" icon={collapsed ? <IconMenuUnfold /> : <IconMenuFold />} onClick={() => setCollapsed(!collapsed)} />
