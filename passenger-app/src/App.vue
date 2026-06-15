@@ -29,9 +29,14 @@ view, text, button, input, textarea {
 }
 
 /* ============================================================
- * Material Symbols Outlined 图标
+ * Material Symbols Outlined 图标（本地字体，避免 Google Fonts 国内无法访问）
  * ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/static/fonts/MaterialSymbolsOutlined.ttf') format('truetype');
+}
 
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';

@@ -88,17 +88,24 @@
         </view>
       </view>
 
-      <!-- 尊享权益 -->
-      <view class="benefit-card">
-        <view class="benefit-glow" />
-        <view class="benefit-row">
-          <view class="benefit-left">
-            <text class="material-symbols-outlined benefit-icon ms-fill">workspace_premium</text>
-            <text class="benefit-title">尊享权益</text>
-            <text class="benefit-remain">剩余 <text class="benefit-count">3</text> 次</text>
+      <!-- 鸿蒙积分抵扣（仅尊界车主可见，spec §5.4 积分抵扣） -->
+      <view v-if="isHarmonyOwner" class="points-card" @click="openPointsSheet">
+        <view class="points-row">
+          <view class="points-left">
+            <text class="material-symbols-outlined points-icon">redeem</text>
+            <view class="points-info">
+              <text class="points-title">积分抵扣（尊享）</text>
+              <text v-if="pointsApplied" class="points-sub-active">
+                已抵扣 ¥{{ pointsDeduction }}（使用 {{ pointsUsed }} 积分）
+              </text>
+              <text v-else class="points-sub">
+                {{ pointsBalance }} 积分可用 · {{ exchangeRate }}积分抵¥1
+              </text>
+            </view>
           </view>
-          <view class="benefit-btn" @click="onUseBenefit">
-            <text class="benefit-btn-text">使用权益</text>
+          <view class="points-cta">
+            <text class="points-cta-text">{{ pointsApplied ? '修改' : '使用' }}</text>
+            <text class="material-symbols-outlined points-cta-icon">chevron_right</text>
           </view>
         </view>
       </view>
@@ -106,6 +113,14 @@
       <!-- 支付方式 -->
       <view class="card">
         <text class="card-section-title">支付方式</text>
+        <!-- 积分抵扣行（已确认时） -->
+        <view v-if="isHarmonyOwner && pointsApplied" class="points-applied-row">
+          <view class="points-applied-left">
+            <text class="material-symbols-outlined points-applied-icon">redeem</text>
+            <text class="points-applied-text">积分抵扣 ¥{{ pointsDeduction }}（使用 {{ pointsUsed }} 积分）</text>
+          </view>
+          <text class="points-applied-clear" @click="clearPoints">清除</text>
+        </view>
         <view class="payments">
           <view
             v-for="p in payments"
@@ -240,6 +255,45 @@
         </view>
       </template>
     </bottom-sheet>
+
+    <!-- 积分抵扣弹窗（spec §5.4 积分抵扣） -->
+    <bottom-sheet v-model="showPointsSheet" title="积分抵扣（尊享）" :max-height="'auto'">
+      <view class="ps-info">
+        <view class="ps-row">
+          <text class="ps-label">可使用积分总额</text>
+          <text class="ps-value">{{ pointsBalance.toLocaleString() }}</text>
+        </view>
+        <view class="ps-row">
+          <text class="ps-label">本次使用积分</text>
+          <view class="ps-input-wrap">
+            <input
+              v-model.number="pointsInput"
+              class="ps-input"
+              type="number"
+              :placeholder="`最多 ${pointsMaxUsable}`"
+              @input="onPointsInput"
+            />
+          </view>
+        </view>
+        <view class="ps-row">
+          <text class="ps-label">抵扣本单金额</text>
+          <text class="ps-value-strong">¥{{ pointsDeductionPreview.toFixed(2) }}</text>
+        </view>
+        <view class="ps-tip">
+          <text class="ps-tip-text">{{ exchangeRate }} 积分 = ¥1，订单金额 ¥{{ baseAmount.toFixed(2) }}</text>
+        </view>
+      </view>
+      <template #footer>
+        <view class="ps-btn-row">
+          <view class="ps-btn ps-btn-cancel" @click="cancelPoints">
+            <text class="ps-btn-cancel-text">取消使用</text>
+          </view>
+          <view class="ps-btn ps-btn-confirm" @click="confirmPoints">
+            <text class="ps-btn-confirm-text">确认使用</text>
+          </view>
+        </view>
+      </template>
+    </bottom-sheet>
   </view>
 </template>
 
@@ -294,9 +348,6 @@ onLoad((opts: Record<string, string> | undefined) => {
 const car = computed(() => carData[carIdx.value] || carData[0]);
 const currentDriver = computed(() => drivers.value.find((d) => d.id === currentDriverId.value) || drivers.value[0]);
 
-const totalNumber = computed(() => car.value.dayPrice * days.value);
-const totalText = computed(() => totalNumber.value.toLocaleString() + '.00');
-
 const orderNo = computed(() => `ZR${OrderDate}${carIdx.value}`);
 
 const dateRange = computed(() => {
@@ -336,9 +387,75 @@ const onUploadLicense = () => {
   uni.showToast({ title: '上传驾驶证照片（模拟）', icon: 'none' });
 };
 
-const onUseBenefit = () => {
-  uni.showToast({ title: '尊享权益抵扣（模拟）', icon: 'none' });
+// ===== 鸿蒙积分抵扣（spec §5.4 积分抵扣）=====
+// 仅尊界车主可见。配比由运营后台 §8.3 积分权益配置，乘客端不做硬编码（此处取 mock）
+const isHarmonyOwner = ref(true);                   // mock：尊界车主身份；非尊界用户应隐藏入口
+const pointsBalance = ref(8000);                    // 鸿蒙APP接口返回的当前积分余额
+const exchangeRate = ref(100);                      // 100积分 = ¥1（后台可配）
+const showPointsSheet = ref(false);
+const pointsApplied = ref(false);                   // 是否已确认使用积分
+const pointsUsed = ref(0);                          // 已确认抵扣的积分数
+const pointsInput = ref<number | string>(0);        // 弹窗中的输入值（编辑态）
+
+// 订单原始金额（不含积分抵扣）
+const baseAmount = computed(() => car.value.dayPrice * days.value);
+
+// 抵扣金额：实际确认后的金额
+const pointsDeduction = computed(() => Math.floor(pointsUsed.value / exchangeRate.value));
+
+// 弹窗中实时预览的抵扣金额（基于 pointsInput）
+const pointsDeductionPreview = computed(() => {
+  const n = Number(pointsInput.value) || 0;
+  return n / exchangeRate.value;
+});
+
+// 本单需要的积分数（向上取整）
+const pointsNeeded = computed(() => Math.ceil(baseAmount.value * exchangeRate.value));
+
+// 本次允许使用的最大积分数（min(可用积分, 本单需要)）
+const pointsMaxUsable = computed(() => Math.min(pointsBalance.value, pointsNeeded.value));
+
+const openPointsSheet = () => {
+  // 默认填入：积分充足 → 本单需要的积分；不足 → 全部余额
+  pointsInput.value = pointsApplied.value ? pointsUsed.value : pointsMaxUsable.value;
+  showPointsSheet.value = true;
 };
+
+// 输入校验：clamp 到 [0, pointsMaxUsable]
+const onPointsInput = () => {
+  let n = Number(pointsInput.value);
+  if (Number.isNaN(n) || n < 0) n = 0;
+  if (n > pointsMaxUsable.value) {
+    n = pointsMaxUsable.value;
+    uni.showToast({ title: `最多可使用 ${pointsMaxUsable.value} 积分`, icon: 'none' });
+  }
+  pointsInput.value = n;
+};
+
+const confirmPoints = () => {
+  const n = Number(pointsInput.value) || 0;
+  if (n <= 0) {
+    cancelPoints();
+    return;
+  }
+  pointsUsed.value = n;
+  pointsApplied.value = true;
+  showPointsSheet.value = false;
+};
+
+const cancelPoints = () => {
+  showPointsSheet.value = false;
+};
+
+const clearPoints = () => {
+  pointsApplied.value = false;
+  pointsUsed.value = 0;
+  pointsInput.value = 0;
+};
+
+// 实付金额：原始金额 − 积分抵扣金额（最低 ¥0）
+const totalNumber = computed(() => Math.max(0, baseAmount.value - pointsDeduction.value));
+const totalText = computed(() => totalNumber.value.toLocaleString() + '.00');
 
 const goFee = () => {
   uni.navigateTo({
@@ -361,6 +478,7 @@ const buildSuccessUrl = (status: 'paid' | 'pending') => {
     `return=${encodeURIComponent(form.value.return)}`,
     `pickupDate=${form.value.pickupDate}`,
     `returnDate=${form.value.returnDate}`,
+    `pointsUsed=${pointsApplied.value ? pointsUsed.value : 0}`,
   ].join('&');
   return `/pages/rental/success?${params}`;
 };
@@ -376,6 +494,7 @@ const buildPayUrl = () => {
     `passenger=${encodeURIComponent(currentDriver.value.name)}`,
     `phone=${encodeURIComponent(currentDriver.value.phone)}`,
     `product=${encodeURIComponent(car.value.fullName)}`,
+    `pointsUsed=${pointsApplied.value ? pointsUsed.value : 0}`,
   ].join('&');
   return `/pages/charter/pay?${params}`;
 };
@@ -459,18 +578,47 @@ const onSubmit = () => {
 .license-icon { font-size: 32px; color: #7E7576; }
 .license-label { font-size: 11px; color: #7E7576; }
 
-/* ===== 尊享权益 ===== */
-.benefit-card { margin: 16px 24px 0; padding: 16px 20px; background: linear-gradient(135deg, #000 0%, #1A1A1A 50%, #3D2B1F 100%); border-radius: 24px; position: relative; overflow: hidden; }
-.benefit-glow { position: absolute; right: -20px; top: -20px; width: 120px; height: 120px; background: rgba(0,87,255,0.15); border-radius: 50%; filter: blur(40px); }
-.benefit-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; }
-.benefit-left { display: flex; align-items: center; gap: 8px; }
-.benefit-icon { font-size: 20px; color: #D4AF37; }
-.benefit-title { font-size: 17px; line-height: 26px; font-weight: 600; color: #FFF; }
-.benefit-remain { font-size: 11px; color: rgba(255,255,255,0.6); }
-.benefit-count { color: #D4AF37; font-weight: 700; }
-.benefit-btn { height: 36px; padding: 0 16px; background: #FFF; border-radius: 9999px; display: flex; align-items: center; }
-.benefit-btn:active { transform: scale(0.95); }
-.benefit-btn-text { font-size: 13px; font-weight: 500; color: #000; }
+/* ===== 鸿蒙积分抵扣 ===== */
+.points-card { margin: 16px 24px 0; padding: 16px 20px; background: #FFF; border: 1px solid #F2F2F2; border-radius: 24px; }
+.points-card:active { background: #FAFAFA; }
+.points-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.points-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.points-icon { font-size: 24px; color: #0057FF; }
+.points-info { flex: 1; min-width: 0; }
+.points-title { font-size: 15px; line-height: 22px; font-weight: 600; color: #1A1C1C; display: block; }
+.points-sub { margin-top: 2px; font-size: 12px; line-height: 18px; color: #86868B; display: block; }
+.points-sub-active { margin-top: 2px; font-size: 12px; line-height: 18px; color: #0057FF; font-weight: 600; display: block; }
+
+.points-cta { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.points-cta-text { font-size: 13px; line-height: 18px; font-weight: 500; color: #0057FF; }
+.points-cta-icon { font-size: 18px; color: #0057FF; }
+
+/* 已确认抵扣行（在支付方式区上方） */
+.points-applied-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 12px; background: #EFF4FF; border-radius: 12px; }
+.points-applied-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.points-applied-icon { font-size: 18px; color: #0057FF; }
+.points-applied-text { font-size: 13px; line-height: 18px; color: #0057FF; font-weight: 500; }
+.points-applied-clear { font-size: 12px; color: #86868B; padding: 4px 8px; flex-shrink: 0; }
+.points-applied-clear:active { color: #1A1C1C; }
+
+/* 积分弹窗 */
+.ps-info { display: flex; flex-direction: column; gap: 12px; padding: 8px 0 16px; }
+.ps-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: #F9F9F9; border-radius: 16px; }
+.ps-label { font-size: 13px; color: #5D5F5F; flex-shrink: 0; }
+.ps-value { font-size: 17px; font-weight: 600; color: #1A1C1C; font-variant-numeric: tabular-nums; }
+.ps-value-strong { font-size: 18px; font-weight: 700; color: #0057FF; font-variant-numeric: tabular-nums; }
+.ps-input-wrap { flex: 1; max-width: 60%; }
+.ps-input { width: 100%; height: 36px; padding: 0 12px; background: #FFF; border: 1px solid #E2E2E2; border-radius: 10px; font-size: 15px; font-weight: 600; color: #1A1C1C; text-align: right; font-variant-numeric: tabular-nums; }
+.ps-tip { padding: 8px 4px; }
+.ps-tip-text { font-size: 12px; color: #86868B; }
+.ps-btn-row { display: flex; gap: 12px; }
+.ps-btn { flex: 1; height: 48px; border-radius: 24px; display: flex; align-items: center; justify-content: center; }
+.ps-btn-cancel { background: #F2F2F2; }
+.ps-btn-cancel:active { background: #E8E8E8; }
+.ps-btn-cancel-text { font-size: 15px; font-weight: 500; color: #1A1C1C; }
+.ps-btn-confirm { background: #000; }
+.ps-btn-confirm:active { opacity: 0.85; }
+.ps-btn-confirm-text { font-size: 15px; font-weight: 600; color: #FFF; }
 
 /* ===== 支付 ===== */
 .payments { display: flex; flex-direction: column; gap: 8px; }

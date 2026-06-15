@@ -88,14 +88,20 @@
           <text class="fl err">其他费用（高速+停车）</text>
           <view class="fr-right"><text class="fv err">¥55.00</text><text class="material-symbols-outlined more-arrow">chevron_right</text></view>
         </view>
+        <view v-if="(s.key==='unpaid-extra'||s.key==='completed') && rdTotalFee > 0" class="fr" @click="openFeeDetail('remote')">
+          <text class="fl err">远调费 · 接{{ rdPickupKm }}km + 送{{ rdDropoffKm }}km</text>
+          <view class="fr-right"><text class="fv err">¥{{ rdTotalFee }}.00</text><text class="material-symbols-outlined more-arrow">chevron_right</text></view>
+        </view>
+        <view v-else-if="s.key==='unpaid-extra'||s.key==='completed'" class="fr">
+          <text class="fl">远调费</text><text class="fv">¥0.00</text>
+        </view>
         <view class="div" />
         <view class="fr last">
-          <text class="fl bld">实付金额</text>
+          <text class="fl bld">合计费用</text>
           <view class="tr">
             <text class="fv big">¥{{ totalFee }}</text>
-            <text v-if="s.key==='unpaid-extra'" class="extra-badge">待补款 ¥511.00</text>
-            <text v-else-if="s.key!=='unpaid'" class="fpaid">已支付</text>
-            <text v-else class="fpaid wait">待支付</text>
+            <text v-if="s.key==='unpaid-extra'" class="extra-badge">待补款 ¥711.00</text>
+            <text v-if="s.key==='unpaid'" class="fpaid wait">待支付</text>
           </view>
         </view>
       </view>
@@ -147,6 +153,14 @@
                 <view v-if="i < mileageDetails.length - 1" class="fd-div" />
               </view>
             </template>
+            <!-- 远调费明细 -->
+            <template v-if="feeDetailType === 'remote'">
+              <text class="fd-date">包车出行 · 远调费明细</text>
+              <view class="fd-row"><text class="fdl">接远调距离</text><text class="fdv">{{ rdPickupKm }} km → ¥{{ rdPickupFee }}.00</text></view>
+              <view class="fd-row"><text class="fdl">送远调距离</text><text class="fdv">{{ rdDropoffKm }} km → ¥{{ rdDropoffFee }}.00</text></view>
+              <view class="fd-div" />
+              <view class="fd-row"><text class="fdl bld">远调费合计</text><text class="fdv bld err">¥{{ rdTotalFee }}.00</text></view>
+            </template>
             <!-- 其他费用明细 -->
             <template v-if="feeDetailType === 'other'">
               <view v-for="(r, i) in otherDetails" :key="i" class="fd-day">
@@ -183,7 +197,7 @@
         <view class="btn bf" @click="onPay">去支付 ¥6,264</view>
       </template>
       <template v-else-if="s.key==='unpaid-extra'">
-        <view class="btn bf wf" @click="onExtraPay">去补款 ¥511.00</view>
+        <view class="btn bf wf" @click="onExtraPay">去补款 ¥711.00</view>
       </template>
       <template v-else-if="s.key==='pending-unassigned'">
         <view class="btn bo er wf" @click="onCancel">取消订单</view>
@@ -197,7 +211,6 @@
       </template>
       <template v-else-if="s.key==='completed'">
         <view class="btn bo" @click="goInvoice">开具发票</view>
-        <view class="btn bf" @click="onReview">评价行程</view>
       </template>
       <template v-else-if="s.key==='cancelled'">
         <view class="btn bf wf" @click="onReorder">重新下单</view>
@@ -212,31 +225,14 @@
           <view class="paym-radio"><view v-if="payMethod===p.id" class="paym-inner" /></view>
         </view>
       </view>
-      <view class="paym-btn" @click="onExtraPayConfirm"><text class="paym-btn-t">确认并支付 ¥511.00</text></view>
+      <view class="paym-btn" @click="onExtraPayConfirm"><text class="paym-btn-t">确认并支付 ¥711.00</text></view>
     </bottom-sheet>
 
-    <!-- 评价弹窗 -->
-    <bottom-sheet v-model="showReview" title="评价行程" :max-height="'80vh'">
-      <view class="rv-card"><text class="rv-label">司机服务</text>
-        <view class="rv-stars"><text v-for="i in 5" :key="i" class="material-symbols-outlined rv-star" :class="{on:i<=rv.driver}" @click="rv.driver=i">star</text></view>
-      </view>
-      <view class="rv-card"><text class="rv-label">车辆状况</text>
-        <view class="rv-stars"><text v-for="i in 5" :key="i" class="material-symbols-outlined rv-star" :class="{on:i<=rv.car}" @click="rv.car=i">star</text></view>
-      </view>
-      <view class="rv-card"><text class="rv-label">整体服务</text>
-        <view class="rv-stars"><text v-for="i in 5" :key="i" class="material-symbols-outlined rv-star" :class="{on:i<=rv.service}" @click="rv.service=i">star</text></view>
-      </view>
-      <view class="rv-ta-wrap">
-        <textarea v-model="rv.comment" class="rv-ta" placeholder="分享您的出行体验..." placeholder-class="rv-ph" maxlength="200" />
-        <text class="rv-cnt">{{ rv.comment.length }}/200</text>
-      </view>
-      <view class="rv-btn" @click="submitReview"><text class="rv-bt">提交评价</text></view>
-    </bottom-sheet>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import BottomSheet from '@/components/bottom-sheet.vue';
 
@@ -250,7 +246,7 @@ onLoad((opts: Record<string, string> | undefined) => {
 /* ======= 状态定义 ======= */
 const statusMap: Record<string, { key:string; title:string; icon:string; msg:string; desc:string; cls:string }> = {
   unpaid:          { key:'unpaid',          title:'等待支付',    icon:'schedule',       msg:'等待支付', desc:'订单已提交，等待乘客完成支付', cls:'warn' },
-  'unpaid-extra':  { key:'unpaid-extra',    title:'差额待付',   icon:'error_outline',  msg:'差额待付', desc:'行程结束产生额外费用 ¥511.00，等待乘客补款', cls:'err' },
+  'unpaid-extra':  { key:'unpaid-extra',    title:'差额待付',   icon:'error_outline',  msg:'差额待付', desc:'行程结束产生额外费用 ¥711.00，等待乘客补款', cls:'err' },
   'pending-unassigned':{ key:'pending-unassigned', title:'待派车', icon:'hourglass_top', msg:'待派车', desc:'订单已支付，请尽快安排车辆与司机', cls:'err' },
   'pending-assigned':{ key:'pending-assigned', title:'行程待开始', icon:'airport_shuttle', msg:'行程待开始', desc:'已派车：李师傅 · 京A12345，出发时间 06-10 09:00', cls:'info' },
   ongoing:         { key:'ongoing',          title:'行程进行中', icon:'directions_car',  msg:'行程进行中', desc:'李师傅 · 京A12345，当前行程进行中', cls:'ok' },
@@ -265,9 +261,9 @@ const hasDriver = computed(() => ['pending-assigned','ongoing','completed','unpa
 
 // 费用明细弹窗
 const feeDetailVisible = ref(false);
-const feeDetailType = ref<'waiting' | 'overtime' | 'mileage' | 'other'>('overtime');
+const feeDetailType = ref<'waiting' | 'overtime' | 'mileage' | 'remote' | 'other'>('overtime');
 const feeDetailData = computed(() => {
-  const titles: Record<string, string> = { waiting: '等待费明细', overtime: '超时长费明细', mileage: '超里程费明细', other: '其他费用明细' };
+  const titles: Record<string, string> = { waiting: '等待费明细', overtime: '超时长费明细', mileage: '超里程费明细', remote: '远调费明细', other: '其他费用明细' };
   return { title: titles[feeDetailType.value] };
 });
 
@@ -286,7 +282,11 @@ const otherDetails = [
   { date: '06-11', type: '停车费', amount: 20, voucher: 'voucher_parking.jpg' },
 ];
 
-const openFeeDetail = (type: 'waiting' | 'overtime' | 'mileage' | 'other') => {
+const rdPickupKm = 3.5; const rdDropoffKm = 4.2;
+const rdPickupFee = 100; const rdDropoffFee = 100;
+const rdTotalFee = 200;
+
+const openFeeDetail = (type: 'waiting' | 'overtime' | 'mileage' | 'remote' | 'other') => {
   feeDetailType.value = type;
   feeDetailVisible.value = true;
 };
@@ -316,6 +316,12 @@ const schedule = computed(() => {
   return list;
 });
 
+// 支付方式 + 积分信息（spec §6.6：支付成功（支付方式，如使用积分则展示「微信支付 ¥230 使用积分 3000」））
+const payMethodName = '微信支付';
+const pointsUsed = 0;
+const paymentText = `${payMethodName} ¥6,264.00`;
+const paymentLine = computed(() => pointsUsed > 0 ? `${payMethodName} ¥${(6264 - 12).toLocaleString()} 使用积分 ${pointsUsed.toLocaleString()}` : paymentText);
+
 /* ======= 每状态：订单动态 ======= */
 const timeline = computed(() => {
   const t: { title:string; time:string; type?:string }[] = [];
@@ -324,36 +330,37 @@ const timeline = computed(() => {
       t.push({ title: '订单已提交', time: '06-09 14:22' });
       break;
     case 'pending-unassigned':
-      t.push({ title: '支付成功，¥6,264.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' });
       break;
     case 'pending-assigned':
       t.push({ title: '已派车 — 李师傅 · 京A12345 · 增程星辉尊享版', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥6,264.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' });
       break;
     case 'ongoing':
       t.push({ title: '行程开始 — 李师傅已接到乘客', time: '06-10 09:05' });
       t.push({ title: '已派车 — 李师傅 · 京A12345 · 增程星辉尊享版', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥6,264.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' });
       break;
     case 'completed':
       t.push({ title: '行程结束 — 06-12 18:30 到达目的地', time: '06-12 18:30' });
       t.push({ title: '行程开始 — 李师傅已接到乘客', time: '06-10 09:05' });
       t.push({ title: '已派车 — 李师傅 · 京A12345 · 增程星辉尊享版', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥6,264.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' });
       break;
     case 'unpaid-extra':
-      t.push({ title: '行程结束 · 有待补款 ¥511.00', time: '06-12 18:30', type:'warn' });
+      t.push({ title: '行程结束 · 有待补款 ¥711.00', time: '06-12 18:30', type:'warn' });
       t.push({ title: '行程开始 — 李师傅已接到乘客', time: '06-10 09:05' });
       t.push({ title: '已派车 — 李师傅 · 京A12345 · 增程星辉尊享版', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥6,264.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' });
       break;
     case 'cancelled':
       t.push({ title: '订单已取消 — 取消原因：行程计划有变', time: '06-09 16:00', type:'warn' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '支付成功，¥6,264.00', time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' });
       break;
@@ -363,10 +370,10 @@ const timeline = computed(() => {
   return t;
 });
 
-/* ======= 每状态：实付金额 ======= */
+/* ======= 每状态：合计费用 ======= */
 const totalFee = computed(() => {
-  if (s.value.key === 'unpaid-extra') return '6,775.00';
-  return '6,264.00';
+  if (s.value.key === 'unpaid-extra') return '6,975.00';
+  return '6,464.00';
 });
 
 // 联系司机
@@ -400,13 +407,6 @@ const onEarlyEnd = () => {
     success:(r:any)=>{ if(r.confirm){ st.value='completed'; } } });
 };
 const goInvoice = () => uni.navigateTo({ url: '/pages/invoice/index' });
-const showReview = ref(false);
-const rv = reactive({ driver:0, car:0, service:0, comment:'' });
-const onReview = () => { showReview.value = true; };
-const submitReview = () => {
-  if (!rv.driver||!rv.car||!rv.service) { uni.showToast({title:'请为各项评分',icon:'none'}); return; }
-  showReview.value = false; uni.showToast({title:'感谢您的评价！',icon:'success'});
-};
 const onReorder = () => uni.navigateTo({ url: '/pages/charter/index' });
 </script>
 
@@ -499,8 +499,7 @@ const onReorder = () => uni.navigateTo({ url: '/pages/charter/index' });
 .fv { font-size: 17px; font-weight: 600; color: #000; }
 .fv.err { color: #FF4D4F; }
 .fv.big { font-size: 28px; font-weight: 700; }
-.fpaid { font-size: 11px; color: #00B06B; display: block; }
-.fpaid.wait { color: #D97706; }
+.fpaid.wait { font-size: 11px; color: #D97706; display: block; }
 .extra-badge { font-size: 11px; color: #FF4D4F; font-weight: 600; display: block; }
 
 /* 动态 */
@@ -544,20 +543,6 @@ const onReorder = () => uni.navigateTo({ url: '/pages/charter/index' });
 .paym-btn { height: 56px; background: #000; border-radius: 24px; display: flex; align-items: center; justify-content: center; margin-top: 16px; }
 .paym-btn:active { opacity: 0.85; }
 .paym-btn-t { font-size: 17px; font-weight: 600; color: #FFF; }
-
-/* 评价 */
-.rv-card { background: #F9F9F9; border-radius: 24px; padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-.rv-label { font-size: 15px; font-weight: 500; color: #1A1C1C; }
-.rv-stars { display: flex; gap: 8px; }
-.rv-star { font-size: 28px; color: #E2E2E2; font-variation-settings: 'FILL' 1; }
-.rv-star.on { color: #D4AF37; }
-.rv-ta-wrap { position: relative; margin: 8px 0 16px; }
-.rv-ta { width: 100%; height: 100px; padding: 14px 16px 30px; background: #F2F2F2; border-radius: 20px; border: none; font-size: 14px; color: #1A1C1C; resize: none; }
-.rv-ph { color: #C9CDD4; }
-.rv-cnt { position: absolute; bottom: 8px; right: 16px; font-size: 11px; color: #C9CDD4; }
-.rv-btn { height: 56px; background: #000; border-radius: 24px; display: flex; align-items: center; justify-content: center; }
-.rv-btn:active { opacity: 0.85; }
-.rv-bt { font-size: 17px; font-weight: 600; color: #FFF; }
 
 /* ===== 费用"更多"箭头 ===== */
 .fr-right { display: flex; align-items: center; gap: 2px; }

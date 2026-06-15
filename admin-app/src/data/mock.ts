@@ -3,7 +3,7 @@ import type {
   Order, DriverOrder, Driver, EnterpriseBill, BillOrderItem, BillRefundItem, Transaction,
   DashboardStats, TodoItem, TrendData,
   Vehicle, DaySchedule,
-  BenefitTag, PlatformTimeoutConfig, OpsCity, ServiceAgreement, FeeType,
+  BenefitTag, PointsConfig, PlatformTimeoutConfig, OpsCity, ServiceAgreement, FeeType,
 } from '../types';
 
 // ===== 当前登录用户 =====
@@ -56,10 +56,15 @@ export const orders: Order[] = [
     startTime: '2026-06-01 08:00', endTime: '2026-06-01 18:00', days: 1,
     pickupAddress: '深圳市南山区科技园腾讯大厦', dropoffAddress: '深圳市福田区会展中心',
     driverName: '王师傅', driverPhone: '13811110001', plateNo: '粤B12345', carModel: '奔驰V260L',
-    baseFee: 2088, overtimeFee: 0, overmileageFee: 0, discount: 0,
-    paidAmount: 2088, refundAmount: 0,
+    baseFee: 2088, overtimeFee: 0, overmileageFee: 0,
+    pointsUsed: 2000,
+    remoteDispatchDetail: {
+      pickupKm: 3.5, dropoffKm: 4.2,
+      pickupFee: 100, dropoffFee: 100,
+    },
+    discount: 0,
+    paidAmount: 2288, refundAmount: 0,
     paymentTime: '2026-05-31 20:00', createdAt: '2026-05-31 19:30',
-    review: { driverRating: 5, vehicleRating: 5, serviceRating: 4, comment: '王师傅服务非常好，车辆整洁干净，准时到达。非常满意！' },
     schedules: [{ date: '2026-06-01', timeRange: '08:00-18:00', vehiclePlate: '粤B12345', vehicleModel: '奔驰V260L', driverName: '王师傅', driverPhone: '13811110001' }],
   },
   {
@@ -154,10 +159,14 @@ export const orders: Order[] = [
     rentalStart: '2026-06-02', rentalEnd: '2026-06-02', days: 1,
     pickupAddress: '深圳宝安国际机场T3', dropoffAddress: '深圳市南山区海岸城',
     deliveryDriver: '赵师傅', deliveryDriverPhone: '13811110003', pickupDriver: '钱师傅', pickupDriverPhone: '13811110004', plateNo: '粤B34567', carModel: '奥迪A6L',
-    baseFee: 1500, overtimeFee: 0, overmileageFee: 0, discount: 0,
+    baseFee: 1500, overtimeFee: 0, overmileageFee: 0,
+    remoteDispatchDetail: {
+      pickupKm: 0, dropoffKm: 0,
+      pickupFee: 0, dropoffFee: 0,
+    },
+    discount: 0,
     paidAmount: 1500, refundAmount: 0,
     paymentTime: '2026-06-01 15:00', createdAt: '2026-06-01 14:30',
-    review: { driverRating: 4, vehicleRating: 5, serviceRating: 4, comment: '送车准时，车辆状态良好，还车方便快捷。' },
     schedules: [{ date: '2026-06-02', timeRange: '10:00-22:00', vehiclePlate: '粤B34567', vehicleModel: '奥迪A6L', driverName: '赵师傅', driverPhone: '13811110003' }],
   },
   {
@@ -407,22 +416,30 @@ export const vehicleModels: VehicleModel[] = [
   { id: 'VM001', name: '增程星辉尊享版', brand: '尊界', seats: 7, category: 'MPV', vehicleCount: 3, status: 'active' },
   { id: 'VM002', name: '增程星辉行政版', brand: '尊界', seats: 7, category: 'MPV', vehicleCount: 2, status: 'active' },
   { id: 'VM003', name: '增程星耀行政版', brand: '尊界', seats: 5, category: '豪华轿车', vehicleCount: 2, status: 'active' },
-  { id: 'VM004', name: '尊界S800', brand: '尊界', seats: 5, category: '豪华轿车', vehicleCount: 1, status: 'active' },
+
+];
+
+// 默认远调费梯度（与示例一致）：>0~5km=¥100，>5~10km=¥200，>10~30km=¥400，>30km=¥1000
+const defaultRemoteDispatchTiers = [
+  { fromKm: 0,  toKm: 5,   amount: 100 },
+  { fromKm: 5,  toKm: 10,  amount: 200 },
+  { fromKm: 10, toKm: 30,  amount: 400 },
+  { fromKm: 30, toKm: -1,  amount: 1000 },
 ];
 
 export const pricingRules: PricingRule[] = [
-  { id: 'PR001', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊享基础', halfDayPrice: 988, dayPrice: 1888, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, status: 'active' },
-  { id: 'PR002', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊荣高级', halfDayPrice: 1188, dayPrice: 2088, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, status: 'active' },
-  { id: 'PR003', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊御顶级', halfDayPrice: 1588, dayPrice: 2688, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 200, extraMileageRate: 10, status: 'active' },
-  { id: 'PR004', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊享基础', halfDayPrice: 1088, dayPrice: 1988, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, status: 'active' },
-  { id: 'PR005', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊荣高级', halfDayPrice: 1288, dayPrice: 2288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, status: 'active' },
-  { id: 'PR006', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊御顶级', halfDayPrice: 1688, dayPrice: 2888, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 250, extraMileageRate: 12, status: 'active' },
-  { id: 'PR007', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊享基础', halfDayPrice: 1288, dayPrice: 2288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, status: 'active' },
-  { id: 'PR008', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊荣高级', halfDayPrice: 1588, dayPrice: 2688, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, status: 'active' },
-  { id: 'PR009', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊御顶级', halfDayPrice: 1888, dayPrice: 3288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 300, extraMileageRate: 15, status: 'active' },
-  { id: 'PR010', modelId: 'VM001', modelName: '增程星辉尊享版', dayPrice: 1500, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, status: 'active', remark: '日租含 8h/100km' },
-  { id: 'PR011', modelId: 'VM002', modelName: '增程星辉行政版', dayPrice: 1800, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, status: 'active', remark: '日租含 8h/100km' },
-  { id: 'PR012', modelId: 'VM003', modelName: '增程星耀行政版', dayPrice: 2200, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, status: 'active', remark: '日租含 8h/100km' },
+  { id: 'PR001', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊享基础', halfDayPrice: 988, dayPrice: 1888, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR002', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊荣高级', halfDayPrice: 1188, dayPrice: 2088, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR003', modelId: 'VM001', modelName: '增程星辉尊享版', tier: '尊御顶级', halfDayPrice: 1588, dayPrice: 2688, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 200, extraMileageRate: 10, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR004', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊享基础', halfDayPrice: 1088, dayPrice: 1988, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR005', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊荣高级', halfDayPrice: 1288, dayPrice: 2288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR006', modelId: 'VM002', modelName: '增程星辉行政版', tier: '尊御顶级', halfDayPrice: 1688, dayPrice: 2888, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 250, extraMileageRate: 12, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR007', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊享基础', halfDayPrice: 1288, dayPrice: 2288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 含司机燃油', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR008', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊荣高级', halfDayPrice: 1588, dayPrice: 2688, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 金牌管家司机', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR009', modelId: 'VM003', modelName: '增程星耀行政版', tier: '尊御顶级', halfDayPrice: 1888, dayPrice: 3288, serviceContent: '4h/50km 半日 | 8h/100km 日租 · 至尊礼遇 | 含饮品简餐', cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 20, cancelHighPct: 40, overtimeRate: 300, extraMileageRate: 15, remoteDispatchTiers: defaultRemoteDispatchTiers, status: 'active' },
+  { id: 'PR010', modelId: 'VM001', modelName: '增程星辉尊享版', dayPrice: 1500, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 200, extraMileageRate: 10, status: 'active', remoteDispatchTiers: defaultRemoteDispatchTiers, remark: '日租含 8h/100km' },
+  { id: 'PR011', modelId: 'VM002', modelName: '增程星辉行政版', dayPrice: 1800, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 250, extraMileageRate: 12, status: 'active', remoteDispatchTiers: defaultRemoteDispatchTiers, remark: '日租含 8h/100km' },
+  { id: 'PR012', modelId: 'VM003', modelName: '增程星耀行政版', dayPrice: 2200, cancelFreeMins: 20, cancelFreeHours: 4, cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 50, overtimeRate: 300, extraMileageRate: 15, status: 'active', remoteDispatchTiers: defaultRemoteDispatchTiers, remark: '日租含 8h/100km' },
 ];
 
 export const benefitTemplates: BenefitTemplate[] = [
@@ -438,9 +455,7 @@ export const overviewMetrics: OverviewMetric[] = [
   { label: '订单总量', value: '1,256', change: 8.5, changeLabel: '较上月' },
   { label: '营收总额', value: '¥386,720', change: 12.3, changeLabel: '较上月' },
   { label: '客单价', value: '¥308', change: 3.5, changeLabel: '较上月' },
-  { label: '派车及时率', value: '96.8%', change: 1.2, changeLabel: '较上月' },
   { label: '退款金额', value: '¥12,480', change: -5.2, changeLabel: '较上月' },
-  { label: '活跃企业数', value: '18', change: 2, changeLabel: '较上月' },
 ];
 
 export const analyticsTrendData: TrendPoint[] = [
@@ -522,6 +537,13 @@ export const benefitTags: BenefitTag[] = [
   { id: 'BT004', name: '尊享迎宾', icon: '✨', status: 'active', order: 4 },
   { id: 'BT005', name: '商务接待', icon: '💼', status: 'active', order: 5 },
 ];
+
+// ===== 积分权益（§8.3） =====
+export const pointsConfig: PointsConfig = {
+  exchangeRate: 100,
+  maxDeductionLimit: undefined,
+  minPoints: 100,
+};
 
 // ===== 平台级超时（C8-05） =====
 export const platformTimeoutConfig: PlatformTimeoutConfig = {

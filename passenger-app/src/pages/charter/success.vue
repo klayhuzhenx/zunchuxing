@@ -140,33 +140,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-
-const carData = [
-  { id: 0, fullName: '增程星辉尊享版' },
-  { id: 1, fullName: '增程星辉行政版' },
-  { id: 2, fullName: '增程星耀行政版' },
-];
-
-const pkgMap: Record<string, { tier: string; spec: string }> = {
-  'a-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km' },
-  'a-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km' },
-  'a-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km' },
-  'a-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km' },
-  'a-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km' },
-  'a-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km' },
-  'b-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km' },
-  'b-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km' },
-  'b-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km' },
-  'b-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km' },
-  'b-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km' },
-  'b-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km' },
-  'c-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km' },
-  'c-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km' },
-  'c-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km' },
-  'c-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km' },
-  'c-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km' },
-  'c-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km' },
-};
+import { charterCars, findPkgById, payTimeoutSeconds } from '@/data/charter';
 
 const statusBarHeight = ref(0);
 const carIdx = ref(0);
@@ -179,8 +153,8 @@ const passengerPhone = ref('138****8888');
 const totalText = ref('2,088.00');
 const passedOrderNo = ref('');
 
-/* 倒计时（待支付剩余时间）：默认 30 分钟 */
-const remainSeconds = ref(30 * 60);
+/* 倒计时（待支付剩余时间）：取自运营后台 §8.1.6 平台级超时规则 */
+const remainSeconds = ref(payTimeoutSeconds);
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 const countdownText = computed(() => {
@@ -238,8 +212,8 @@ onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer);
 });
 
-const car = computed(() => carData[carIdx.value] || carData[0]);
-const pkg = computed(() => pkgMap[pkgId.value] || pkgMap['a-f-pro']);
+const car = computed(() => charterCars[carIdx.value] || charterCars[0]);
+const pkg = computed(() => findPkgById(pkgId.value)?.pkg || charterCars[0].packages[4]);
 
 /* 订单号：优先使用上游传入的，否则按车型/套餐回算 */
 const orderNo = computed(() => {
@@ -262,7 +236,14 @@ const goHome = () => {
 };
 
 const goDetail = () => {
-  uni.showToast({ title: '订单详情建设中', icon: 'none' });
+  const params = [
+    `orderNo=${orderNo.value}`,
+    `status=${status.value === 'paid' ? 'pending-dispatch' : 'unpaid'}`,
+    `carIdx=${carIdx.value}`,
+    `pkgId=${pkgId.value}`,
+    `days=${days.value}`,
+  ].join('&');
+  uni.redirectTo({ url: `/pages/trips/detail-charter?${params}` });
 };
 
 const onContinuePay = () => {

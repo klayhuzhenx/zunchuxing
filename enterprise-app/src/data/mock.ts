@@ -45,8 +45,10 @@ export const mockOrders: Order[] = [
     pickupAddress: '半岛酒店', dropoffAddress: '浦东机场T2',
     passengerCount: 1, luggage: '1件',
     driverName: '张师傅', driverPhone: '137****7777', plateNo: '沪B67890', carModel: '奥迪A8L',
-    paymentMethod: 'enterprise_credit', baseFee: 3480, overtimeFee: 500, overmileageFee: 0, paidAmount: 3980, refundAmount: 0,
-    review: { driverRating: 5, vehicleRating: 5, serviceRating: 5, comment: '张师傅服务专业，准时到达，车辆整洁。' },
+    paymentMethod: 'enterprise_credit', baseFee: 3480, overtimeFee: 500, overmileageFee: 0,
+    pointsUsed: 3000,
+    remoteDispatchDetail: { pickupKm: 3.5, dropoffKm: 4.2, pickupFee: 100, dropoffFee: 100 },
+    paidAmount: 4050, refundAmount: 0,
     feeExtraDetail: {
       overtimeDetails: [{ date: '2026-06-05', actualStart: '2026-06-05 09:00', actualEnd: '2026-06-05 19:00', totalMinutes: 600, packageMinutes: 540, excessMinutes: 60, rate: 100, amount: 100 }],
       excessMileageDetails: [{ date: '2026-06-05', startMileage: 28500, endMileage: 28700, totalKm: 200, packageKm: 100, excessKm: 100, rate: 5, amount: 500 }],
@@ -69,8 +71,9 @@ export const mockOrders: Order[] = [
     pickupAddress: '政务中心', dropoffAddress: '会展中心',
     passengerCount: 1, luggage: '0件',
     driverName: '李师傅', driverPhone: '138****6666', plateNo: '京A12345', carModel: '奔驰V260L',
-    paymentMethod: 'enterprise_credit', baseFee: 2088, overtimeFee: 0, overmileageFee: 0, paidAmount: 2088, refundAmount: 0,
-    review: { driverRating: 5, vehicleRating: 5, serviceRating: 4, comment: '李师傅驾驶平稳，车内干净整洁。' },
+    paymentMethod: 'enterprise_credit', baseFee: 2088, overtimeFee: 0, overmileageFee: 0,
+    remoteDispatchDetail: { pickupKm: 0, dropoffKm: 0, pickupFee: 0, dropoffFee: 0 },
+    paidAmount: 2088, refundAmount: 0,
     createdAt: '2026-05-31 16:00', paymentTime: '2026-05-31 16:10',
   },
   // 租车订单
@@ -84,8 +87,9 @@ export const mockOrders: Order[] = [
     pickupDriver: '赵师傅', pickupDriverPhone: '138****8888',
     driverLicense: 'C1',
     driverName: '赵师傅', driverPhone: '138****8888', plateNo: '京A34567', carModel: '奥迪A6L',
-    paymentMethod: 'wechat', baseFee: 4500, overtimeFee: 0, overmileageFee: 0, paidAmount: 4500, refundAmount: 0,
-    review: { driverRating: 5, vehicleRating: 4, serviceRating: 5, comment: '送车准时，车辆状态良好。' },
+    paymentMethod: 'wechat', baseFee: 4500, overtimeFee: 0, overmileageFee: 0,
+    remoteDispatchDetail: { pickupKm: 0, dropoffKm: 0, pickupFee: 0, dropoffFee: 0 },
+    paidAmount: 4500, refundAmount: 0,
     createdAt: '2026-06-02 14:00', paymentTime: '2026-06-02 14:10',
   },
   {
@@ -183,9 +187,9 @@ export function getBillDetails(month: string): { details: BillDetailItem[]; refu
 
 // ===== 发票 =====
 export const mockInvoices: Invoice[] = [
-  { id: 'inv1', invoiceNo: 'INV202606-0001', type: '企业发票', relatedOrders: 'ZC20260605-001', amount: 3980, applicant: '李女士', appliedAt: '2026-06-06 10:00', issuedAt: '2026-06-07 14:00', status: 'issued', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'finance@tencent.com' },
-  { id: 'inv2', invoiceNo: 'INV202606-0002', type: '企业发票', relatedOrders: 'ZC20260608-001, ZC20260610-001', amount: 10440, applicant: '张先生', appliedAt: '2026-06-09 11:00', status: 'processing', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'admin@tencent.com' },
-  { id: 'inv3', invoiceNo: 'INV202605-0001', type: '企业发票', relatedOrders: 'ZC20260528-001', amount: 4176, applicant: '陈先生', appliedAt: '2026-05-29 09:00', status: 'cancelled', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'chen@tencent.com', rejectReason: '发票信息有误，请核对后重新提交' },
+  { id: 'inv1', invoiceNo: 'INV202606-0001', type: 'general', relatedOrders: 'ZC20260605-001', amount: 3980, applicant: '李女士', appliedAt: '2026-06-06 10:00', issuedAt: '2026-06-07 14:00', status: 'issued', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'finance@tencent.com' },
+  { id: 'inv2', invoiceNo: 'INV202606-0002', type: 'special', relatedOrders: 'ZC20260608-001, ZC20260610-001', amount: 10440, applicant: '张先生', appliedAt: '2026-06-09 11:00', status: 'processing', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'admin@tencent.com' },
+  { id: 'inv3', invoiceNo: 'INV202605-0001', type: 'general', relatedOrders: 'ZC20260528-001', amount: 4176, applicant: '陈先生', appliedAt: '2026-05-29 09:00', status: 'cancelled', companyName: '腾讯科技', taxId: '91110108551491491M', email: 'chen@tencent.com', rejectReason: '发票信息有误，请核对后重新提交' },
 ];
 
 // ===== 工作台 =====

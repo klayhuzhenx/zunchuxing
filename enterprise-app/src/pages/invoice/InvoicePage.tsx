@@ -51,6 +51,8 @@ export default function InvoicePage() {
     setApplyVisible(true);
     setApplyStep('select');
     setSelectedOrderIds([]);
+    setInvoiceType('general');
+    setInvForm({ company: '', taxId: '', email: '', address: '', phone: '', bank: '', account: '' });
   };
 
   const handleNext = () => {
@@ -58,14 +60,21 @@ export default function InvoicePage() {
     setApplyStep('fill');
   };
 
-  const [invForm, setInvForm] = useState({ company: '', taxId: '', email: '' });
+  const [invoiceType, setInvoiceType] = useState<'general' | 'special'>('general');
+  const [invForm, setInvForm] = useState({ company: '', taxId: '', email: '', address: '', phone: '', bank: '', account: '' });
 
   const handleSubmit = () => {
     if (!invForm.company.trim()) { Message.warning('请输入企业名称'); return; }
     if (!invForm.taxId.trim() || (invForm.taxId.length !== 15 && invForm.taxId.length !== 18)) { Message.warning('请输入正确的税号（15-18位）'); return; }
     if (!invForm.email.trim()) { Message.warning('请输入接收邮箱'); return; }
+    if (invoiceType === 'special') {
+      if (!invForm.address.trim()) { Message.warning('请输入企业地址'); return; }
+      if (!invForm.phone.trim()) { Message.warning('请输入企业电话'); return; }
+      if (!invForm.bank.trim()) { Message.warning('请输入开户银行'); return; }
+      if (!invForm.account.trim()) { Message.warning('请输入银行账号'); return; }
+    }
     setApplyVisible(false);
-    setInvForm({ company: '', taxId: '', email: '' });
+    setInvForm({ company: '', taxId: '', email: '', address: '', phone: '', bank: '', account: '' });
     Message.success('开票申请已提交，预计 1-2 个工作日内完成');
   };
 
@@ -91,7 +100,7 @@ export default function InvoicePage() {
 
   const columns = [
     { title: '发票编号', dataIndex: 'invoiceNo', width: 150, render: (v: string, r: Invoice) => <span style={{ color: '#165DFF', cursor: 'pointer' }} onClick={() => setDetailId(r.id)}>{v}</span> },
-    { title: '类型', dataIndex: 'type', width: 80 },
+    { title: '类型', dataIndex: 'type', width: 80, render: (v: string) => v === 'special' ? '专票' : '普票' },
     { title: '关联订单', dataIndex: 'relatedOrders', width: 280, ellipsis: true },
     { title: '金额', dataIndex: 'amount', width: 100, render: (v: number) => <span style={{ fontWeight: 500 }}>¥{v.toLocaleString()}</span> },
     { title: '申请人', dataIndex: 'applicant', width: 80 },
@@ -154,7 +163,7 @@ export default function InvoicePage() {
             <Card title="发票信息" size="small" style={{ marginBottom: 16 }}>
               <Descriptions column={2} size="small" data={[
                 { label: '发票编号', value: detail.invoiceNo },
-                { label: '发票类型', value: detail.type },
+                { label: '发票类型', value: detail.type === 'special' ? '增值税专用发票（专票）' : '增值税普通发票（普票）' },
                 { label: '开票金额', value: <strong>¥{detail.amount.toLocaleString()}</strong> },
                 { label: '状态', value: <Tag color={statusMap[detail.status]?.color} size="small">{statusMap[detail.status]?.label}</Tag> },
                 { label: '申请时间', value: detail.appliedAt },
@@ -244,12 +253,24 @@ export default function InvoicePage() {
           <div>
             <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 16 }}>已选 {selectedOrderIds.length} 笔 · 合计 ¥{selTotal.toLocaleString()}</div>
             <Form layout="vertical">
+              <Form.Item label="申请类型" required>
+                <Select value={invoiceType} onChange={(v) => setInvoiceType(v as 'general' | 'special')}
+                  options={[{ label: '增值税普通发票（普票）', value: 'general' }, { label: '增值税专用发票（专票）', value: 'special' }]} />
+              </Form.Item>
               <Form.Item label="企业名称" required>
                 <Input placeholder="请输入企业全称" value={invForm.company} onChange={v => setInvForm(p => ({ ...p, company: v }))} />
               </Form.Item>
               <Form.Item label="纳税人识别号" required>
                 <Input placeholder="15-18 位" maxLength={18} value={invForm.taxId} onChange={v => setInvForm(p => ({ ...p, taxId: v }))} />
               </Form.Item>
+              {invoiceType === 'special' && (
+                <>
+                  <Form.Item label="企业地址" required><Input placeholder="请输入企业注册地址" value={invForm.address} onChange={v => setInvForm(p => ({ ...p, address: v }))} /></Form.Item>
+                  <Form.Item label="企业电话" required><Input placeholder="请输入企业电话" value={invForm.phone} onChange={v => setInvForm(p => ({ ...p, phone: v }))} /></Form.Item>
+                  <Form.Item label="开户银行" required><Input placeholder="请输入开户银行" value={invForm.bank} onChange={v => setInvForm(p => ({ ...p, bank: v }))} /></Form.Item>
+                  <Form.Item label="银行账号" required><Input placeholder="请输入银行账号" value={invForm.account} onChange={v => setInvForm(p => ({ ...p, account: v }))} /></Form.Item>
+                </>
+              )}
               <Form.Item label="接收邮箱" required>
                 <Input placeholder="发票将发送至此邮箱" value={invForm.email} onChange={v => setInvForm(p => ({ ...p, email: v }))} />
               </Form.Item>

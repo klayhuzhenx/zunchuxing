@@ -21,7 +21,10 @@
           <text class="stat-value">20</text>
         </view>
         <view class="stat">
-          <text class="stat-label">剩余额度</text>
+          <view class="stat-head">
+            <text class="stat-label">剩余额度</text>
+            <text class="quota-recharge" @click="showQuotaModal = true">额度补充</text>
+          </view>
           <text class="stat-value">¥37,550.00</text>
         </view>
       </view>
@@ -49,6 +52,19 @@
         </view>
       </view>
     </view>
+
+    <!-- 额度补充弹窗 -->
+    <view v-if="showQuotaModal" class="modal-mask" @click="showQuotaModal = false">
+      <view class="modal-card" @click.stop>
+        <text class="modal-title">额度补充</text>
+        <text class="modal-text">请联系运营人员进行额度补充</text>
+        <text class="modal-phone" @click="callService">400-000-8888</text>
+        <text class="modal-time">服务时间：7×24 小时</text>
+        <view class="modal-btn" @click="showQuotaModal = false">
+          <text class="modal-btn-text">知道了</text>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -56,8 +72,10 @@
 import { ref, onMounted } from 'vue';
 const top = ref(0);
 onMounted(() => { top.value = uni.getSystemInfoSync().statusBarHeight || 0; });
+const showQuotaModal = ref(false);
 const back = () => uni.navigateBack();
 const nav = (u: string) => uni.navigateTo({ url: u });
+const callService = () => uni.makePhoneCall({ phoneNumber: '4000008888' });
 </script>
 
 <style lang="scss" scoped>
@@ -91,4 +109,17 @@ const nav = (u: string) => uni.navigateTo({ url: u });
 .menu-title { font-size: 17px; font-weight: 600; color: #000; display: block; }
 .menu-desc { font-size: 11px; color: #86868B; display: block; margin-top: 2px; }
 .menu-arr { font-size: 22px; color: #86868B; }
+
+.stat-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.quota-recharge { font-size: 11px; color: #86868B; text-decoration: underline; flex-shrink: 0; }
+.quota-recharge:active { opacity: 0.6; }
+.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: center; justify-content: center; }
+.modal-card { width: 300px; background: #FFF; border-radius: 20px; padding: 32px 24px 24px; display: flex; flex-direction: column; align-items: center; }
+.modal-title { font-size: 20px; font-weight: 700; color: #1A1C1C; margin-bottom: 12px; }
+.modal-text { font-size: 14px; color: #4C4546; margin-bottom: 16px; text-align: center; }
+.modal-phone { font-size: 24px; font-weight: 700; color: #165DFF; margin-bottom: 4px; }
+.modal-time { font-size: 12px; color: #86868B; margin-bottom: 24px; }
+.modal-btn { width: 100%; height: 48px; background: #000; border-radius: 24px; display: flex; align-items: center; justify-content: center; }
+.modal-btn:active { opacity: 0.8; }
+.modal-btn-text { font-size: 16px; font-weight: 600; color: #FFF; }
 </style>

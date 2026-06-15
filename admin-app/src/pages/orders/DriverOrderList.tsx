@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Card, Table, Tag, Button, Input, Select, Space, Tabs, Drawer, Descriptions, DatePicker, Timeline } from '@arco-design/web-react';
-import { IconSearch } from '@arco-design/web-react/icon';
-import { driverOrders } from '../../data/mock';
+import { Card, Table, Tag, Button, Input, Select, Space, Tabs, Drawer, Descriptions, DatePicker, Timeline, Modal } from '@arco-design/web-react';
+import { IconSearch, IconClose } from '@arco-design/web-react/icon';
+import { driverOrders, orders } from '../../data/mock';
 import type { DriverOrder, DriverOrderStatus, OrderType } from '../../types';
 
 const statusTabs: { key: string; label: string }[] = [
   { key: 'all', label: '全部' },
-  { key: 'not_started', label: '未开始' },
+  { key: 'not_started', label: '待开始' },
   { key: 'in_progress', label: '进行中' },
   { key: 'pending_settlement', label: '待结算' },
   { key: 'completed', label: '已完成' },
@@ -14,12 +14,27 @@ const statusTabs: { key: string; label: string }[] = [
 ];
 
 const statusMap: Record<DriverOrderStatus, { label: string; color: string }> = {
-  not_started: { label: '未开始', color: 'arcoblue' },
-  in_progress: { label: '进行中', color: 'cyan' },
-  pending_settlement: { label: '待结算', color: 'orangered' },
+  not_started: { label: '待开始', color: 'arcoblue' },
+  in_progress: { label: '进行中', color: 'orangered' },
+  pending_settlement: { label: '待结算', color: 'red' },
   completed: { label: '已完成', color: 'green' },
   cancelled: { label: '已取消', color: 'gray' },
 };
+
+const feeRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' };
+
+// 费用明细弹窗（内联组件）
+function DriverFeeSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <Modal visible simple footer={null} onCancel={onClose} style={{ width: 480, borderRadius: 24 }}
+      title={<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <span style={{ fontSize: 18, fontWeight: 600 }}>{title}</span>
+        <Button type="text" icon={<IconClose />} onClick={onClose} />
+      </div>}>
+      {children}
+    </Modal>
+  );
+}
 
 export default function DriverOrderList() {
   const [activeTab, setActiveTab] = useState('all');
@@ -30,6 +45,7 @@ export default function DriverOrderList() {
   const [tripDateRange, setTripDateRange] = useState<[string, string] | null>(null);
   const [selectedDriverOrder, setSelectedDriverOrder] = useState<DriverOrder | null>(null);
   const [driverDrawerVisible, setDriverDrawerVisible] = useState(false);
+  const [driverFeeModal, setDriverFeeModal] = useState<{ visible: boolean; type: 'remote' }>({ visible: false, type: 'remote' });
 
   const filtered = useMemo(() => {
     let result = driverOrders;
@@ -63,13 +79,13 @@ export default function DriverOrderList() {
   };
 
   const columns = [
-    { title: '司机出车单号', dataIndex: 'driverOrderNo', width: 160 },
+    { title: '司机工单号', dataIndex: 'driverOrderNo', width: 160 },
     { title: '关联订单号', dataIndex: 'orderNo', width: 160, render: (v: string) => <a>{v}</a> },
     { title: '类型', dataIndex: 'type', width: 70, render: (v: string) => (
       <Tag color={v === 'charter' ? 'arcoblue' : 'purple'} size="small">{v === 'charter' ? '包车' : '租车'}</Tag>
     )},
     { title: '司机', width: 120, render: (_: unknown, r: DriverOrder) => `${r.driverName} ${r.driverPhone}` },
-    { title: '车辆', width: 110, render: (_: unknown, r: DriverOrder) => `${r.plateNo} ${r.carModel}` },
+    { title: '车辆', dataIndex: 'plateNo', width: 100 },
     { title: '乘客', width: 120, render: (_: unknown, r: DriverOrder) => `${r.passengerName || '—'} ${r.passengerPhone}` },
     { title: '出车日期', dataIndex: 'tripDate', width: 100 },
     { title: '计划时段', dataIndex: 'plannedTimeRange', width: 120 },
@@ -96,7 +112,7 @@ export default function DriverOrderList() {
 
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
         <Space size={12}>
-          <Input prefix={<IconSearch />} placeholder="出车单号/关联订单号/乘客/手机号" style={{ width: 300 }}
+          <Input prefix={<IconSearch />} placeholder="工单号/关联订单号/乘客/手机号" style={{ width: 300 }}
             value={keyword} onChange={setKeyword} allowClear />
           <Select placeholder="订单类型" style={{ width: 120 }}
             value={typeFilter || undefined} onChange={v => setTypeFilter((v || '') as OrderType | '')}
@@ -115,104 +131,144 @@ export default function DriverOrderList() {
           scroll={{ x: 1700 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
       </Card>
 
-      <Drawer width="60%" title={selectedDriverOrder ? `出车单详情 - ${selectedDriverOrder.driverOrderNo}` : '出车单详情'}
+      <Drawer width="60%" title={selectedDriverOrder ? `司机工单详情 - ${selectedDriverOrder.driverOrderNo}` : '司机工单详情'}
         visible={driverDrawerVisible} onCancel={() => setDriverDrawerVisible(false)} footer={null}>
         {selectedDriverOrder && (
           <div>
+            {/* 基本信息 */}
             <Card title="基本信息" size="small" style={{ marginBottom: 16 }}>
               <Descriptions column={2} size="small" data={[
-                { label: '司机出车单号', value: selectedDriverOrder.driverOrderNo },
-                { label: '关联订单号', value: selectedDriverOrder.orderNo },
-                { label: '类型', value: selectedDriverOrder.type === 'charter' ? '包车' : '租车' },
-                { label: '状态', value: <Tag color={statusMap[selectedDriverOrder.status].color} size="small">{statusMap[selectedDriverOrder.status].label}</Tag> },
-              ]} />
-            </Card>
-            <Card title="人员与车辆" size="small" style={{ marginBottom: 16 }}>
-              <Descriptions column={2} size="small" data={[
-                { label: '司机', value: `${selectedDriverOrder.driverName} ${selectedDriverOrder.driverPhone}` },
-                { label: '车辆', value: `${selectedDriverOrder.plateNo} ${selectedDriverOrder.carModel}` },
-                { label: '乘客', value: `${selectedDriverOrder.passengerName || '—'} ${selectedDriverOrder.passengerPhone}` },
-                ...(selectedDriverOrder.dispatchTime ? [{ label: '派车时间', value: selectedDriverOrder.dispatchTime }] : []),
-              ]} />
-            </Card>
-            <Card title="行程信息" size="small" style={{ marginBottom: 16 }}>
-              <Descriptions column={2} size="small" data={[
+                { label: '工单号', value: selectedDriverOrder.driverOrderNo },
+                { label: '工单状态', value: <Tag color={statusMap[selectedDriverOrder.status].color} size="small">{statusMap[selectedDriverOrder.status].label}</Tag> },
+                { label: '关联订单号', value: <a>{selectedDriverOrder.orderNo}</a> },
                 { label: '出车日期', value: selectedDriverOrder.tripDate },
-                { label: '计划时段', value: selectedDriverOrder.plannedTimeRange },
-                { label: '实际开始', value: selectedDriverOrder.actualStartTime || '-' },
-                { label: '实际结束', value: selectedDriverOrder.actualEndTime || '-' },
-                { label: '时长', value: selectedDriverOrder.duration ? `${Math.floor(selectedDriverOrder.duration / 60)}h${selectedDriverOrder.duration % 60}m` : '-' },
-                { label: '里程', value: selectedDriverOrder.mileage ? `${selectedDriverOrder.mileage}km` : '-' },
-                { label: '上车地点', value: selectedDriverOrder.pickupAddress || '-' },
-                { label: '下车地点', value: selectedDriverOrder.dropoffAddress || '-' },
+                { label: '时段', value: selectedDriverOrder.plannedTimeRange },
               ]} />
             </Card>
 
-            {/* 时间节点（司机出车单维度） */}
-            <Card title="时间节点" size="small" style={{ marginBottom: 16 }}>
+            {/* 车辆与司机 */}
+            <Card title="车辆与司机" size="small" style={{ marginBottom: 16 }}>
+              <Descriptions column={2} size="small" data={[
+                { label: '车牌号', value: selectedDriverOrder.plateNo },
+                { label: '司机', value: `${selectedDriverOrder.driverName} ${selectedDriverOrder.driverPhone}` },
+              ]} />
+            </Card>
+
+            {/* 乘客信息 */}
+            <Card title="乘客信息" size="small" style={{ marginBottom: 16 }}>
+              <Descriptions column={2} size="small" data={[
+                { label: '下单人', value: `${selectedDriverOrder.passengerName || '—'} ${selectedDriverOrder.passengerPhone}` },
+                { label: '上车点', value: selectedDriverOrder.pickupAddress || '-' },
+                { label: '下车点', value: selectedDriverOrder.dropoffAddress || '-' },
+              ]} />
+            </Card>
+
+            {/* 里程信息 */}
+            <Card title="里程信息" size="small" style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 120, height: 90, background: '#F2F2F2', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#86909c' }}>
+                  <span style={{ fontSize: 24 }}>📷</span><span>开始里程</span>
+                </div>
+                <div style={{ width: 120, height: 90, background: '#F2F2F2', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#86909c' }}>
+                  <span style={{ fontSize: 24 }}>📷</span><span>结束里程</span>
+                </div>
+              </div>
+              <Descriptions column={1} size="small" data={[
+                { label: '当日里程', value: selectedDriverOrder.mileage ? `${selectedDriverOrder.mileage} km` : '-' },
+              ]} />
+            </Card>
+
+            {/* 上报费用 — 与乘客订单同款样式，无日期+无套餐费 */}
+            <Card title="上报费用" size="small" style={{ marginBottom: 16 }}>
+              <div style={{ ...feeRowStyle }}>
+                <span style={{ fontSize: 14, color: '#4E5969' }}>等待费 · 免费15min ¥1/min</span>
+                <span style={{ fontSize: 14, color: '#86909c' }}>¥0</span>
+              </div>
+              <div style={{ ...feeRowStyle }}>
+                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#4E5969' }}>超时长费 · ¥100/h</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#000' }}>
+                  ¥{((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'overtime').reduce((s: number, f: any) => s + f.amount, 0)).toLocaleString()}
+                  {((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'overtime').length > 0) ? ' 明细 ›' : ''}
+                </span>
+              </div>
+              <div style={{ ...feeRowStyle }}>
+                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#4E5969' }}>超里程费 · ¥5/km</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#000' }}>
+                  ¥{((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'excess_mileage').reduce((s: number, f: any) => s + f.amount, 0)).toLocaleString()}
+                  {((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'excess_mileage').length > 0) ? ' 明细 ›' : ''}
+                </span>
+              </div>
+              {/* 远调费：来自乘客订单（基于上车/下车点超出运营范围的直线距离） */}
+              {(() => {
+                const linked = orders.find(o => o.id === selectedDriverOrder.orderId);
+                const rd = linked?.remoteDispatchDetail;
+                const fee = rd ? rd.pickupFee + rd.dropoffFee : 0;
+                const km = rd ? rd.pickupKm + rd.dropoffKm : 0;
+                const hasFee = fee > 0;
+                return (
+                  <div style={{ ...feeRowStyle, cursor: hasFee ? 'pointer' : 'default' }}
+                    onClick={() => { if (hasFee) setDriverFeeModal({ visible: true, type: 'remote' }); }}>
+                    <span style={{ fontSize: 14, color: hasFee ? '#F53F3F' : '#4E5969' }}>
+                      远调费{km > 0 ? ` · ${km.toFixed(1)}km` : ''}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: hasFee ? '#F53F3F' : '#000' }}>
+                      {hasFee ? `¥${fee.toLocaleString()} 明细 ›` : '¥0'}
+                    </span>
+                  </div>
+                );
+              })()}
+              <div style={{ ...feeRowStyle }}>
+                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').length > 0 ? '#F53F3F' : '#4E5969' }}>其他费用</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: (selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').length > 0 ? '#F53F3F' : '#000' }}>
+                  ¥{((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').reduce((s: number, f: any) => s + f.amount, 0)).toLocaleString()}
+                  {((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').length > 0) ? ' 明细 ›' : ''}
+                </span>
+              </div>
+              <div style={{ borderTop: '1px solid #e5e6eb', margin: '4px 0', paddingTop: 8, ...feeRowStyle }}>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>上报合计</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: selectedDriverOrder.status === 'pending_settlement' ? '#F53F3F' : '#000' }}>
+                  ¥{(selectedDriverOrder.extraFee || 0).toLocaleString()}
+                </span>
+              </div>
+            </Card>
+
+            {/* 远调费明细弹窗 */}
+            {driverFeeModal.visible && (() => {
+              const linked = orders.find(o => o.id === selectedDriverOrder.orderId);
+              const rd = linked?.remoteDispatchDetail;
+              const pickupLabel = linked?.type === 'charter' ? '接远调距离' : '取远调距离';
+              const dropoffLabel = linked?.type === 'charter' ? '送远调距离' : '还远调距离';
+              const totalFee = (rd?.pickupFee ?? 0) + (rd?.dropoffFee ?? 0);
+              return (
+                <DriverFeeSheet title="远调费明细" onClose={() => setDriverFeeModal({ visible: false, type: 'remote' })}>
+                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>
+                    {linked?.type === 'charter' ? '包车出行' : '租车出行'} · 远调费明细
+                  </div>
+                  <div style={feeRowStyle}>
+                    <span style={{ fontSize: 14, color: '#4C4546' }}>{pickupLabel}</span>
+                    <span style={{ fontSize: 14 }}>{rd?.pickupKm ?? 0} km → ¥{rd?.pickupFee ?? 0}</span>
+                  </div>
+                  <div style={feeRowStyle}>
+                    <span style={{ fontSize: 14, color: '#4C4546' }}>{dropoffLabel}</span>
+                    <span style={{ fontSize: 14 }}>{rd?.dropoffKm ?? 0} km → ¥{rd?.dropoffFee ?? 0}</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid #f0f0f0', margin: '8px 0', paddingTop: 8, ...feeRowStyle }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: totalFee > 0 ? '#F53F3F' : '#000' }}>远调费合计</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: totalFee > 0 ? '#F53F3F' : '#000' }}>¥{totalFee.toLocaleString()}</span>
+                  </div>
+                </DriverFeeSheet>
+              );
+            })()}
+
+            {/* 工单动态 */}
+            <Card title="工单动态" size="small">
               <Timeline>
-                {selectedDriverOrder.dispatchTime && <Timeline.Item label={selectedDriverOrder.dispatchTime}>司机出车</Timeline.Item>}
-                {selectedDriverOrder.actualStartTime && <Timeline.Item label={selectedDriverOrder.actualStartTime} dotColor="cyan">到达上车点</Timeline.Item>}
+                <Timeline.Item label={selectedDriverOrder.dispatchTime || '—'}>工单已生成</Timeline.Item>
+                {selectedDriverOrder.actualStartTime && <Timeline.Item label={selectedDriverOrder.actualStartTime} dotColor="cyan">司机出发</Timeline.Item>}
                 {selectedDriverOrder.actualEndTime && <Timeline.Item label={selectedDriverOrder.actualEndTime} dotColor="green">行程结束</Timeline.Item>}
-                {!selectedDriverOrder.dispatchTime && !selectedDriverOrder.actualStartTime && (
-                  <div style={{ color: '#86909c', padding: '4px 0' }}>暂无时间节点记录</div>
-                )}
+                {selectedDriverOrder.status === 'pending_settlement' && <Timeline.Item label="—" dotColor="#F53F3F">上报费用</Timeline.Item>}
               </Timeline>
             </Card>
-
-            {/* 费用明细 — 四层结构 */}
-            <Card title="费用明细" size="small" style={{ marginBottom: 16 }}>
-              {/* 层1：清单明细及总额 */}
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 500 }}>清单明细及总额</div>
-                <Descriptions column={2} size="small" data={[
-                  { label: '基础费', value: `¥${((selectedDriverOrder.extraFeeItems || []).reduce((s: number, f: any) => s + (f.type === 'overtime' ? f.amount : 0), 0)).toLocaleString()}` },
-                  { label: '超时长费', value: <span style={{ color: '#F53F3F' }}>¥{(selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'overtime').reduce((s: number, f: any) => s + f.amount, 0).toLocaleString()}</span> },
-                  { label: '超里程费', value: <span style={{ color: '#F53F3F' }}>¥{(selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'excess_mileage').reduce((s: number, f: any) => s + f.amount, 0).toLocaleString()}</span> },
-                  { label: '等待费', value: '¥0' },
-                ]} />
-              </div>
-
-              {/* 层2：系统计算 */}
-              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 500 }}>系统计算</div>
-                <Descriptions column={2} size="small" data={[
-                  { label: '基础费', value: '¥0' },
-                  { label: '超时长费', value: <span style={{ color: '#F53F3F' }}>¥{(selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'overtime').reduce((s: number, f: any) => s + f.amount, 0).toLocaleString()}</span> },
-                  { label: '超里程费', value: <span style={{ color: '#F53F3F' }}>¥{(selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'excess_mileage').reduce((s: number, f: any) => s + f.amount, 0).toLocaleString()}</span> },
-                  { label: '等待费', value: '¥0' },
-                ]} />
-              </div>
-
-              {/* 层3：其他费用（司机上报） */}
-              {selectedDriverOrder.extraFeeItems && selectedDriverOrder.extraFeeItems.filter((f: any) => f.type === 'other').length > 0 && (
-                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 500 }}>其他费用（司机上报）</div>
-                  <Table
-                    columns={[
-                      { title: '费用类型', dataIndex: 'category', width: 100 },
-                      { title: '金额', dataIndex: 'amount', width: 100, render: (v: number) => <span style={{ color: '#F53F3F' }}>¥{v.toLocaleString()}</span> },
-                      { title: '凭证', width: 80, render: (_: unknown, r: any) => r.voucherImage ? <a>查看</a> : '-' },
-                    ]}
-                    data={selectedDriverOrder.extraFeeItems.filter((f: any) => f.type === 'other')}
-                    rowKey={(_, i) => String(i)}
-                    pagination={false}
-                    size="small"
-                  />
-                </div>
-              )}
-
-              {/* 层4：费用汇总 */}
-              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 500 }}>费用汇总</div>
-                <Descriptions column={2} size="small" data={[
-                  { label: '小计', value: `¥${(selectedDriverOrder.extraFee || 0).toLocaleString()}` },
-                  ...(selectedDriverOrder.extraFee && selectedDriverOrder.extraFee > 0 ? [{ label: '退款', value: <span style={{ color: '#00B42A' }}>¥0</span> }] : []),
-                  { label: '实付', value: <strong style={{ fontSize: 16 }}>¥{(selectedDriverOrder.extraFee || 0).toLocaleString()}</strong> },
-                ]} />
-              </div>
-            </Card>
-
           </div>
         )}
       </Drawer>

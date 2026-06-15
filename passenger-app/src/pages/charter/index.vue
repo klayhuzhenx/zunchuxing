@@ -1,7 +1,13 @@
 <template>
   <view class="page">
     <!-- 顶部 navbar -->
-    <navbar title="包车出行" :show-back="true" />
+    <navbar title="包车出行" :show-back="true">
+      <template #right>
+        <view class="range-entry" @click="showRangeSheet = true">
+          <text class="range-entry-text">查看运营范围</text>
+        </view>
+      </template>
+    </navbar>
 
     <!-- 主内容 -->
     <scroll-view scroll-y class="main">
@@ -49,11 +55,10 @@
           <view class="car-detail">
             <view class="car-image">
               <view class="car-image-bg" :style="{ background: cars[carIdx].imageGradient }" />
-              <text class="car-image-label">{{ cars[carIdx].fullName }}</text>
+              <text class="car-image-label">{{ cars[carIdx].seats }}座</text>
             </view>
             <view class="car-info">
-              <text class="car-name">{{ cars[carIdx].fullName }}</text>
-              <text class="car-tagline">{{ cars[carIdx].tagline }}</text>
+              <text class="car-name">{{ cars[carIdx].tagline }}</text>
               <view class="car-features">
                 <view v-for="f in cars[carIdx].features" :key="f.icon" class="car-feature">
                   <text class="material-symbols-outlined feature-icon">{{ f.icon }}</text>
@@ -69,7 +74,7 @@
 
     <!-- 底部按钮 -->
     <view class="footer">
-      <view class="footer-btn" @click="showPackageSheet = true">
+      <view class="footer-btn" :class="{ disabled: !canPickPkg }" @click="onPickPkgClick">
         <text class="footer-btn-text">选择套餐</text>
         <text class="material-symbols-outlined footer-btn-icon">arrow_forward</text>
       </view>
@@ -139,22 +144,17 @@
         </view>
       </view>
       <view class="pkg-section-title">服务权益</view>
-      <view class="amenity-chips">
-        <view class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">layers</text>
-          <text class="chip-text">纸巾湿巾</text>
-        </view>
-        <view v-if="hasAmenityTea" class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">restaurant</text>
-          <text class="chip-text">精致茶点</text>
-        </view>
-        <view v-if="hasAmenityChampagne" class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">celebration</text>
-          <text class="chip-text">香槟礼遇</text>
-        </view>
-        <view class="amenity-chip">
-          <text class="material-symbols-outlined chip-icon">face</text>
-          <text class="chip-text">专属管家</text>
+      <view v-if="visibleAmenities.length === 0" class="amenity-empty">
+        <text class="amenity-empty-text">暂无权益说明</text>
+      </view>
+      <view v-else class="amenity-chips">
+        <view
+          v-for="a in visibleAmenities"
+          :key="a.text"
+          class="amenity-chip"
+        >
+          <text class="material-symbols-outlined chip-icon">{{ a.icon }}</text>
+          <text class="chip-text">{{ a.text }}</text>
         </view>
       </view>
 
@@ -232,6 +232,44 @@
         </view>
       </template>
     </bottom-sheet>
+
+    <!-- 运营范围面板 (§4.2) -->
+    <bottom-sheet v-model="showRangeSheet" title="运营范围" :max-height="'85vh'">
+      <view class="range-cities">
+        <text class="range-section-label">运营城市</text>
+        <view class="range-city-list">
+          <view
+            v-for="c in operatingCities"
+            :key="c"
+            class="range-city-chip"
+            :class="{ active: rangeActiveCity === c }"
+            @click="rangeActiveCity = c"
+          >
+            <text class="range-city-text">{{ c }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="range-map-section">
+        <view class="range-map-tip">
+          <text class="range-map-tip-text">若开始/结束点不在绘制范围内则会收取远调费</text>
+          <view class="range-map-tip-link" @click="onShowFeeRule">
+            <text class="range-map-tip-link-text">查看计费规则</text>
+          </view>
+        </view>
+
+        <view class="range-map-wrap">
+          <map
+            class="range-map"
+            :latitude="rangeMapCenter[1]"
+            :longitude="rangeMapCenter[0]"
+            :scale="11"
+            :polygons="rangePolygons"
+            :markers="rangeMarkers"
+          />
+        </view>
+      </view>
+    </bottom-sheet>
   </view>
 </template>
 
@@ -240,98 +278,77 @@ import { ref, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import Navbar from '@/components/navbar.vue';
 import BottomSheet from '@/components/bottom-sheet.vue';
+import {
+  charterCars,
+  operatingCities,
+  isInOperatingCity,
+  getZonesByCity,
+  type CharterPkg,
+} from '@/data/charter';
 
 /* ============ 数据 ============ */
-type Pkg = { id: string; tier: string; spec: string; price: number; duration: 'half' | 'full' };
-type Car = {
-  id: string;
-  name1: string;
-  name2: string;
-  fullName: string;
-  tagline: string;
-  imageGradient: string;
-  features: { icon: string; text: string }[];
-  packages: Pkg[];
-};
+type Pkg = CharterPkg;
 
-const cars = ref<Car[]>([
-  {
-    id: 'star-shine-luxury',
-    name1: '增程星辉',
-    name2: '尊享版',
-    fullName: '增程星辉尊享版',
-    tagline: '极致尊贵 · 宽适空间',
-    imageGradient: 'linear-gradient(135deg, #2c2c2e 0%, #1a1a1c 50%, #0a0a0c 100%)',
-    features: [
-      { icon: 'airline_seat_recline_extra', text: '头等舱座椅' },
-      { icon: 'wifi', text: '5G车载WiFi' },
-      { icon: 'coffee', text: '高端饮用水' },
-    ],
-    packages: [
-      { id: 'a-h-base', tier: '尊享基础', spec: '半日租 · 4h/50km', price: 988, duration: 'half' },
-      { id: 'a-h-pro', tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1188, duration: 'half' },
-      { id: 'a-h-top', tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1588, duration: 'half' },
-      { id: 'a-f-base', tier: '尊享基础', spec: '日租 · 8h/100km', price: 1888, duration: 'full' },
-      { id: 'a-f-pro', tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2088, duration: 'full' },
-      { id: 'a-f-top', tier: '尊御顶级', spec: '日租 · 8h/100km', price: 2688, duration: 'full' },
-    ],
-  },
-  {
-    id: 'star-shine-exec',
-    name1: '增程星辉',
-    name2: '行政版',
-    fullName: '增程星辉行政版',
-    tagline: '商务出行 · 稳健效率',
-    imageGradient: 'linear-gradient(135deg, #3a3a3c 0%, #1f1f21 50%, #0d0d0f 100%)',
-    features: [
-      { icon: 'airline_seat_recline_extra', text: '行政座椅' },
-      { icon: 'wifi', text: '5G车载WiFi' },
-      { icon: 'ac_unit', text: '分区空调' },
-    ],
-    packages: [
-      { id: 'b-h-base', tier: '尊享基础', spec: '半日租 · 4h/50km', price: 1088, duration: 'half' },
-      { id: 'b-h-pro', tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1288, duration: 'half' },
-      { id: 'b-h-top', tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1688, duration: 'half' },
-      { id: 'b-f-base', tier: '尊享基础', spec: '日租 · 8h/100km', price: 1988, duration: 'full' },
-      { id: 'b-f-pro', tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2288, duration: 'full' },
-      { id: 'b-f-top', tier: '尊御顶级', spec: '日租 · 8h/100km', price: 2888, duration: 'full' },
-    ],
-  },
-  {
-    id: 'star-radiance-exec',
-    name1: '增程星耀',
-    name2: '行政版',
-    fullName: '增程星耀行政版',
-    tagline: '旗舰豪华 · 尊荣体验',
-    imageGradient: 'linear-gradient(135deg, #4a4a4c 0%, #252527 50%, #101012 100%)',
-    features: [
-      { icon: 'airline_seat_recline_extra', text: '按摩座椅' },
-      { icon: 'wine_bar', text: '车载冷柜' },
-      { icon: 'privacy_tip', text: '隐私玻璃' },
-    ],
-    packages: [
-      { id: 'c-h-base', tier: '尊享基础', spec: '半日租 · 4h/50km', price: 1288, duration: 'half' },
-      { id: 'c-h-pro', tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1588, duration: 'half' },
-      { id: 'c-h-top', tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1888, duration: 'half' },
-      { id: 'c-f-base', tier: '尊享基础', spec: '日租 · 8h/100km', price: 2288, duration: 'full' },
-      { id: 'c-f-pro', tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2688, duration: 'full' },
-      { id: 'c-f-top', tier: '尊御顶级', spec: '日租 · 8h/100km', price: 3288, duration: 'full' },
-    ],
-  },
-]);
+const cars = ref(charterCars);
 
 const carIdx = ref(0);
 const pkgCarIdx = ref(0);
 const showPackageSheet = ref(false);
 const showDateSheet = ref(false);
+const showRangeSheet = ref(false);
+const rangeActiveCity = ref(operatingCities[0]);
+
+const isCityInRange = isInOperatingCity;
+
+/* 运营范围面板：地图中心 / 多边形 / 标签 marker，随选中城市切换 */
+const activeZones = computed(() => getZonesByCity(rangeActiveCity.value));
+
+const rangeMapCenter = computed<[number, number]>(() => {
+  const zones = activeZones.value;
+  if (zones.length === 0) return [121.473, 31.230];
+  return zones[0].center;
+});
+
+const rangePolygons = computed(() =>
+  activeZones.value.map((z) => ({
+    points: z.polygon.map(([lng, lat]) => ({ longitude: lng, latitude: lat })),
+    fillColor: z.fillColor,
+    strokeColor: '#0057FF',
+    strokeWidth: 2,
+  })),
+);
+
+const rangeMarkers = computed(() =>
+  activeZones.value.map((z, i) => ({
+    id: i + 1,
+    longitude: z.center[0],
+    latitude: z.center[1],
+    title: z.name,
+    callout: {
+      content: z.name,
+      color: '#000000',
+      fontSize: 12,
+      borderRadius: 8,
+      bgColor: '#FFFFFF',
+      padding: 6,
+      display: 'ALWAYS' as const,
+    },
+  })),
+);
+
+const onShowFeeRule = () => {
+  uni.showToast({ title: '跳转计费规则页（待接入）', icon: 'none' });
+};
 
 /* 默认套餐：日租尊荣高级（每辆车的第 5 个） */
 const defaultPkg = computed(() => cars.value[pkgCarIdx.value].packages[4]);
 const selectedPkgId = ref<string>(defaultPkg.value.id);
 
 const form = ref({
-  origin: '上海虹桥国际机场',
+  origin: '',
+  originAddress: '',
   destination: '',
+  destinationAddress: '',
   dateText: '今天 · 06-09 09:00',
   dateIso: '2026-06-09',
   timeText: '09:00',
@@ -397,16 +414,20 @@ const pkgGroups = computed(() => {
   }));
 });
 
-/* 顶级套餐附加权益 */
-const hasAmenityTea = computed(() => selectedPkg.value.tier !== '尊享基础');
-const hasAmenityChampagne = computed(() => selectedPkg.value.tier === '尊御顶级');
+/* 当前车型 + 当前套餐档位匹配的权益 */
+const visibleAmenities = computed(() => {
+  const tier = selectedPkg.value.tier;
+  return cars.value[pkgCarIdx.value].amenities.filter(
+    (a) => a.tiers.length === 0 || a.tiers.includes(tier),
+  );
+});
 
-/* 日期 grid：未来 12 天 */
+/* 日期 grid：今天起 30 天内（spec §4.3） */
 const dateList = computed(() => {
   const list: { iso: string; weekday: string; day: string; monthLabel: string }[] = [];
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const base = new Date('2026-06-09T00:00:00');
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 30; i++) {
     const d = new Date(base);
     d.setDate(base.getDate() + i);
     const y = d.getFullYear();
@@ -433,10 +454,32 @@ onShow(() => {
   try {
     const result = uni.getStorageSync('address-pick-result');
     if (result && result.field && result.name) {
+      const fullAddress = result.address || result.name;
+      if (!isCityInRange(fullAddress)) {
+        uni.showToast({
+          title: `当前城市不在运营范围内，请重新选择   当前运营城市「${operatingCities.join('、')}」`,
+          icon: 'none',
+          duration: 3000,
+        });
+        uni.removeStorageSync('address-pick-result');
+        return;
+      }
       if (result.field === 'origin') {
+        if (form.value.destination && form.value.destination === result.name) {
+          uni.showToast({ title: '出发地和目的地不能相同', icon: 'none' });
+          uni.removeStorageSync('address-pick-result');
+          return;
+        }
         form.value.origin = result.name;
+        form.value.originAddress = fullAddress;
       } else if (result.field === 'destination') {
+        if (form.value.origin && form.value.origin === result.name) {
+          uni.showToast({ title: '出发地和目的地不能相同', icon: 'none' });
+          uni.removeStorageSync('address-pick-result');
+          return;
+        }
         form.value.destination = result.name;
+        form.value.destinationAddress = fullAddress;
       }
       uni.removeStorageSync('address-pick-result');
     }
@@ -447,8 +490,25 @@ onShow(() => {
 
 const swapAddress = () => {
   const t = form.value.origin;
+  const tAddr = form.value.originAddress;
   form.value.origin = form.value.destination;
+  form.value.originAddress = form.value.destinationAddress;
   form.value.destination = t;
+  form.value.destinationAddress = tAddr;
+};
+
+const canPickPkg = computed(() => !!form.value.origin && !!form.value.destination);
+
+const onPickPkgClick = () => {
+  if (!form.value.origin) {
+    uni.showToast({ title: '请选择出发地', icon: 'none' });
+    return;
+  }
+  if (!form.value.destination) {
+    uni.showToast({ title: '请先选择目的地', icon: 'none' });
+    return;
+  }
+  showPackageSheet.value = true;
 };
 
 const onPkgTabChange = (i: number) => {
@@ -463,7 +523,11 @@ const selectPkg = (pkg: Pkg) => {
 
 const changeDays = (delta: number) => {
   const next = form.value.days + delta;
-  if (next < 1 || next > 30) return;
+  if (next < 1) return;
+  if (next > 30) {
+    uni.showToast({ title: '最长可选择 30 天', icon: 'none' });
+    return;
+  }
   form.value.days = next;
 };
 
@@ -483,14 +547,14 @@ const onShowFeeDetail = () => {
   showPackageSheet.value = false;
   setTimeout(() => {
     uni.navigateTo({
-      url: `/pages/charter/fee?carIdx=${pkgCarIdx.value}&pkgId=${selectedPkgId.value}&days=${form.value.days}`,
+      url: `/pages/charter/fee?carIdx=${pkgCarIdx.value}&pkgId=${selectedPkgId.value}&days=${form.value.days}&time=${form.value.timeText}`,
     });
   }, 350);
 };
 
 const goConfirm = () => {
-  if (!form.value.destination) {
-    uni.showToast({ title: '请选择目的地', icon: 'none' });
+  if (!form.value.origin || !form.value.destination) {
+    uni.showToast({ title: '请完善起止点', icon: 'none' });
     return;
   }
   showPackageSheet.value = false;
@@ -759,6 +823,15 @@ const goConfirm = () => {
     transform: scale(0.98);
     opacity: 0.85;
   }
+
+  &.disabled {
+    background: #C7C7CC;
+
+    &:active {
+      transform: none;
+      opacity: 1;
+    }
+  }
 }
 
 .footer-btn-text {
@@ -882,6 +955,19 @@ const goConfirm = () => {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 24px;
+}
+
+.amenity-empty {
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  background: #F9F9F9;
+  border-radius: 12px;
+}
+
+.amenity-empty-text {
+  font-size: 13px;
+  line-height: 18px;
+  color: #86868B;
 }
 
 .amenity-chip {
@@ -1228,5 +1314,112 @@ const goConfirm = () => {
   color: #1A1C1C;
   pointer-events: none;
   z-index: 3;
+}
+
+/* ============ 运营范围入口 / 面板 ============ */
+.range-entry {
+  padding: 6px 10px;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.range-entry-text {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  color: #86868B;
+  text-decoration: underline;
+}
+
+.range-cities {
+  padding: 4px 0 16px;
+}
+
+.range-section-label {
+  display: block;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: #86868B;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.range-city-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.range-city-chip {
+  padding: 8px 16px;
+  background: #F2F2F2;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  transition: all 0.15s ease;
+
+  &.active {
+    background: #FFFFFF;
+    border-color: #000000;
+  }
+}
+
+.range-city-text {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: #1A1C1C;
+}
+
+.range-map-section {
+  padding-top: 8px;
+}
+
+.range-map-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
+  gap: 12px;
+}
+
+.range-map-tip-text {
+  flex: 1;
+  font-size: 12px;
+  line-height: 18px;
+  color: #86868B;
+}
+
+.range-map-tip-link {
+  flex-shrink: 0;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.range-map-tip-link-text {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  color: #0057FF;
+  text-decoration: underline;
+}
+
+.range-map-wrap {
+  width: 100%;
+  height: 360px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #F2F2F2;
+}
+
+.range-map {
+  width: 100%;
+  height: 100%;
 }
 </style>

@@ -159,29 +159,6 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
     return scheduleRows.filter(r => hasConflict(r.date, rowVehicles[r._key], rowDrivers[r._key]).hasAny);
   }, [isRental, order, mode, vehicle, driver, rowVehicles, rowDrivers, scheduleRows]);
 
-  // 应用于全部日程：把第一行的车辆/司机覆盖到所有行
-  const applyToAll = () => {
-    if (scheduleRows.length === 0) { Message.warning('暂无日程'); return; }
-    const firstKey = scheduleRows[0]._key;
-    const v = rowVehicles[firstKey]; const vm = rowVehicleModels[firstKey]; const d = rowDrivers[firstKey];
-    if (!v && !d) { Message.warning('请先在第一行选择车辆和司机'); return; }
-    const nextV: Record<string,string> = {}; const nextVM: Record<string,string> = {}; const nextD: Record<string,string> = {};
-    scheduleRows.forEach(row => {
-      if (v) { nextV[row._key] = v; nextVM[row._key] = vm || ''; }
-      if (d) nextD[row._key] = d;
-    });
-    setRowVehicles(nextV); setRowVehicleModels(nextVM); setRowDrivers(nextD);
-    Message.success('已应用于全部日程');
-  };
-
-  // 重置为默认：清空所有行选择
-  const resetAll = () => {
-    setRowVehicles({}); setRowVehicleModels({}); setRowDrivers({});
-    setVehicle(''); setVehicleModel(''); setDriver('');
-    setDeliveryDriver(''); setPickupDriver('');
-    Message.success('已重置');
-  };
-
   const handleSubmitWithConfirm = () => {
     if (conflictRows.length > 0) {
       Modal.confirm({
@@ -243,10 +220,6 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
                 </>
               ):(
                 <>
-                  <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:8}}>
-                    <Button size="mini" onClick={applyToAll}>应用于全部日程</Button>
-                    <Button size="mini" onClick={resetAll}>重置为默认</Button>
-                  </div>
                   <Table
                     columns={[
                       {title:'日期',dataIndex:'date',width:110,render:(v:string,row:{_key:string})=>{

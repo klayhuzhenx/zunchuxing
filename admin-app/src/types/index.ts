@@ -44,13 +44,22 @@ export interface Order {
   days: number; pickupAddress: string; dropoffAddress: string;
   rentalStart?: string; rentalEnd?: string;
   userIdentity?: "personal" | "enterprise_employee"; passengerCount?: number; luggage?: string;
-  enterpriseOrderName?: string; review?: OrderReview;
+  enterpriseOrderName?: string;
   driverName?: string; driverPhone?: string;
   plateNo?: string; carModel?: string;
   // 租车送车/收车司机
   deliveryDriver?: string; deliveryDriverPhone?: string;
   pickupDriver?: string; pickupDriverPhone?: string;
   baseFee: number; overtimeFee: number; overmileageFee: number;
+  /** 积分抵扣：已使用的积分数（0 或 undefined 表示未使用积分） */
+  pointsUsed?: number;
+  /** 远调费明细：包车 = 接/送 距离+费用；租车 = 取/还 距离+费用 */
+  remoteDispatchDetail?: {
+    pickupKm: number;    // 包车-接 或 租车-取 的远调距离 km
+    dropoffKm: number;   // 包车-送 或 租车-还 的远调距离 km
+    pickupFee: number;   // 包车-接 或 租车-取 对应的费用
+    dropoffFee: number;  // 包车-送 或 租车-还 对应的费用
+  };
   discount: number; paidAmount: number; refundAmount: number;
   paymentTime?: string; passengerNote?: string; internalNote?: string;
   createdAt: string;
@@ -168,13 +177,6 @@ export interface Transaction {
   time: string; status: TransactionStatus;
 }
 
-// ===== 用户评价 =====
-
-export interface OrderReview {
-  driverRating: number; vehicleRating: number; serviceRating: number;
-  comment?: string;
-}
-
 // ===== 工作台 =====
 
 export interface DashboardStats {
@@ -199,6 +201,15 @@ export interface CancelTier {
   pct: number;        // 扣费比例 1-100
 }
 
+// 远调费梯度：按里程区间收取固定金额
+// 区间含义：fromKm < 远调里程 ≤ toKm
+// 最后一档 toKm 可填 -1 表示无上限（即「大于 fromKm」）
+export interface RemoteDispatchTier {
+  fromKm: number;     // 远调里程 > X km
+  toKm: number;       // 远调里程 ≤ X km；-1 表示无上限
+  amount: number;     // 收费金额（元）
+}
+
 export interface PricingRule {
   id: string; modelId: string; modelName: string;
   tier?: string; // package name for charter, undefined for rental
@@ -217,6 +228,7 @@ export interface PricingRule {
   cancelMidPct: number; cancelHighPct: number;
   overtimeRate: number; extraMileageRate: number;
   waitFreeMins?: number; waitRate?: number;
+  remoteDispatchTiers?: RemoteDispatchTier[];   // 远调费梯度（多档）
   benefitTagIds?: string[];
   remark?: string;
   status: 'active' | 'inactive';
@@ -242,6 +254,16 @@ export interface BenefitTemplate {
 }
 
 export interface QuotaAlertConfig { threshold: number; frequency: string; }
+
+// ===== 积分权益配置（§8.3） =====
+export interface PointsConfig {
+  /** 积分兑换比例：N 积分 = ¥1 */
+  exchangeRate: number;
+  /** 单次抵扣上限（元），0 表示不限制 */
+  maxDeductionLimit?: number;
+  /** 最低抵扣积分：单次最低使用积分数 */
+  minPoints?: number;
+}
 
 export interface PlatformTimeoutConfig {
   paymentTimeoutMinutes: number;  // 默认 20 分钟

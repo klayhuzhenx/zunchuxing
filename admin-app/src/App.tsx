@@ -13,7 +13,7 @@ import FinanceList from './pages/finance/FinanceList';
 import ConfigPage from './pages/ConfigPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SystemPage, {
-  AccountsPage, RolesPage, LoginLogsPage, OperationLogsPage, OnlineUsersPage, CityManagementPage,
+  AccountsPage, RolesPage, LoginLogsPage, OperationLogsPage, OnlineUsersPage,
 } from './pages/SystemPage';
 
 export default function App() {
@@ -40,7 +40,6 @@ export default function App() {
             <Route path="login-logs" element={<LoginLogsPage />} />
             <Route path="op-logs" element={<OperationLogsPage />} />
             <Route path="online" element={<OnlineUsersPage />} />
-            <Route path="city-management" element={<CityManagementPage />} />
           </Route>
         </Route>
       </Routes>

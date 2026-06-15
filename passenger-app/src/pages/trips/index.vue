@@ -66,7 +66,6 @@
             </template>
             <template v-if="o.s === 'completed'">
               <view class="btn bo" @click.stop="goInvoice">开发票</view>
-              <view class="btn bf" @click.stop="review">评价行程</view>
             </template>
             <template v-if="o.s === 'cancelled'">
               <view class="btn bf wf" @click.stop="redoOrder(o)">重新下单</view>
@@ -174,7 +173,6 @@ const takeCar = (o: O) => {
     success: (r: any) => { if(r.confirm){ o.s='ongoing'; uni.showToast({ title:'已开始用车', icon:'none' }); } } });
 };
 const goInvoice = () => uni.navigateTo({ url:'/pages/invoice/index' });
-const review = () => uni.showToast({ title:'评价行程', icon:'none' });
 const redoOrder = (o: O) => { uni.navigateTo({ url: o.t==='charter'?'/pages/charter/index':'/pages/rental/index' }); };
 </script>
 

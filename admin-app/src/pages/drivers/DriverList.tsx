@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card, Table, Tag, Button, Input, Select, Space, Drawer, Descriptions,
   Modal, Message, Form, Grid, DatePicker, Timeline, Image, Upload, Popconfirm,
 } from '@arco-design/web-react';
-import { IconSearch, IconPlus, IconDownload, IconStarFill, IconStar, IconEye, IconRefresh } from '@arco-design/web-react/icon';
+import { IconSearch, IconPlus, IconDownload, IconEye } from '@arco-design/web-react/icon';
 import { drivers, vehicles, driverOrders } from '../../data/mock';
 import type { Driver, DriverStatus } from '../../types';
 
@@ -19,17 +19,6 @@ const licenseTypes = ['C1', 'C2', 'B1', 'B2', 'A1', 'A2'];
 // 校验：身份证 18 位（含 X）
 const ID_CARD_REGEX = /^[1-9]\d{5}(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/;
 const PHONE_REGEX = /^1[3-9]\d{9}$/;
-
-function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
-  return (
-    <span style={{ display: 'inline-flex', gap: 2 }}>
-      {Array.from({ length: max }, (_, i) => i < rating
-        ? <IconStarFill key={i} style={{ color: '#F7BA1E', fontSize: 14 }} />
-        : <IconStar key={i} style={{ color: '#e5e6eb', fontSize: 14 }} />
-      )}
-    </span>
-  );
-}
 
 export default function DriverList() {
   const [data, setData] = useState<Driver[]>(drivers);
@@ -49,8 +38,6 @@ export default function DriverList() {
   // 详情页管理车辆
   // 服务记录月份切换
   const [serviceMonth, setServiceMonth] = useState<string>('all');
-  // GPS 防抖
-  const lastGpsRefreshRef = useRef<number>(0);
   // 驾驶证图片预览
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [addForm] = Form.useForm();
@@ -112,23 +99,6 @@ export default function DriverList() {
     }).catch(() => Message.warning('请完善必填信息'));
   };
 
-  // GPS 手动刷新（30s 防抖）
-  const handleGpsRefresh = () => {
-    const now = Date.now();
-    if (now - lastGpsRefreshRef.current < 30000) {
-      const remain = Math.ceil((30000 - (now - lastGpsRefreshRef.current)) / 1000);
-      Message.warning(`刷新过于频繁，请 ${remain}s 后重试`);
-      return;
-    }
-    lastGpsRefreshRef.current = now;
-    if (selectedDriver) {
-      const newTime = new Date().toISOString().replace('T', ' ').slice(0, 19);
-      setData(data.map(d => d.id === selectedDriver.id ? { ...d, gpsUpdatedAt: newTime } : d));
-      setSelectedDriver({ ...selectedDriver, gpsUpdatedAt: newTime });
-      Message.success('GPS 位置已刷新');
-    }
-  };
-
   const handleEditSave = () => {
     if (!selectedDriver) return;
     editForm.validate().then(values => {
@@ -171,9 +141,6 @@ export default function DriverList() {
     { title: '姓名', dataIndex: 'name', width: 90, render: (v: string, r: Driver) => <a onClick={() => openDetail(r)}>{v}</a> },
     { title: '手机号', dataIndex: 'phone', width: 130, render: (v: string) => v.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') },
     { title: '驾驶证类型', dataIndex: 'licenseType', width: 100 },
-    { title: '最近上报位置', width: 150, render: (_: unknown, r: Driver) => r.gpsLocation ? <span title={`${r.gpsUpdatedAt || ''}`}>{r.gpsLocation}</span> : '-' },
-    { title: '累计服务', dataIndex: 'serviceCount', width: 80, render: (v: number) => `${v}单` },
-    { title: '评分', dataIndex: 'rating', width: 90, render: (v: number) => v > 0 ? <span><StarRating rating={Math.round(v)} /> {v.toFixed(1)}</span> : '-' },
     { title: '状态', dataIndex: 'status', width: 70, render: (v: DriverStatus) => <Tag color={statusMap[v].color} size="small">{statusMap[v].label}</Tag> },
     { title: '入驻时间', dataIndex: 'createdAt', width: 110 },
     { title: '操作', width: 220, fixed: 'right' as const, render: (_: unknown, r: Driver) => (
@@ -245,28 +212,6 @@ export default function DriverList() {
                 </div>
               ) : null}
 
-            </Card>
-
-            {/* 最近上报位置 */}
-            {selectedDriver.gpsLocation && (
-              <Card title="最近上报位置" size="small" style={{ marginBottom: 16 }}
-                extra={<Button size="mini" icon={<IconRefresh />} onClick={handleGpsRefresh}>刷新</Button>}
-              >
-                <Descriptions column={2} size="small" data={[
-                  { label: '位置', value: selectedDriver.gpsLocation },
-                  { label: '上报时间', value: selectedDriver.gpsUpdatedAt || '-' },
-                ]} />
-                <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>30秒内最多刷新一次</div>
-              </Card>
-            )}
-
-            {/* 考核数据 — 删准时率/好评率 */}
-            <Card title="考核数据" size="small" style={{ marginBottom: 16 }}>
-              <Descriptions column={2} size="small" data={[
-                { label: '累计服务单数', value: `${selectedDriver.serviceCount}单` },
-                { label: '累计服务时长', value: `${selectedDriver.serviceHours}h` },
-                { label: '综合评分', value: selectedDriver.rating > 0 ? <span><StarRating rating={Math.round(selectedDriver.rating)} /> {selectedDriver.rating.toFixed(1)}</span> : '-' },
-              ]} />
             </Card>
 
             {/* 服务记录 — 按月切换 */}
@@ -406,18 +351,40 @@ export default function DriverList() {
         </Form>
       </Modal>
 
-      {/* Edit Driver Modal */}
+      {/* Edit Driver Modal — 与新增同控件 */}
       <Modal title="编辑司机" visible={editMode} onOk={handleEditSave} onCancel={() => setEditMode(false)} style={{ width: 580 }}>
         {selectedDriver && (
           <Form form={editForm} initialValues={selectedDriver} layout="vertical">
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="姓名" field="name" rules={[{ required: true, message: '请输入姓名' }, { maxLength: 20 }]}><Input /></Form.Item></Grid.Col>
-            <Grid.Col span={12}><Form.Item label="手机号" field="phone" rules={[{ required: true, message: '请输入手机号' }, { match: PHONE_REGEX, message: '请输入正确的手机号' }]}><Input maxLength={11} /></Form.Item></Grid.Col></Grid.Row>
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="身份证号" field="idCard" rules={[{ required: true, message: '请输入身份证号' }, { match: ID_CARD_REGEX, message: '请输入18位身份证号' }]}><Input maxLength={18} /></Form.Item></Grid.Col>
-            <Grid.Col span={12}><Form.Item label="性别" field="gender"><Select options={[{ label: '男', value: 'male' }, { label: '女', value: 'female' }]} /></Form.Item></Grid.Col></Grid.Row>
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="驾驶证类型" field="licenseType" rules={[{ required: true }]}><Select options={licenseTypes.map(t => ({ label: t, value: t }))} /></Form.Item></Grid.Col>
-            <Grid.Col span={12}><Form.Item label="驾驶证有效期" field="licenseExpiry" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item></Grid.Col></Grid.Row>
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="出生日期" field="birthDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Grid.Col>
-            <Grid.Col span={12}><Form.Item label="备注" field="remark"><Input.TextArea maxLength={200} showWordLimit rows={1} /></Form.Item></Grid.Col></Grid.Row>
+            <Grid.Row gutter={16}>
+              <Grid.Col span={12}><Form.Item label="姓名" field="name" rules={[{ required: true, message: '请输入姓名' }, { maxLength: 20 }]}><Input maxLength={20} /></Form.Item></Grid.Col>
+              <Grid.Col span={12}><Form.Item label="手机号" field="phone" rules={[{ required: true, message: '请输入手机号' }, { match: PHONE_REGEX, message: '请输入正确的手机号' }]}><Input maxLength={11} /></Form.Item></Grid.Col>
+            </Grid.Row>
+            <Grid.Row gutter={16}>
+              <Grid.Col span={12}><Form.Item label="身份证号" field="idCard" rules={[{ required: true, message: '请输入18位身份证号' }, { match: ID_CARD_REGEX, message: '请输入18位身份证号' }]}><Input maxLength={18} /></Form.Item></Grid.Col>
+              <Grid.Col span={12}><Form.Item label="性别" field="gender" rules={[{ required: true, message: '请选择' }]}><Select options={[{ label: '男', value: 'male' }, { label: '女', value: 'female' }]} /></Form.Item></Grid.Col>
+            </Grid.Row>
+            <Grid.Row gutter={16}>
+              <Grid.Col span={12}><Form.Item label="驾驶证类型" field="licenseType" rules={[{ required: true, message: '请选择' }]}><Select options={licenseTypes.map(t => ({ label: t, value: t }))} /></Form.Item></Grid.Col>
+              <Grid.Col span={12}><Form.Item label="驾驶证有效期" field="licenseExpiry" rules={[{ required: true, message: '请选择' }]}><DatePicker style={{ width: '100%' }} disabledDate={(d) => d ? d.valueOf() < new Date().setHours(0,0,0,0) : false} /></Form.Item></Grid.Col>
+            </Grid.Row>
+            <Grid.Row gutter={16}>
+              <Grid.Col span={12}><Form.Item label="出生日期" field="birthDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Grid.Col>
+              <Grid.Col span={12}><Form.Item label="备注" field="remark"><Input.TextArea maxLength={200} showWordLimit rows={1} /></Form.Item></Grid.Col>
+            </Grid.Row>
+            <Form.Item label="驾驶证上传">
+              <Upload
+                listType="picture-card"
+                accept="image/*"
+                fileList={(selectedDriver.licenseImages || (selectedDriver.licenseImage ? [selectedDriver.licenseImage] : [])).map((url, i) => ({ uid: String(i), url, name: `license-${i}` }))}
+                customRequest={(option) => {
+                  const f = option.file as File;
+                  if (f.size > 5 * 1024 * 1024) { Message.error('单张照片不能超过 5MB'); return; }
+                  Message.success('驾驶证已更新（演示）');
+                }}>
+                <div style={{ color: '#86909c' }}>+ 上传</div>
+              </Upload>
+              <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>正副本各一张，单张 ≤ 5MB</div>
+            </Form.Item>
           </Form>
         )}
       </Modal>

@@ -102,12 +102,6 @@
       </view>
     </bottom-sheet>
 
-    <!-- Footer: 企业入驻 -->
-    <view class="footer">
-      <view class="footer-link" @click="goEnterprise">
-        <text class="footer-link-text">企业入驻</text>
-      </view>
-    </view>
   </view>
 </template>
 
@@ -225,9 +219,6 @@ const onWechat = () => {
   });
 };
 
-const goEnterprise = () => {
-  uni.navigateTo({ url: '/pages/enterprise/register' });
-};
 </script>
 
 <style lang="scss" scoped>
@@ -504,28 +495,6 @@ const goEnterprise = () => {
   line-height: 26px;
   font-weight: 500;
   color: #07C160;
-}
-
-/* ===== Footer ===== */
-.footer {
-  position: relative;
-  z-index: 1;
-  padding: 32px 24px 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.footer-link {
-  &:active {
-    opacity: 0.7;
-  }
-}
-
-.footer-link-text {
-  font-size: 13px;
-  line-height: 18px;
-  color: #4C4546;
 }
 
 /* ===== 按钮禁用态 ===== */

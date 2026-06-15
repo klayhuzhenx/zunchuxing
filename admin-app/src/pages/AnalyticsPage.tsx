@@ -66,9 +66,7 @@ function OverviewTab() {
     '订单总量': '/orders',
     '营收总额': '/finance',
     '客单价': '/finance',
-    '派车及时率': '/orders?tab=pending_dispatch',
     '退款金额': '/finance',
-    '活跃企业数': '/enterprise?status=approved',
   };
 
   // D9-07：Top 10 — 补足数据；Top 活跃企业 mock 仅 5 条，从 driverOrders 推导补齐

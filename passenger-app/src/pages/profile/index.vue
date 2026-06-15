@@ -62,29 +62,15 @@
         </view>
       </view>
 
-      <!-- 尊享权益 -->
-      <view class="benefit-card">
-        <view class="benefit-bg" />
-        <view class="benefit-body">
-          <view class="benefit-header">
-            <view class="benefit-text">
-              <text class="benefit-title">尊享权益</text>
-              <text class="benefit-subtitle">尊界 S800 专属特权服务</text>
-            </view>
-            <view class="benefit-cta" @click="onOwnerCert">
-              <text class="benefit-cta-text">认证领取</text>
-            </view>
-          </view>
-          <view class="benefit-chips">
-            <text class="benefit-chip">免费租车权益</text>
-            <text class="benefit-chip">尊享机场接送</text>
-            <text class="benefit-chip">专属管家服务</text>
-          </view>
-        </view>
-      </view>
-
       <!-- 设置区 -->
       <view class="settings-card">
+        <view class="settings-row" @click="onEnterpriseEntry">
+          <view class="settings-left">
+            <text class="settings-label">入驻企业</text>
+            <text class="settings-sub">企业用车管理 · 额度配置 · 员工管理</text>
+          </view>
+          <text class="material-symbols-outlined settings-icon">chevron_right</text>
+        </view>
         <view class="settings-row" @click="onContact">
           <text class="settings-label">客服中心</text>
           <text class="material-symbols-outlined settings-icon">headset_mic</text>
@@ -222,7 +208,7 @@ const goTrips = () => { uni.navigateTo({ url: '/pages/trips/index' }); };
 const goInvoice = () => { uni.navigateTo({ url: '/pages/invoice/index' }); };
 const goMessages = () => { uni.navigateTo({ url: '/pages/messages/index' }); };
 const showContactSheet = ref(false);
-const onOwnerCert = () => { uni.navigateTo({ url: '/pages/profile/cert' }); };
+const onEnterpriseEntry = () => { uni.navigateTo({ url: '/pages/enterprise/register' }); };
 const onContact = () => { showContactSheet.value = true; };
 // P11-01：实际拨打电话
 const onCall = () => { showContactSheet.value = false; uni.makePhoneCall({ phoneNumber: '400-000-8888' }); };
@@ -450,89 +436,6 @@ const onPrivacy = () => { uni.showToast({ title: '隐私政策（H5 WebView 接�
   border-radius: 50%;
 }
 
-/* ===== 尊享权益 ===== */
-.benefit-card {
-  margin: 0 24px 32px;
-  position: relative;
-  background: #000;
-  border-radius: 32px;
-  padding: 24px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-}
-
-.benefit-bg {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.20) 0%, transparent 60%),
-    radial-gradient(circle at 20% 80%, rgba(0, 87, 255, 0.15) 0%, transparent 60%);
-}
-
-.benefit-body {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.benefit-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.benefit-text { flex: 1; }
-
-.benefit-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #FFF;
-  display: block;
-}
-
-.benefit-subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 18px;
-  color: rgba(255, 255, 255, 0.7);
-  display: block;
-}
-
-.benefit-cta {
-  padding: 8px 20px;
-  background: #FFF;
-  border-radius: 9999px;
-  flex-shrink: 0;
-}
-
-.benefit-cta:active { transform: scale(0.95); }
-
-.benefit-cta-text {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  color: #000;
-}
-
-.benefit-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.benefit-chip {
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(212, 175, 55, 0.30);
-  border-radius: 9999px;
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 500;
-  color: #FFF;
-}
-
 /* ===== 设置区 ===== */
 .settings-card {
   margin: 0 24px 32px;
@@ -554,7 +457,9 @@ const onPrivacy = () => { uni.showToast({ title: '隐私政策（H5 WebView 接�
 
 .settings-row-last { border-bottom: none; }
 
+.settings-left { flex: 1; min-width: 0; }
 .settings-label { font-size: 17px; line-height: 26px; color: #1A1C1C; }
+.settings-sub { margin-top: 2px; font-size: 12px; line-height: 18px; color: #86868B; display: block; }
 
 .settings-icon { font-size: 22px; color: #86868B; }
 

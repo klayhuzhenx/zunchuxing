@@ -72,14 +72,24 @@
           <text class="fl err">超里程费 · ¥10/km（超 18km）</text>
           <view class="fr-right"><text class="fv err">¥180.00</text><text class="material-symbols-outlined more-arrow">chevron_right</text></view>
         </view>
+        <view v-if="(s.key==='unpaid-extra'||s.key==='completed') && rdTotalFee > 0" class="fr" @click="openFeeDetail('remote')">
+          <text class="fl err">远调费 · 取{{ rdPickupKm }}km + 还{{ rdDropoffKm }}km</text>
+          <view class="fr-right"><text class="fv err">¥{{ rdTotalFee }}.00</text><text class="material-symbols-outlined more-arrow">chevron_right</text></view>
+        </view>
+        <view v-else-if="s.key==='unpaid-extra'||s.key==='completed'" class="fr">
+          <text class="fl">远调费</text><text class="fv">¥0.00</text>
+        </view>
+        <view v-if="pointsUsed > 0" class="fr">
+          <text class="fl points-deduction">积分抵扣（使用 {{ pointsUsed.toLocaleString() }} 积分）</text>
+          <text class="fv deduction">-¥{{ pointsDeduction }}.00</text>
+        </view>
         <view class="div" />
         <view class="fr last">
-          <text class="fl bld">实付金额</text>
+          <text class="fl bld">合计费用</text>
           <view class="tr">
             <text class="fv big">¥{{ totalFee }}</text>
             <text v-if="s.key==='unpaid-extra'" class="extra-badge">待补款 ¥230.00</text>
-            <text v-else-if="s.key!=='unpaid'" class="fpaid">已支付</text>
-            <text v-else class="fpaid wait">待支付</text>
+            <text v-if="s.key==='unpaid'" class="fpaid wait">待支付</text>
           </view>
         </view>
       </view>
@@ -103,6 +113,13 @@
                 <view class="fd-row"><text class="fdl err">超时时长</text><text class="fdv err">{{ d.overtimeDuration }}</text></view>
                 <view class="fd-row"><text class="fdl bld">超时长费</text><text class="fdv bld err">¥{{ d.amount }}</text></view>
               </view>
+            </template>
+            <template v-if="feeDetailType === 'remote'">
+              <text class="fd-date">租车出行 · 远调费明细</text>
+              <view class="fd-row"><text class="fdl">取远调距离</text><text class="fdv">{{ rdPickupKm }} km → ¥{{ rdPickupFee }}.00</text></view>
+              <view class="fd-row"><text class="fdl">还远调距离</text><text class="fdv">{{ rdDropoffKm }} km → ¥{{ rdDropoffFee }}.00</text></view>
+              <view class="fd-div" />
+              <view class="fd-row"><text class="fdl bld">远调费合计</text><text class="fdv bld err">¥{{ rdTotalFee }}.00</text></view>
             </template>
             <template v-if="feeDetailType === 'mileage'">
               <view v-for="(d, i) in mileageDetails" :key="i" class="fd-day">
@@ -154,7 +171,6 @@
       </template>
       <template v-else-if="s.key==='completed'">
         <view class="btn bo" @click="goInvoice">开具发票</view>
-        <view class="btn bf" @click="onReview">评价行程</view>
       </template>
       <template v-else-if="s.key==='cancelled'">
         <view class="btn bf wf" @click="onReorder">重新下单</view>
@@ -171,27 +187,11 @@
       <view class="paym-btn" @click="onExtraPayConfirm"><text class="paym-btn-t">确认并支付 ¥180.00</text></view>
     </bottom-sheet>
 
-    <bottom-sheet v-model="showReview" title="评价行程" :max-height="'80vh'">
-      <view class="rv-card"><text class="rv-label">司机服务</text>
-        <view class="rv-stars"><text v-for="i in 5" :key="i" class="material-symbols-outlined rv-star" :class="{on:i<=rv.driver}" @click="rv.driver=i">star</text></view>
-      </view>
-      <view class="rv-card"><text class="rv-label">车辆状况</text>
-        <view class="rv-stars"><text v-for="i in 5" :key="i" class="material-symbols-outlined rv-star" :class="{on:i<=rv.car}" @click="rv.car=i">star</text></view>
-      </view>
-      <view class="rv-card"><text class="rv-label">整体服务</text>
-        <view class="rv-stars"><text v-for="i in 5" :key="i" class="material-symbols-outlined rv-star" :class="{on:i<=rv.service}" @click="rv.service=i">star</text></view>
-      </view>
-      <view class="rv-ta-wrap">
-        <textarea v-model="rv.comment" class="rv-ta" placeholder="分享您的出行体验..." placeholder-class="rv-ph" maxlength="200" />
-        <text class="rv-cnt">{{ rv.comment.length }}/200</text>
-      </view>
-      <view class="rv-btn" @click="submitReview"><text class="rv-bt">提交评价</text></view>
-    </bottom-sheet>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import BottomSheet from '@/components/bottom-sheet.vue';
 const top = ref(0); const st = ref('pending-unassigned');
@@ -213,9 +213,9 @@ const hasDriver = computed(() => ['pending-pickup-undelivered','pending-pickup',
 
 // 费用明细弹窗
 const feeDetailVisible = ref(false);
-const feeDetailType = ref<'waiting' | 'overtime' | 'mileage' | 'other'>('overtime');
+const feeDetailType = ref<'waiting' | 'overtime' | 'mileage' | 'remote' | 'other'>('overtime');
 const feeDetailData = computed(() => {
-  const titles: Record<string, string> = { waiting: '等待费明细', overtime: '超时长费明细', mileage: '超里程费明细', other: '其他费用明细' };
+  const titles: Record<string, string> = { waiting: '等待费明细', overtime: '超时长费明细', mileage: '超里程费明细', remote: '远调费明细', other: '其他费用明细' };
   return { title: titles[feeDetailType.value] };
 });
 const overtimeDetails = [
@@ -224,53 +224,67 @@ const overtimeDetails = [
 const mileageDetails = [
   { date: '06-10', startMileage: 180, endMileage: 218, totalMileage: 38, includedMileage: 200, excessMileage: 18, amount: 180 },
 ];
-const openFeeDetail = (type: 'waiting' | 'overtime' | 'mileage' | 'other') => {
+const rdPickupKm = 0; const rdDropoffKm = 0;
+const rdPickupFee = 0; const rdDropoffFee = 0;
+const rdTotalFee = 0;
+const openFeeDetail = (type: 'waiting' | 'overtime' | 'mileage' | 'remote' | 'other') => {
   feeDetailType.value = type;
   feeDetailVisible.value = true;
 };
+
+// 支付方式 + 积分信息（spec §6.6：支付成功（支付方式，如使用积分则展示「微信支付 ¥230 使用积分 3000」））
+const payMethodName = '微信支付';
+const pointsUsed = 3000;
+const pointsDeduction = 30; // 100积分=¥1 → 3000积分=¥30
+const paymentText = pointsUsed > 0
+  ? `${payMethodName} ¥4,470.00 使用积分 ${pointsUsed.toLocaleString()}`
+  : `${payMethodName} ¥4,500.00`;
 
 const timeline = computed(() => {
   const t: { title:string; time:string; type?:string }[] = [];
   switch (s.value.key) {
     case 'unpaid': t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     case 'pending-unassigned':
-      t.push({ title: '支付成功，¥4,500.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     case 'pending-pickup-undelivered':
       t.push({ title: '已派车 — 李师傅送车中 · 京A12345 · 增程星辉尊享版', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥4,500.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     case 'pending-pickup':
       t.push({ title: '已派车 — 李师傅送车中 · 京A12345 · 增程星辉尊享版', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥4,500.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     case 'ongoing':
       t.push({ title: '乘客确认取车 · 行程开始', time: '06-10 09:05' });
       t.push({ title: '车辆已送达取车点', time: '06-10 08:50' });
       t.push({ title: '已派车 — 李师傅送车中 · 京A12345', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥4,500.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     case 'completed':
       t.push({ title: '还车完成 · 06-12 18:30 车辆已收回', time: '06-12 18:30' });
       t.push({ title: '乘客确认取车 · 行程开始', time: '06-10 09:05' });
       t.push({ title: '已派车 — 李师傅送车中 · 京A12345', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥4,500.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     case 'unpaid-extra':
       t.push({ title: '还车完成 · 有待补款 ¥180.00', time: '06-12 18:30', type:'warn' });
       t.push({ title: '乘客确认取车 · 行程开始', time: '06-10 09:05' });
       t.push({ title: '已派车 — 李师傅送车中 · 京A12345', time: '06-09 15:10' });
-      t.push({ title: '支付成功，¥4,500.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     case 'cancelled':
       t.push({ title: '订单已取消 — 取消原因：行程计划有变', time: '06-09 16:00', type:'warn' });
-      t.push({ title: '支付成功，¥4,500.00', time: '06-09 14:20' });
+      t.push({ title: paymentText, time: '06-09 14:20' });
       t.push({ title: '订单已提交', time: '06-09 14:22' }); break;
     default: t.push({ title: '订单已提交', time: '06-09 14:22' });
   }
   return t;
 });
-const totalFee = computed(() => s.value.key === 'unpaid-extra' ? '4,730.00' : '4,500.00');
+const totalFee = computed(() => {
+  const base = s.value.key === 'unpaid-extra' ? '4,730.00' : '4,500.00';
+  return base;
+});
 
 const back = () => uni.navigateBack();
 const toast = (m: string) => uni.showToast({ title: m, icon: 'none' });
@@ -293,13 +307,6 @@ const onExtraPayConfirm = () => {
 const onTakeCar = () => { uni.showModal({ title:'确认取车', content:'确认已收到车辆并检查车况无误？', confirmText:'确认取车', success:(r:any)=>{ if(r.confirm){ st.value='ongoing'; uni.showToast({title:'已开始用车',icon:'none'}); } } }); };
 const onEarlyReturn = () => { uni.showModal({ title:'提前还车', content:'确定提前还车？', confirmText:'确认还车', confirmColor:'#FF4D4F', success:(r:any)=>{ if(r.confirm) st.value='completed'; } }); };
 const goInvoice = () => uni.navigateTo({ url: '/pages/invoice/index' });
-const showReview = ref(false);
-const rv = reactive({ driver:0, car:0, service:0, comment:'' });
-const onReview = () => { showReview.value = true; };
-const submitReview = () => {
-  if (!rv.driver||!rv.car||!rv.service) { uni.showToast({title:'请为各项评分',icon:'none'}); return; }
-  showReview.value = false; uni.showToast({title:'感谢您的评价！',icon:'success'});
-};
 const onReorder = () => uni.navigateTo({ url: '/pages/rental/index' });
 </script>
 
@@ -356,9 +363,9 @@ const onReorder = () => uni.navigateTo({ url: '/pages/rental/index' });
 
 .fr { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
 .fr.last { align-items: flex-end; }
-.fl { font-size: 15px; color: #86868B; } .fl.err { color: #FF4D4F; } .fl.bld { font-size: 17px; font-weight: 700; color: #000; }
-.fv { font-size: 17px; font-weight: 600; color: #000; } .fv.err { color: #FF4D4F; } .fv.big { font-size: 28px; font-weight: 700; }
-.fpaid { font-size: 11px; color: #00B06B; display: block; } .fpaid.wait { color: #D97706; }
+.fl { font-size: 15px; color: #86868B; } .fl.err { color: #FF4D4F; } .fl.bld { font-size: 17px; font-weight: 700; color: #000; } .fl.points-deduction { color: #00B42A; }
+.fv { font-size: 17px; font-weight: 600; color: #000; } .fv.err { color: #FF4D4F; } .fv.big { font-size: 28px; font-weight: 700; } .fv.deduction { color: #00B42A; }
+.fpaid.wait { font-size: 11px; color: #D97706; display: block; }
 .extra-badge { font-size: 11px; color: #FF4D4F; font-weight: 600; display: block; }
 
 .tl { position: relative; padding-left: 24px; }
@@ -396,19 +403,6 @@ const onReorder = () => uni.navigateTo({ url: '/pages/rental/index' });
 .paym-btn { height: 56px; background: #000; border-radius: 24px; display: flex; align-items: center; justify-content: center; margin-top: 16px; }
 .paym-btn:active { opacity: 0.85; }
 .paym-btn-t { font-size: 17px; font-weight: 600; color: #FFF; }
-
-.rv-card { background: #F9F9F9; border-radius: 24px; padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-.rv-label { font-size: 15px; font-weight: 500; color: #1A1C1C; }
-.rv-stars { display: flex; gap: 8px; }
-.rv-star { font-size: 28px; color: #E2E2E2; font-variation-settings: 'FILL' 1; }
-.rv-star.on { color: #D4AF37; }
-.rv-ta-wrap { position: relative; margin: 8px 0 16px; }
-.rv-ta { width: 100%; height: 100px; padding: 14px 16px 30px; background: #F2F2F2; border-radius: 20px; border: none; font-size: 14px; color: #1A1C1C; resize: none; }
-.rv-ph { color: #C9CDD4; }
-.rv-cnt { position: absolute; bottom: 8px; right: 16px; font-size: 11px; color: #C9CDD4; }
-.rv-btn { height: 56px; background: #000; border-radius: 24px; display: flex; align-items: center; justify-content: center; }
-.rv-btn:active { opacity: 0.85; }
-.rv-bt { font-size: 17px; font-weight: 600; color: #FFF; }
 
 .fr-right { display: flex; align-items: center; gap: 2px; }
 .more-arrow { font-size: 16px; color: #86868B; margin-left: 4px; flex-shrink: 0; }

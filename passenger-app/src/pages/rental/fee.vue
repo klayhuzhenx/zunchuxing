@@ -49,19 +49,17 @@
             </view>
             <text class="bill-amount">¥0</text>
           </view>
+          <view class="bill-row">
+            <view class="bill-info">
+              <text class="bill-sub-label">远调费</text>
+              <text class="bill-meta">取/还远调超出运营范围按梯度收费：0~5km ¥100 | 5~10km ¥200 | 10~30km ¥400 | >30km ¥1000</text>
+            </view>
+            <text class="bill-amount">¥0</text>
+          </view>
         </view>
         <view class="rule-link" @click="onShowRule">
           <text class="rule-link-text">查看计价规则</text>
           <text class="material-symbols-outlined rule-link-icon">chevron_right</text>
-        </view>
-      </view>
-
-      <!-- 费用说明 -->
-      <view class="info-card">
-        <text class="material-symbols-outlined info-icon">info</text>
-        <view class="info-text">
-          <text class="info-title">费用说明</text>
-          <text class="info-desc">日里程含 200km，超里程 ¥10/km。超时长 ¥50/小时。等待费：免费 15 分钟，超出 ¥1/分钟。送取车由专属司机完成。最终费用以还车后实际结算账单为准。高速费、停车费等由乘客线下支付或据实代垫。</text>
         </view>
       </view>
 
@@ -91,8 +89,9 @@ onLoad((opts: Record<string, string> | undefined) => {
 });
 
 const car = computed(() => carData[carIdx.value] || carData[0]);
+const remoteDispatchFee = ref(0);
 const baseTotal = computed(() => (car.value.dayPrice * days.value).toLocaleString());
-const totalText = computed(() => (car.value.dayPrice * days.value).toLocaleString());
+const totalText = computed(() => (car.value.dayPrice * days.value + remoteDispatchFee.value).toLocaleString());
 
 const onShowRule = () => uni.showToast({ title: '查看计价规则', icon: 'none' });
 </script>
@@ -128,9 +127,4 @@ const onShowRule = () => uni.showToast({ title: '查看计价规则', icon: 'non
 .rule-link-text { font-size: 13px; font-weight: 500; color: #0057FF; }
 .rule-link-icon { font-size: 18px; color: #0057FF; }
 
-.info-card { margin: 16px 24px 0; padding: 20px; background: #EEEEEE; border-radius: 24px; display: flex; gap: 12px; }
-.info-icon { font-size: 22px; color: #86868B; flex-shrink: 0; margin-top: 2px; }
-.info-text { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.info-title { font-size: 13px; font-weight: 700; color: #1A1C1C; }
-.info-desc { font-size: 13px; line-height: 22px; color: #86868B; }
 </style>

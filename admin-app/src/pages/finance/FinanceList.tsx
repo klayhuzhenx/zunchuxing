@@ -49,7 +49,7 @@ function BillTab() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedBill, setSelectedBill] = useState<EnterpriseBill | null>(null);
   const [settleVisible, setSettleVisible] = useState(false);
-  const [settleAmount, setSettleAmount] = useState<number>(0);
+  const [settleCheckedOrders, setSettleCheckedOrders] = useState<string[]>([]);
   const [settleFile, setSettleFile] = useState<File | null>(null);
   const [settleConfirmVisible, setSettleConfirmVisible] = useState(false);
 
@@ -84,25 +84,40 @@ function BillTab() {
 
   const openDetail = (b: EnterpriseBill) => { setSelectedBill(b); setDetailVisible(true); };
 
+  // 账单明细（按订单维度，合并消费和退款）— Mock数据
+  const unsettledOrderItems = useMemo(() => {
+    if (!selectedBill) return [];
+    return billOrderItems
+      .filter(o => !o.settled)
+      .map(o => ({
+        ...o,
+        refundAmount: billRefundItems.filter(r => r.orderNo === o.orderNo).reduce((s, r) => s + r.amount, 0),
+        settleAmount: o.amount - billRefundItems.filter(r => r.orderNo === o.orderNo).reduce((s, r) => s + r.amount, 0),
+      }));
+  }, [selectedBill]);
+
+  const settleCheckedTotal = useMemo(() =>
+    unsettledOrderItems.filter(o => settleCheckedOrders.includes(o.orderNo)).reduce((s, o) => s + o.settleAmount, 0),
+  [settleCheckedOrders, unsettledOrderItems]);
+
   const openSettle = (b: EnterpriseBill) => {
     setSelectedBill(b);
-    setSettleAmount(b.pendingAmount);
+    setSettleCheckedOrders([]);
     setSettleFile(null);
     setSettleVisible(true);
   };
 
   const handleSettleConfirm = () => {
-    if (!selectedBill) return;
-    if (!settleAmount || settleAmount <= 0) { Message.warning('请输入结算金额'); return; }
-    if (settleAmount > selectedBill.pendingAmount) { Message.warning(`结算金额不能超过待结算总额 ¥${selectedBill.pendingAmount.toLocaleString()}`); return; }
+    if (settleCheckedOrders.length === 0) { Message.warning('请至少勾选一笔订单'); return; }
     if (!settleFile) { Message.warning('请上传客户支付凭证'); return; }
     setSettleConfirmVisible(true);
   };
 
   const handleSettleSubmit = () => {
     if (!selectedBill) return;
-    const newPending = selectedBill.pendingAmount - settleAmount;
-    const newSettled = selectedBill.settledAmount + settleAmount;
+    const checkedAmount = settleCheckedTotal;
+    const newPending = selectedBill.pendingAmount - checkedAmount;
+    const newSettled = selectedBill.settledAmount + checkedAmount;
     const newStatus: SettlementStatus = newPending <= 0 ? 'settled' : 'partial';
 
     setBills(prev => prev.map(b => b.id === selectedBill.id
@@ -112,7 +127,7 @@ function BillTab() {
     setSettleRecords(prev => [...prev, {
       id: `SR${Date.now()}`,
       billId: selectedBill.id,
-      amount: settleAmount,
+      amount: checkedAmount,
       voucher: settleFile?.name || '凭证.pdf',
       operator: '王财务',
       time: new Date().toISOString().replace('T', ' ').slice(0, 16),
@@ -261,26 +276,40 @@ function BillTab() {
         )}
       </Drawer>
 
-      {/* Settle Modal */}
+      {/* Settle Modal — 勾选订单 + 自动汇总 */}
       <Modal title="确认结算" visible={settleVisible}
         onOk={handleSettleConfirm}
         onCancel={() => setSettleVisible(false)}
-        okText="确认"
-        okButtonProps={{ disabled: !settleAmount || settleAmount <= 0 || (selectedBill !== null && settleAmount > selectedBill.pendingAmount) || !settleFile }}
+        okText={`确认结算 ¥${settleCheckedTotal.toLocaleString()}`}
+        okButtonProps={{ disabled: settleCheckedOrders.length === 0 || !settleFile }}
+        style={{ width: 640 }}
       >
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ marginBottom: 8, fontSize: 13, color: '#86909c' }}>本次结算金额（不超过待结算总额 <strong>¥{selectedBill?.pendingAmount.toLocaleString()}</strong>）</p>
-          <InputNumber value={settleAmount} onChange={v => setSettleAmount(v || 0)} min={0} max={selectedBill?.pendingAmount || 0} style={{ width: '100%' }} suffix="元" />
+        <p style={{ marginBottom: 12, fontSize: 13, color: '#86909c' }}>勾选需要结算的订单（仅展示待结算订单）</p>
+        <div style={{ maxHeight: 280, overflow: 'auto', marginBottom: 16 }}>
+          <Table columns={[
+            { title: '', width: 40, render: (_: unknown, r: typeof unsettledOrderItems[0]) => (
+              <input type="checkbox" checked={settleCheckedOrders.includes(r.orderNo)}
+                onChange={() => setSettleCheckedOrders(prev => prev.includes(r.orderNo) ? prev.filter(x => x !== r.orderNo) : [...prev, r.orderNo])} />
+            )},
+            { title: '订单号', dataIndex: 'orderNo', width: 160 },
+            { title: '日期', dataIndex: 'date', width: 100 },
+            { title: '类型', dataIndex: 'type', width: 80 },
+            { title: '用车人', dataIndex: 'passenger', width: 80 },
+            { title: '金额', dataIndex: 'amount', width: 90, render: (v: number) => `¥${v.toLocaleString()}` },
+            { title: '退款', width: 80, render: (_: unknown, r: typeof unsettledOrderItems[0]) => r.refundAmount > 0 ? <span style={{ color: '#00B42A' }}>¥{r.refundAmount.toLocaleString()}</span> : '¥0' },
+            { title: '结算金额', width: 100, render: (_: unknown, r: typeof unsettledOrderItems[0]) => <strong>¥{(r.settleAmount || 0).toLocaleString()}</strong> },
+          ]} data={unsettledOrderItems} rowKey="orderNo" pagination={false} size="small" />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid #e5e6eb', marginBottom: 16 }}>
+          <span style={{ fontSize: 13, color: '#86909c' }}>已选 {settleCheckedOrders.length} 笔</span>
+          <span style={{ fontSize: 18, fontWeight: 700 }}>¥{settleCheckedTotal.toLocaleString()}</span>
         </div>
         <div>
           <p style={{ marginBottom: 8, fontSize: 13, color: '#86909c' }}>上传客户支付凭证（支持 jpg / png / pdf）</p>
           <Upload
-            autoUpload={false}
-            limit={1}
-            accept=".jpg,.jpeg,.png,.pdf"
+            autoUpload={false} limit={1} accept=".jpg,.jpeg,.png,.pdf"
             fileList={settleFile ? [{ uid: '-1', name: settleFile.name, status: 'done' } as any] : []}
-            onChange={(files) => { setSettleFile(files[0]?.originFile || null); }}
-          >
+            onChange={(files) => { setSettleFile(files[0]?.originFile || null); }}>
             <Button icon={<IconUpload />} type="outline">选择文件</Button>
           </Upload>
         </div>
@@ -296,7 +325,7 @@ function BillTab() {
         <p>确认提交后结算记录不可撤回，是否继续？</p>
         {selectedBill && (
           <div style={{ marginTop: 12, padding: 12, background: '#f7f8fa', borderRadius: 8 }}>
-            <p>结算金额：<strong>¥{settleAmount.toLocaleString()}</strong></p>
+            <p>结算金额：<strong>¥{settleCheckedTotal.toLocaleString()}</strong>（{settleCheckedOrders.length} 笔）</p>
             <p>企业：{selectedBill.enterpriseName}</p>
             <p>账单月份：{selectedBill.month}</p>
           </div>

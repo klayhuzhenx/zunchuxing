@@ -134,9 +134,6 @@
             <text class="material-symbols-outlined footer-detail-icon">expand_less</text>
           </view>
         </view>
-        <view class="footer-discount">
-          <text class="footer-discount-text">已优惠 ¥200</text>
-        </view>
       </view>
       <view class="footer-btn" @click="onSubmit">
         <text class="footer-btn-text">确认下单</text>
@@ -217,39 +214,16 @@ import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import Navbar from '@/components/navbar.vue';
 import BottomSheet from '@/components/bottom-sheet.vue';
-
-/* 车型库（与 charter/index.vue 保持一致简化版） */
-const carData = [
-  { id: 0, fullName: '增程星辉尊享版', tagText: '极致尊贵', imageGradient: 'linear-gradient(135deg, #2c2c2e 0%, #1a1a1c 50%, #0a0a0c 100%)' },
-  { id: 1, fullName: '增程星辉行政版', tagText: '商务出行', imageGradient: 'linear-gradient(135deg, #3a3a3c 0%, #1f1f21 50%, #0d0d0f 100%)' },
-  { id: 2, fullName: '增程星耀行政版', tagText: '旗舰豪华', imageGradient: 'linear-gradient(135deg, #4a4a4c 0%, #252527 50%, #101012 100%)' },
-];
-
-/* 套餐价格表（与 charter/index 对齐） */
-const pkgMap: Record<string, { tier: string; spec: string; price: number }> = {
-  'a-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km', price: 988 },
-  'a-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1188 },
-  'a-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1588 },
-  'a-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km', price: 1888 },
-  'a-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2088 },
-  'a-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km', price: 2688 },
-  'b-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km', price: 1088 },
-  'b-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1288 },
-  'b-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1688 },
-  'b-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km', price: 1988 },
-  'b-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2288 },
-  'b-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km', price: 2888 },
-  'c-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km', price: 1288 },
-  'c-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1588 },
-  'c-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1888 },
-  'c-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km', price: 2288 },
-  'c-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2688 },
-  'c-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km', price: 3288 },
-};
+import {
+  charterCars,
+  findPkgById,
+  calcNightSurcharge,
+} from '@/data/charter';
 
 const carIdx = ref(0);
 const pkgId = ref('a-f-pro');
 const days = ref(1);
+const departTime = ref('09:00');
 const remark = ref('');
 const agreed = ref(false);
 const payMethod = ref<'wechat' | 'alipay' | 'enterprise'>('wechat');
@@ -309,16 +283,21 @@ onLoad((opts: Record<string, string> | undefined) => {
     if (opts.carIdx !== undefined) carIdx.value = parseInt(opts.carIdx, 10) || 0;
     if (opts.pkgId) pkgId.value = opts.pkgId;
     if (opts.days) days.value = parseInt(opts.days, 10) || 1;
+    if (opts.time) departTime.value = decodeURIComponent(opts.time);
     // P4-04：从 query 参数读取地址（后续接入地图选点后通过 query 传递完整地址）
     if (opts.origin) form.value.origin = decodeURIComponent(opts.origin);
     if (opts.destination) form.value.destination = decodeURIComponent(opts.destination);
   }
 });
 
-const car = computed(() => carData[carIdx.value] || carData[0]);
-const pkg = computed(() => pkgMap[pkgId.value] || pkgMap['a-f-pro']);
+const car = computed(() => charterCars[carIdx.value] || charterCars[0]);
+const pkg = computed(() => findPkgById(pkgId.value)?.pkg || charterCars[0].packages[4]);
 
-const totalNumber = computed(() => pkg.value.price * days.value);
+const subtotal = computed(() => pkg.value.price * days.value);
+
+const nightSurcharge = computed(() => calcNightSurcharge(subtotal.value, departTime.value));
+
+const totalNumber = computed(() => subtotal.value + nightSurcharge.value);
 const totalText = computed(() => totalNumber.value.toLocaleString() + '.00');
 
 const dateRange = computed(() => {
@@ -338,7 +317,7 @@ const payments = [
 
 const goFee = () => {
   uni.navigateTo({
-    url: `/pages/charter/fee?carIdx=${carIdx.value}&pkgId=${pkgId.value}&days=${days.value}`,
+    url: `/pages/charter/fee?carIdx=${carIdx.value}&pkgId=${pkgId.value}&days=${days.value}&time=${encodeURIComponent(departTime.value)}`,
   });
 };
 
@@ -865,12 +844,6 @@ const onSubmit = () => {
 .footer-detail-icon {
   font-size: 16px;
   color: #0057FF;
-}
-
-.footer-discount-text {
-  font-size: 11px;
-  line-height: 16px;
-  color: #86868B;
 }
 
 .footer-btn {

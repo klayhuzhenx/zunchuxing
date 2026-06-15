@@ -50,7 +50,6 @@ export default function AdminLayout() {
       'system-login-logs': '/system/login-logs',
       'system-op-logs': '/system/op-logs',
       'system-online': '/system/online',
-      'system-city-management': '/system/city-management',
     };
     navigate(routeMap[key] || '/');
   };
@@ -112,20 +111,19 @@ export default function AdminLayout() {
           <Item key="enterprise"><IconUserGroup />企业客户管理</Item>
           <SubMenu key="order-group" title={<span><IconFile />订单管理</span>}>
             <Item key="orders">乘客订单</Item>
-            <Item key="driver-orders">司机出车单</Item>
+            <Item key="driver-orders">司机工单</Item>
           </SubMenu>
           <Item key="vehicles"><IconTool />车辆管理</Item>
           <Item key="drivers"><IconIdcard />司机管理</Item>
           <Item key="finance"><IconSafe />财务管理</Item>
           <Item key="config"><IconSettings />运营配置</Item>
-          <Item key="analytics"><IconDesktop />数据分析与报表</Item>
+          <Item key="analytics"><IconDesktop />数据报表</Item>
           <SubMenu key="system-group" title={<span><IconCommon />系统管理</span>}>
             <Item key="system-accounts">账号管理</Item>
             <Item key="system-roles">角色管理</Item>
             <Item key="system-login-logs">登录日志</Item>
             <Item key="system-op-logs">操作日志</Item>
             <Item key="system-online">在线用户</Item>
-            <Item key="system-city-management">城市管理</Item>
           </SubMenu>
         </Menu>
 

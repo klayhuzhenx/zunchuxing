@@ -6,7 +6,6 @@
     { "path": "pages/profile/collection", "style": { "navigationBarTitleText": "个人信息收集清单", "navigationStyle": "custom" } },
     { "path": "pages/profile/share", "style": { "navigationBarTitleText": "第三方信息共享清单", "navigationStyle": "custom" } },
     { "path": "pages/profile/permission", "style": { "navigationBarTitleText": "个人信息权限管理", "navigationStyle": "custom" } },
-    { "path": "pages/profile/cert", "style": { "navigationBarTitleText": "尊享认证", "navigationStyle": "custom" } },
     { "path": "pages/login/index", "style": { "navigationBarTitleText": "", "navigationStyle": "custom" } },
     { "path": "pages/enterprise/register", "style": { "navigationBarTitleText": "企业入驻", "navigationStyle": "custom" } },
     { "path": "pages/enterprise/status", "style": { "navigationBarTitleText": "入驻状态", "navigationStyle": "custom" } },

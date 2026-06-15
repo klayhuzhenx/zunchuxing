@@ -16,12 +16,12 @@ const statusAlert: Record<string, { type: string; title: string; body: (o: Order
 
 const alertColors: Record<string, string> = { warning: '#FF7D00', info: '#165DFF', success: '#00B42A', error: '#F53F3F' };
 const alertBgs: Record<string, string> = { warning: '#FFF7E8', info: '#E8F3FF', success: '#E8FFEA', error: '#FFECE8' };
-const statusLabels: Record<string, string> = { unpaid: '待支付', pending_dispatch: '待派车', pending_start: '待开始', ongoing: '行程中', completed: '已完成', cancelled: '已取消', pending_extra: '待补款' };
+const statusLabels: Record<string, string> = { unpaid: '待支付', pending_dispatch: '待派车', pending_start: '待开始', ongoing: '行程中', completed: '已完成', cancelled: '已取消', pending_extra: '待结算' };
 
 function getTimeline(order: Order): { label: string; dot: string }[] {
   const items = [
     { label: `订单已提交 · ${order.createdAt}`, dot: 'gray' },
-    { label: order.paymentTime ? `支付成功 · ${order.paymentTime}` : '等待支付', dot: order.paymentTime ? 'green' : 'gray' },
+    { label: order.paymentTime ? `支付成功（${order.paymentMethod === 'enterprise_credit' ? '企业额度' : order.paymentMethod === 'wechat' ? '微信' : '支付宝'}）· ¥${order.paidAmount.toLocaleString()}${order.pointsUsed ? ` 使用积分 ${order.pointsUsed.toLocaleString()}` : ''}` : '等待支付', dot: order.paymentTime ? 'green' : 'gray' },
   ];
 
   if (order.status === 'cancelled') return [...items, { label: `已取消${order.cancelReason ? '（' + order.cancelReason + '）' : ''}`, dot: 'red' }];
@@ -30,14 +30,14 @@ function getTimeline(order: Order): { label: string; dot: string }[] {
     items.push({ label: order.driverName ? `已派车 · ${order.carModel} ${order.plateNo} · ${order.driverName}` : '待派车', dot: order.driverName ? 'blue' : 'gray' });
     if (['ongoing', 'completed', 'pending_extra'].includes(order.status)) items.push({ label: '行程开始', dot: 'green' });
     if (order.status === 'completed') items.push({ label: '行程结束', dot: 'green' });
-    if (order.status === 'pending_extra') items.push({ label: '行程结束（有待补款）', dot: 'red' });
+    if (order.status === 'pending_extra') items.push({ label: '行程结束（待结算）', dot: 'red' });
   } else {
     items.push({ label: order.deliveryDriver ? `送车已派发 · ${order.deliveryDriver} · ${order.plateNo} · ${order.carModel}` : '待派车', dot: order.deliveryDriver ? 'blue' : 'gray' });
     if (['ongoing', 'completed', 'pending_extra'].includes(order.status)) {
       items.push({ label: '车辆已送达', dot: 'green' }, { label: '已确认取车', dot: 'green' });
     }
     if (order.status === 'completed') items.push({ label: '已还车', dot: 'green' });
-    if (order.status === 'pending_extra') items.push({ label: '已还车（有待补款）', dot: 'red' });
+    if (order.status === 'pending_extra') items.push({ label: '已还车（待结算）', dot: 'red' });
   }
 
   return items;
@@ -69,10 +69,12 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
   const timeline = getTimeline(order);
   const dotColors: Record<string, string> = { green: '#00B42A', red: '#F53F3F', blue: '#165DFF', gray: '#86909C' };
   const isCharter = order.type === 'charter';
+  const pointsUsed = order.pointsUsed || 0;
+  const pointsDeduction = Math.floor(pointsUsed / 100);
   const beforeDispatch = ['unpaid', 'pending_dispatch'].includes(order.status);
   const showFullFee = ['completed', 'pending_extra', 'ongoing'].includes(order.status);
 
-  const [feeModal, setFeeModal] = useState<{ visible: boolean; type: 'waiting' | 'overtime' | 'mileage' | 'other' }>({ visible: false, type: 'overtime' });
+  const [feeModal, setFeeModal] = useState<{ visible: boolean; type: 'waiting' | 'overtime' | 'mileage' | 'remote' | 'other' }>({ visible: false, type: 'overtime' });
 
   const feeRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' };
 
@@ -177,6 +179,29 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
                 <span style={{ fontSize: 14, fontWeight: 500, color: order.overmileageFee > 0 ? '#F53F3F' : '#000' }}>{order.overmileageFee > 0 ? `¥${order.overmileageFee.toLocaleString()} ›` : '¥0'}</span>
               </div>
             )}
+            {showFullFee && (() => {
+              const rd = order.remoteDispatchDetail;
+              const totalFee = rd ? rd.pickupFee + rd.dropoffFee : 0;
+              const totalKm = rd ? rd.pickupKm + rd.dropoffKm : 0;
+              const hasFee = totalFee > 0;
+              return (
+                <div style={{ ...feeRowStyle, cursor: hasFee ? 'pointer' : 'default' }}
+                  onClick={() => { if (hasFee) setFeeModal({ visible: true, type: 'remote' }); }}>
+                  <span style={{ fontSize: 14, color: hasFee ? '#F53F3F' : '#86868B' }}>
+                    远调费{totalKm > 0 ? ` · ${totalKm.toFixed(1)}km` : ''}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: hasFee ? '#F53F3F' : '#000' }}>
+                    {hasFee ? `¥${totalFee.toLocaleString()} ›` : '¥0'}
+                  </span>
+                </div>
+              );
+            })()}
+            {showFullFee && pointsUsed > 0 && (
+              <div style={feeRowStyle}>
+                <span style={{ fontSize: 14, color: '#00B42A' }}>积分抵扣（使用 {pointsUsed.toLocaleString()} 积分）</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: '#00B42A' }}>-¥{pointsDeduction.toLocaleString()}</span>
+              </div>
+            )}
             {showFullFee && order.feeExtraDetail?.otherFees && order.feeExtraDetail.otherFees.length > 0 && (
               <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'other' })}>
                 <span style={{ fontSize: 14, color: '#F53F3F' }}>其他费用</span>
@@ -188,7 +213,7 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
                 <span style={{ fontSize: 16, fontWeight: 700 }}>实付金额</span>
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: 20, fontWeight: 700 }}>¥{order.paidAmount.toLocaleString()}</span>
-                  {order.status === 'pending_extra' && <div style={{ fontSize: 12, color: '#F53F3F', fontWeight: 600 }}>待补款</div>}
+                  {order.status === 'pending_extra' && <div style={{ fontSize: 12, color: '#F53F3F', fontWeight: 600 }}>待结算</div>}
                   {order.status === 'completed' && <div style={{ fontSize: 11, color: '#00B42A' }}>已支付</div>}
                 </div>
               </div>
@@ -208,7 +233,7 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
 
       {/* 费用明细弹窗 */}
       {feeModal.visible && (
-        <FeeSheet title={feeModal.type === 'waiting' ? '等待费明细' : feeModal.type === 'overtime' ? '超时费明细' : feeModal.type === 'mileage' ? '超公里费明细' : '其他费用明细'} onClose={() => setFeeModal({ visible: false, type: 'overtime' })}>
+        <FeeSheet title={feeModal.type === 'waiting' ? '等待费明细' : feeModal.type === 'overtime' ? '超时费明细' : feeModal.type === 'mileage' ? '超公里费明细' : feeModal.type === 'remote' ? '远调费明细' : '其他费用明细'} onClose={() => setFeeModal({ visible: false, type: 'overtime' })}>
           {feeModal.type === 'waiting' && order.feeExtraDetail?.waitFee && (
             <div>
               <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>司机到达时间</span><span style={{ fontSize: 14 }}>{order.feeExtraDetail.waitFee.driverArriveTime || '—'}</span></div>
@@ -248,6 +273,24 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
               {i < (order.feeExtraDetail.excessMileageDetails?.length || 1) - 1 && <div style={{ height: 1, background: '#F2F2F2', margin: '8px 0' }} />}
             </div>
           ))}
+          {feeModal.type === 'remote' && (() => {
+            const rd = order.remoteDispatchDetail;
+            const pickupLabel = isCharter ? '接远调距离' : '取远调距离';
+            const dropoffLabel = isCharter ? '送远调距离' : '还远调距离';
+            const totalFee = (rd?.pickupFee ?? 0) + (rd?.dropoffFee ?? 0);
+            return (
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>
+                  {isCharter ? '包车出行' : '租车出行'} · 远调费明细
+                </div>
+                <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>{pickupLabel}</span><span style={{ fontSize: 14 }}>{rd?.pickupKm ?? 0} km → ¥{(rd?.pickupFee ?? 0).toLocaleString()}</span></div>
+                <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>{dropoffLabel}</span><span style={{ fontSize: 14 }}>{rd?.dropoffKm ?? 0} km → ¥{(rd?.dropoffFee ?? 0).toLocaleString()}</span></div>
+                <div style={{ height: 1, background: '#F2F2F2', margin: '8px 0' }} />
+                <div style={feeRowStyle}><span style={{ fontSize: 14, fontWeight: 700, color: totalFee > 0 ? '#F53F3F' : '#000' }}>远调费合计</span><span style={{ fontSize: 14, fontWeight: 700, color: totalFee > 0 ? '#F53F3F' : '#000' }}>¥{totalFee.toLocaleString()}</span></div>
+              </div>
+            );
+          })()}
+
           {feeModal.type === 'other' && order.feeExtraDetail?.otherFees && order.feeExtraDetail.otherFees.map((f, i) => (
             <div key={f.id}>
               <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>{f.type}</div>

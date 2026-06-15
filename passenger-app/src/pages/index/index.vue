@@ -49,27 +49,6 @@
         </view>
       </view>
 
-      <!-- 尊享权益 -->
-      <view class="section">
-        <view class="benefit-card">
-          <view class="benefit-bg" />
-          <view class="benefit-mask" />
-          <view class="benefit-top">
-            <view class="benefit-text">
-              <text class="benefit-title">尊享权益</text>
-              <text class="benefit-subtitle">尊界 S800 专属特权服务</text>
-            </view>
-            <view class="benefit-cta" @click="goOwnerCert">
-              <text class="benefit-cta-text">认证领取</text>
-            </view>
-          </view>
-          <view class="benefit-chips">
-            <text class="benefit-chip">免费租车权益</text>
-            <text class="benefit-chip">尊享机场接送</text>
-            <text class="benefit-chip">专属管家服务</text>
-          </view>
-        </view>
-      </view>
     </view>
 
     <!-- 底部 tab bar -->
@@ -82,16 +61,14 @@ import { ref, onMounted } from 'vue';
 import TabBar from '@/components/tab-bar.vue';
 
 const statusBarHeight = ref(0);
-// P3-01：企业身份展示
 const enterpriseName = ref('');
 
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync();
   statusBarHeight.value = sysInfo.statusBarHeight || 0;
-  // 读取登录态 + 企业身份（占位 — 后续接入后端）
   const token = uni.getStorageSync('token');
   if (token) {
-    enterpriseName.value = '华为技术有限公司'; // 模拟
+    enterpriseName.value = '华为技术有限公司';
   }
 });
 
@@ -101,7 +78,6 @@ const onMenu = () => {
 
 const goCharter = () => uni.navigateTo({ url: '/pages/charter/index' });
 const goRental = () => uni.navigateTo({ url: '/pages/rental/index' });
-const goOwnerCert = () => uni.navigateTo({ url: '/pages/profile/cert' });
 </script>
 
 <style lang="scss" scoped>
@@ -320,99 +296,6 @@ const goOwnerCert = () => uni.navigateTo({ url: '/pages/profile/cert' });
   font-weight: 500;
   letter-spacing: 0.01em;
   color: #86868B;
-}
-
-/* ===== 尊享权益 ===== */
-.benefit-card {
-  position: relative;
-  background: #000000;
-  border-radius: 32px;
-  padding: 24px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-}
-
-.benefit-bg {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.20) 0%, transparent 60%),
-    radial-gradient(circle at 20% 80%, rgba(0, 87, 255, 0.15) 0%, transparent 60%),
-    linear-gradient(135deg, #1a1a1c 0%, #000000 100%);
-}
-
-.benefit-mask {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.benefit-top {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.benefit-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.benefit-title {
-  font-size: 22px;
-  line-height: 30px;
-  font-weight: 700;
-  color: #FFFFFF;
-}
-
-.benefit-subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.benefit-cta {
-  padding: 8px 20px;
-  background: #FFFFFF;
-  border-radius: 9999px;
-  transition: transform 0.15s ease;
-
-  &:active {
-    transform: scale(0.95);
-  }
-}
-
-.benefit-cta-text {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  color: #000000;
-}
-
-.benefit-chips {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.benefit-chip {
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(212, 175, 55, 0.30);
-  border-radius: 9999px;
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  color: #FFFFFF;
 }
 
 .header-enterprise {

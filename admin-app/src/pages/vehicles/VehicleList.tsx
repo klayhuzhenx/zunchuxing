@@ -5,7 +5,7 @@ import {
   Upload, Popconfirm,
 } from '@arco-design/web-react';
 import { IconSearch, IconPlus, IconDownload, IconEye } from '@arco-design/web-react/icon';
-import { vehicles, drivers } from '../../data/mock';
+import { vehicles, drivers, vehicleModels } from '../../data/mock';
 import type { Vehicle, VehicleStatus } from '../../types';
 
 const { RangePicker } = DatePicker;
@@ -17,14 +17,6 @@ const statusMap: Record<VehicleStatus, { label: string; color: string }> = {
 
 const colorOptions = ['黑色', '白色', '银色', '金色', '深蓝', '灰色', '红色'];
 const typeOptions = ['轿车', 'SUV', 'MPV', '豪华轿车'];
-const brandOptions = ['奔驰', '别克', '奥迪', '尊界'];
-const modelOptions: Record<string, string[]> = {
-  奔驰: ['V260L', 'E300L', 'S400L'],
-  别克: ['GL8', 'GL8 ES'],
-  奥迪: ['A6L', 'A8L', 'Q7'],
-  尊界: ['S800', 'S900', 'L100'],
-};
-
 function getDriverOptions() {
   return drivers.filter(d => d.status === 'active').map(d => ({ label: `${d.name} ${d.phone}`, value: d.name }));
 }
@@ -69,7 +61,7 @@ export default function VehicleList() {
   }, [data, keyword, statusFilter, typeFilter, driverFilter, dateRange]);
 
   const openDetail = (v: Vehicle) => { setSelectedVehicle(v); setEditMode(false); setDrawerVisible(true); };
-  const openEdit = (v: Vehicle) => { setSelectedVehicle(v); setEditMode(true); setDrawerVisible(true); };
+  const openEdit = (v: Vehicle) => { setSelectedVehicle(v); editForm.setFieldsValue(v); setEditMode(true); };
 
   const handleAdd = () => {
     addForm.validate().then(values => {
@@ -442,17 +434,10 @@ export default function VehicleList() {
             <Grid.Col span={12}><Form.Item label="车牌号" field="plateNo" rules={[{ required: true, message: '请输入车牌号' }]}><Input placeholder="粤B12345" /></Form.Item></Grid.Col>
             <Grid.Col span={12}><Form.Item label="车型名称" field="model" rules={[{ required: true, message: '请选择车型名称' }]}>
               <Select placeholder="选择车型名称（自动带出分类、座位数）"
-                options={modelOptions['奔驰'].concat(modelOptions['尊界']).concat(modelOptions['奥迪']).concat(modelOptions['别克']).map(m => ({ label: m, value: m }))}
+                options={vehicleModels.filter(v => v.status === 'active').map(v => ({ label: v.name, value: v.name }))}
                 onChange={(val) => {
-                  // 取自车型库（mock）：根据车型自动带出分类 + 座位数
-                  const dict: Record<string, { type: string; seats: number }> = {
-                    'S800': { type: '豪华轿车', seats: 5 }, 'S900': { type: '豪华轿车', seats: 5 }, 'L100': { type: 'MPV', seats: 7 },
-                    'V260L': { type: 'MPV', seats: 7 }, 'E300L': { type: '轿车', seats: 5 }, 'S400L': { type: '轿车', seats: 5 },
-                    'GL8': { type: 'MPV', seats: 7 }, 'GL8 ES': { type: 'MPV', seats: 7 },
-                    'A6L': { type: '轿车', seats: 5 }, 'A8L': { type: '轿车', seats: 5 }, 'Q7': { type: 'SUV', seats: 7 },
-                  };
-                  const info = dict[val];
-                  if (info) addForm.setFieldsValue({ type: info.type, seats: info.seats });
+                  const vm = vehicleModels.find(v => v.name === val);
+                  if (vm) addForm.setFieldsValue({ type: vm.category, seats: vm.seats });
                 }}
               />
             </Form.Item></Grid.Col>
@@ -508,21 +493,71 @@ export default function VehicleList() {
         </Form>
       </Modal>
 
-      {/* Edit Vehicle Modal — 与新增同控件 */}
-      <Modal title="编辑车辆" visible={drawerVisible && !!selectedVehicle && editMode}
+      {/* Edit Vehicle Modal — 与新增完全一致 */}
+      {selectedVehicle && (
+      <Modal title="编辑车辆" visible={editMode}
         onOk={handleEditSave} onCancel={() => setEditMode(false)} style={{ width: 580 }}>
-        {selectedVehicle && (
-          <Form form={editForm} initialValues={selectedVehicle} layout="vertical">
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="车牌号" field="plateNo" rules={[{ required: true }]}><Input /></Form.Item></Grid.Col>
-            <Grid.Col span={12}><Form.Item label="车型名称" field="model" rules={[{ required: true }]}><Select placeholder="车型名称" options={modelOptions['奔驰'].concat(modelOptions['尊界']).concat(modelOptions['奥迪']).concat(modelOptions['别克']).map(m => ({ label: m, value: m }))} /></Form.Item></Grid.Col></Grid.Row>
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="车辆分类" field="type" rules={[{ required: true }]}><Select options={typeOptions.map(t => ({ label: t, value: t }))} /></Form.Item></Grid.Col>
-            <Grid.Col span={12}><Form.Item label="座位数" field="seats" rules={[{ required: true }]}><Select options={[4,5,6,7].map(s => ({ label: `${s}座`, value: s }))} /></Form.Item></Grid.Col></Grid.Row>
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="颜色" field="color"><Select options={colorOptions.map(c => ({ label: c, value: c }))} allowCreate /></Form.Item></Grid.Col></Grid.Row>
-            <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="车架号(VIN)" field="vin"><Input maxLength={17} /></Form.Item></Grid.Col>
-            <Grid.Col span={12}><Form.Item label="发动机号" field="engineNo"><Input maxLength={20} /></Form.Item></Grid.Col></Grid.Row>
-          </Form>
-        )}
+        <Form form={editForm} initialValues={selectedVehicle} layout="vertical">
+          <Grid.Row gutter={16}>
+            <Grid.Col span={12}><Form.Item label="车牌号" field="plateNo" rules={[{ required: true, message: '请输入车牌号' }]}><Input placeholder="粤B12345" /></Form.Item></Grid.Col>
+            <Grid.Col span={12}><Form.Item label="车型名称" field="model" rules={[{ required: true, message: '请选择车型名称' }]}>
+              <Select placeholder="选择车型名称（自动带出分类、座位数）"
+                options={vehicleModels.filter(v => v.status === 'active').map(v => ({ label: v.name, value: v.name }))}
+                onChange={(val) => {
+                  const vm = vehicleModels.find(v => v.name === val);
+                  if (vm) editForm.setFieldsValue({ type: vm.category, seats: vm.seats });
+                }}
+              />
+            </Form.Item></Grid.Col>
+          </Grid.Row>
+          <Grid.Row gutter={16}>
+            <Grid.Col span={12}><Form.Item label="车辆分类" field="type" rules={[{ required: true }]} extra="来源：车型管理（自动带出）">
+              <Select placeholder="自动带出" options={typeOptions.map(t => ({ label: t, value: t }))} /></Form.Item></Grid.Col>
+          </Grid.Row>
+          <Grid.Row gutter={16}>
+            <Grid.Col span={12}><Form.Item label="座位数" field="seats" rules={[{ required: true }]} extra="来源：车型管理（自动带出）">
+              <Select options={[4,5,6,7].map(s => ({ label: `${s}座`, value: s }))} /></Form.Item></Grid.Col>
+            <Grid.Col span={12}><Form.Item label="颜色" field="color" rules={[{ required: true }]}><Select options={colorOptions.map(c => ({ label: c, value: c }))} allowCreate /></Form.Item></Grid.Col>
+          </Grid.Row>
+          <Grid.Row gutter={16}>
+            <Grid.Col span={12}><Form.Item label="车架号(VIN)" field="vin"
+              rules={[{ match: /^[A-HJ-NPR-Z0-9]{17}$/, message: '请输入17位车架号（不含 I/O/Q）' }]}>
+              <Input placeholder="17位" maxLength={17} />
+            </Form.Item></Grid.Col>
+            <Grid.Col span={12}><Form.Item label="发动机号" field="engineNo"><Input maxLength={20} /></Form.Item></Grid.Col>
+          </Grid.Row>
+          <Grid.Row gutter={16}>
+            <Grid.Col span={12}><Form.Item label="注册日期" field="regDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Grid.Col>
+          </Grid.Row>
+          <Form.Item label="行驶证上传">
+            <Upload listType="picture-card" accept="image/jpeg,image/png,image/webp" showUploadList
+              customRequest={(option) => {
+                const f = option.file as File;
+                if (f.size > 5 * 1024 * 1024) { Message.error('照片不能超过 5MB'); return; }
+                Message.success('行驶证上传成功');
+              }}>
+              <div style={{ color: '#86909c' }}>+ 上传正本/副本</div>
+            </Upload>
+            <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>支持 JPG/PNG/WebP，单张 ≤ 5MB</div>
+          </Form.Item>
+          <Form.Item label="车辆照片">
+            <Upload
+              listType="picture-card"
+              accept="image/*"
+              fileList={(selectedVehicle.photos || []).map((url, i) => ({ uid: String(i), url, name: `photo-${i}` }))}
+              customRequest={(option) => {
+                const f = option.file as File;
+                if (f.size > 5 * 1024 * 1024) { Message.error('单张照片不能超过 5MB'); return; }
+                Message.success('照片上传成功（演示）');
+              }}
+              onRemove={(file) => { return true; }}>
+              <div style={{ color: '#86909c' }}>+ 上传</div>
+            </Upload>
+            <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>外观/内饰，单张 ≤ 5MB</div>
+          </Form.Item>
+        </Form>
       </Modal>
+      )}
 
       {/* Disable Modal */}
       <Modal title="停用车辆" visible={disableVisible} onOk={handleDisable} onCancel={() => { setDisableVisible(false); setDisableReason(''); }}>

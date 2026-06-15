@@ -32,8 +32,16 @@
 
           <view class="bill-row">
             <view class="bill-info">
+              <text class="bill-sub-label">夜间附加</text>
+              <text class="bill-meta">{{ isNightDepart ? `出发时间 ${departTime}（0:00-5:00），按套餐价 20%（≤¥500）` : '出发时间不在 0:00-5:00，免收' }}</text>
+            </view>
+            <text class="bill-amount">{{ nightSurchargeText }}</text>
+          </view>
+
+          <view class="bill-row">
+            <view class="bill-info">
               <text class="bill-sub-label">等待费</text>
-              <text class="bill-meta">免费 15 分钟，超出 ¥1/分钟</text>
+              <text class="bill-meta">免费 {{ feeRule.freeWaitMinutes }} 分钟，超出 ¥{{ feeRule.waitPerMinute }}/分钟</text>
             </view>
             <text class="bill-amount">¥0</text>
           </view>
@@ -41,7 +49,7 @@
           <view class="bill-row">
             <view class="bill-info">
               <text class="bill-sub-label">超时长费</text>
-              <text class="bill-meta">¥100 / 小时</text>
+              <text class="bill-meta">¥{{ feeRule.overtimePerHour }} / 小时</text>
             </view>
             <text class="bill-amount">¥0</text>
           </view>
@@ -49,24 +57,23 @@
           <view class="bill-row">
             <view class="bill-info">
               <text class="bill-sub-label">超公里费</text>
-              <text class="bill-meta">¥5 / 公里</text>
+              <text class="bill-meta">¥{{ feeRule.overKmPerKm }} / 公里</text>
             </view>
             <text class="bill-amount">¥0</text>
+          </view>
+
+          <view class="bill-row">
+            <view class="bill-info">
+              <text class="bill-sub-label">远调费</text>
+              <text class="bill-meta">接/送远调超出运营范围按梯度收费：{{ remoteDispatchMeta }}</text>
+            </view>
+            <text class="bill-amount" :class="{ pending: remoteDispatchFee > 0 }">{{ remoteDispatchFee > 0 ? `¥${remoteDispatchFee}` : '¥0' }}</text>
           </view>
         </view>
 
         <view class="rule-link" @click="onShowRule">
           <text class="rule-link-text">查看计价规则</text>
           <text class="material-symbols-outlined rule-link-icon">chevron_right</text>
-        </view>
-      </view>
-
-      <!-- 费用说明 -->
-      <view class="info-card">
-        <text class="material-symbols-outlined info-icon">info</text>
-        <view class="info-text">
-          <text class="info-title">费用说明</text>
-          <text class="info-desc">超时/超公里费按实际行程结算。套餐未用完时长/里程不退款。如产生高速费、停车费等将由乘客线下支付或据实代垫。</text>
         </view>
       </view>
 
@@ -79,52 +86,51 @@
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import Navbar from '@/components/navbar.vue';
-
-const carData = [
-  { id: 0, fullName: '增程星辉尊享版', imageGradient: 'linear-gradient(135deg, #2c2c2e 0%, #1a1a1c 50%, #0a0a0c 100%)' },
-  { id: 1, fullName: '增程星辉行政版', imageGradient: 'linear-gradient(135deg, #3a3a3c 0%, #1f1f21 50%, #0d0d0f 100%)' },
-  { id: 2, fullName: '增程星耀行政版', imageGradient: 'linear-gradient(135deg, #4a4a4c 0%, #252527 50%, #101012 100%)' },
-];
-
-const pkgMap: Record<string, { tier: string; spec: string; price: number }> = {
-  'a-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km', price: 988 },
-  'a-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1188 },
-  'a-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1588 },
-  'a-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km', price: 1888 },
-  'a-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2088 },
-  'a-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km', price: 2688 },
-  'b-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km', price: 1088 },
-  'b-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1288 },
-  'b-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1688 },
-  'b-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km', price: 1988 },
-  'b-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2288 },
-  'b-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km', price: 2888 },
-  'c-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km', price: 1288 },
-  'c-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km', price: 1588 },
-  'c-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km', price: 1888 },
-  'c-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km', price: 2288 },
-  'c-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km', price: 2688 },
-  'c-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km', price: 3288 },
-};
+import {
+  charterCars,
+  findPkgById,
+  calcNightSurcharge,
+  nightSurchargeConfig,
+} from '@/data/charter';
 
 const carIdx = ref(0);
 const pkgId = ref('a-f-pro');
 const days = ref(1);
+const departTime = ref('09:00');
 
 onLoad((opts: Record<string, string> | undefined) => {
   if (opts) {
     if (opts.carIdx !== undefined) carIdx.value = parseInt(opts.carIdx, 10) || 0;
     if (opts.pkgId) pkgId.value = opts.pkgId;
     if (opts.days) days.value = parseInt(opts.days, 10) || 1;
+    if (opts.time) departTime.value = decodeURIComponent(opts.time);
   }
 });
 
-const car = computed(() => carData[carIdx.value] || carData[0]);
-const pkg = computed(() => pkgMap[pkgId.value] || pkgMap['a-f-pro']);
+const car = computed(() => charterCars[carIdx.value] || charterCars[0]);
+const pkg = computed(() => findPkgById(pkgId.value)?.pkg || charterCars[0].packages[4]);
+const feeRule = computed(() => car.value.feeRule);
 
 const subtotal = computed(() => pkg.value.price * days.value);
 const subtotalText = computed(() => subtotal.value.toLocaleString());
-const total = computed(() => subtotal.value);
+
+const isNightDepart = computed(() => {
+  const hh = parseInt(departTime.value.split(':')[0] || '0', 10);
+  return hh >= nightSurchargeConfig.startHour && hh < nightSurchargeConfig.endHour;
+});
+
+const nightSurcharge = computed(() => calcNightSurcharge(subtotal.value, departTime.value));
+const nightSurchargeText = computed(() => `¥${nightSurcharge.value}`);
+
+// 远调费：预估阶段默认 ¥0，实际按接/送点超出运营范围的直线距离 × 梯度单价结算
+const remoteDispatchFee = ref(0);
+const remoteDispatchMeta = computed(() => {
+  const tiers = car.value.feeRule?.remoteDispatchTiers;
+  if (!tiers || tiers.length === 0) return '未配置';
+  return tiers.map(t => `${t.fromKm}~${t.toKm === -1 ? '∞' : t.toKm}km ¥${t.amount}`).join(' | ');
+});
+
+const total = computed(() => subtotal.value + nightSurcharge.value + remoteDispatchFee.value);
 const totalText = computed(() => total.value.toLocaleString());
 
 const onShowRule = () => {
@@ -268,6 +274,10 @@ const onShowRule = () => {
   line-height: 22px;
   color: #000000;
   flex-shrink: 0;
+
+  &.pending {
+    color: #FF7D00;
+  }
 }
 
 .bill-amount-primary {
@@ -308,40 +318,4 @@ const onShowRule = () => {
   color: #0057FF;
 }
 
-/* ===== 说明卡 ===== */
-.info-card {
-  margin: 16px 24px 0;
-  padding: 20px;
-  background: #EEEEEE;
-  border-radius: 24px;
-  display: flex;
-  gap: 12px;
-}
-
-.info-icon {
-  font-size: 22px;
-  color: #86868B;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.info-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.info-title {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  color: #1A1C1C;
-}
-
-.info-desc {
-  font-size: 13px;
-  line-height: 22px;
-  color: #86868B;
-}
 </style>

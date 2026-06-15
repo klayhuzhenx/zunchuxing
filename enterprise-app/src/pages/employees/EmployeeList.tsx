@@ -159,7 +159,7 @@ export default function EmployeeList() {
       {/* 添加员工弹窗 — E3-03 正则 */}
       <Modal title="添加员工" visible={addVisible} onCancel={() => setAddVisible(false)} style={{ width: 440 }} footer={null}>
         <Form onSubmit={handleAdd} layout="vertical">
-          <Form.Item field="name" label="姓名"><Input placeholder="请输入姓名" /></Form.Item>
+          <Form.Item field="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}><Input placeholder="请输入姓名" /></Form.Item>
           <Form.Item field="phone" label="手机号" rules={[
             { required: true, message: '请输入手机号' },
             { match: PHONE_REGEX, message: '请输入正确的手机号' },
@@ -177,7 +177,7 @@ export default function EmployeeList() {
       <Modal title="编辑员工" visible={editVisible} onCancel={() => { setEditVisible(false); setEditingEmp(null); }} style={{ width: 440 }} footer={null}>
         {editingEmp && (
           <Form onSubmit={handleEdit} layout="vertical" initialValues={{ name: editingEmp.name, phone: editingEmp.phone, role: editingEmp.role }}>
-            <Form.Item field="name" label="姓名"><Input placeholder="请输入姓名" /></Form.Item>
+            <Form.Item field="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}><Input placeholder="请输入姓名" /></Form.Item>
             <Form.Item field="phone" label="手机号" rules={[
               { required: true, message: '请输入手机号' },
               { match: PHONE_REGEX, message: '请输入正确的手机号' },

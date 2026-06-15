@@ -25,7 +25,6 @@
             <text class="material-symbols-outlined">swap_vert</text>
           </view>
         </view>
-        <text class="addr-tip">取车与还车位置可相同也可不同，由专属司机送至取车位置</text>
       </view>
 
       <!-- 车型 3 tab -->
@@ -46,22 +45,15 @@
           <view class="car-detail">
             <view class="car-image">
               <view class="car-image-bg" :style="{ background: cars[carIdx].imageGradient }" />
-              <text class="car-image-label">{{ cars[carIdx].fullName }}</text>
+              <text class="car-image-label">{{ cars[carIdx].seats }}座</text>
             </view>
             <view class="car-info">
-              <view class="car-info-left">
-                <text class="car-name">{{ cars[carIdx].fullName }}</text>
-                <text class="car-tagline">{{ cars[carIdx].tagline }}</text>
-              </view>
-              <view class="car-info-right">
-                <text class="car-price">¥{{ cars[carIdx].dayPrice.toLocaleString() }}<text class="car-price-unit"> /天</text></text>
-                <text class="car-km">含 {{ cars[carIdx].kmPerDay }}km</text>
-              </view>
-            </view>
-            <view class="car-features">
-              <view v-for="f in cars[carIdx].features" :key="f.icon" class="car-feature">
-                <text class="material-symbols-outlined feature-icon">{{ f.icon }}</text>
-                <text class="feature-text">{{ f.text }}</text>
+              <text class="car-name">{{ cars[carIdx].tagline }}</text>
+              <view class="car-features">
+                <view v-for="f in cars[carIdx].features" :key="f.icon" class="car-feature">
+                  <text class="material-symbols-outlined feature-icon">{{ f.icon }}</text>
+                  <text class="feature-text">{{ f.text }}</text>
+                </view>
               </view>
             </view>
           </view>
@@ -100,28 +92,30 @@
       <view class="pkg-row">
         <view class="pkg-col">
           <text class="pkg-col-label">取车日期</text>
-          <view class="pkg-field" @click="onShowDateSheet('pickup')">
+          <view class="pkg-field" @click="onShowDateSheet">
             <text class="material-symbols-outlined field-icon">calendar_today</text>
-            <text class="field-value">{{ form.pickupDateText }}</text>
+            <text class="field-value">{{ pickupDateTimeText }}</text>
           </view>
         </view>
         <view class="pkg-col">
-          <text class="pkg-col-label">还车日期</text>
-          <view class="pkg-field" @click="onShowDateSheet('return')">
-            <text class="material-symbols-outlined field-icon">event</text>
-            <text class="field-value">{{ form.returnDateText }}</text>
+          <text class="pkg-col-label">租车天数</text>
+          <view class="pkg-stepper">
+            <view class="stepper-btn" @click="changeDays(-1)">
+              <text class="material-symbols-outlined">remove</text>
+            </view>
+            <text class="stepper-value">{{ rentalDays }} 天</text>
+            <view class="stepper-btn" @click="changeDays(1)">
+              <text class="material-symbols-outlined">add</text>
+            </view>
           </view>
         </view>
       </view>
 
-      <view class="pkg-days-row">
-        <text class="pkg-days-label">租车天数</text>
-        <text class="pkg-days-value">{{ totalDays }} 天</text>
-      </view>
-
-      <view class="pkg-warn">
-        <text class="material-symbols-outlined pkg-warn-icon">info</text>
-        <text class="pkg-warn-text">超里程 ¥10/公里，按实际结算</text>
+      <view class="pkg-row">
+        <view class="pkg-col-full">
+          <text class="pkg-col-label">还车日期</text>
+          <text class="return-hint">{{ returnDateHint }}</text>
+        </view>
       </view>
 
       <template #footer>
@@ -145,22 +139,16 @@
       </template>
     </bottom-sheet>
 
-    <!-- 取车/还车日期 sheet -->
-    <bottom-sheet
-      v-model="showDateSheet"
-      :title="dateSheetTitle"
-      :max-height="'70vh'"
-    >
+    <!-- 取车日期 + 时间 sheet -->
+    <bottom-sheet v-model="showDateSheet" title="选择取车时间" :max-height="'80vh'">
+      <view class="date-section-title">日期</view>
       <view class="date-grid">
         <view
           v-for="d in dateList"
           :key="d.iso"
           class="date-cell"
-          :class="{
-            active: pendingDate === d.iso,
-            disabled: dateMode === 'return' && d.iso < form.pickupDate,
-          }"
-          @click="onPickDateCell(d)"
+          :class="{ active: pendingPickupDate === d.iso }"
+          @click="pendingPickupDate = d.iso"
         >
           <text class="date-weekday">{{ d.weekday }}</text>
           <text class="date-day">{{ d.day }}</text>
@@ -168,9 +156,31 @@
         </view>
       </view>
 
+      <view class="date-section-title">时间</view>
+      <view class="time-picker-wrap">
+        <view class="time-picker-mask time-picker-mask-top" />
+        <view class="time-picker-mask time-picker-mask-bottom" />
+        <view class="time-picker-indicator" />
+        <picker-view
+          class="time-picker"
+          :value="timePickerValue"
+          indicator-style="height: 44px;"
+          mask-style="background: transparent;"
+          @change="onTimePickerChange"
+        >
+          <picker-view-column>
+            <view v-for="h in hourList" :key="`h-${h}`" class="picker-item">{{ h }}</view>
+          </picker-view-column>
+          <picker-view-column>
+            <view v-for="m in minuteList" :key="`m-${m}`" class="picker-item">{{ m }}</view>
+          </picker-view-column>
+        </picker-view>
+        <view class="time-picker-colon">:</view>
+      </view>
+
       <template #footer>
-        <view class="date-confirm" @click="confirmDate">
-          <text class="date-confirm-text">确认日期</text>
+        <view class="date-confirm" @click="confirmPickupDateTime">
+          <text class="date-confirm-text">确认 {{ pendingPickupDateText }} {{ pendingPickupTime }}</text>
         </view>
       </template>
     </bottom-sheet>
@@ -178,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import Navbar from '@/components/navbar.vue';
 import BottomSheet from '@/components/bottom-sheet.vue';
@@ -189,6 +199,7 @@ type Car = {
   name2: string;
   fullName: string;
   tagline: string;
+  seats: number;
   imageGradient: string;
   dayPrice: number;
   kmPerDay: number;
@@ -202,6 +213,7 @@ const cars: Car[] = [
     name2: '尊享版',
     fullName: '增程星辉尊享版',
     tagline: '极致尊贵 · 宽适空间',
+    seats: 7,
     imageGradient: 'linear-gradient(135deg, #2c2c2e 0%, #1a1a1c 50%, #0a0a0c 100%)',
     dayPrice: 1500,
     kmPerDay: 200,
@@ -217,6 +229,7 @@ const cars: Car[] = [
     name2: '行政版',
     fullName: '增程星辉行政版',
     tagline: '商务出行 · 稳健效率',
+    seats: 7,
     imageGradient: 'linear-gradient(135deg, #3a3a3c 0%, #1f1f21 50%, #0d0d0f 100%)',
     dayPrice: 1800,
     kmPerDay: 200,
@@ -232,6 +245,7 @@ const cars: Car[] = [
     name2: '行政版',
     fullName: '增程星耀行政版',
     tagline: '旗舰豪华 · 尊荣体验',
+    seats: 5,
     imageGradient: 'linear-gradient(135deg, #4a4a4c 0%, #252527 50%, #101012 100%)',
     dayPrice: 2200,
     kmPerDay: 200,
@@ -247,20 +261,25 @@ const carIdx = ref(0);
 const pkgCarIdx = ref(0);
 const showPackageSheet = ref(false);
 const showDateSheet = ref(false);
-const dateMode = ref<'pickup' | 'return'>('pickup');
+const statusBarHeight = ref(0);
 
 const form = ref({
   pickup: '合肥市政务中心',
   return: '',
   pickupDate: '2026-06-09',
-  pickupDateText: '今天 06-09',
-  returnDate: '2026-06-12',
-  returnDateText: '06-12',
+  pickupTime: '09:00',
 });
 
-const pendingDate = ref(form.value.pickupDate);
+// 租车天数 stepper
+const rentalDays = ref(1);
+const changeDays = (delta: number) => {
+  const next = rentalDays.value + delta;
+  if (next < 1) return;
+  if (next > 30) { uni.showToast({ title: '最长可选择 30 天', icon: 'none' }); return; }
+  rentalDays.value = next;
+};
 
-/* 12 天 */
+// 日期 grid
 const dateList = computed(() => {
   const list: { iso: string; weekday: string; day: string; monthLabel: string }[] = [];
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -281,19 +300,70 @@ const dateList = computed(() => {
   return list;
 });
 
-const totalDays = computed(() => {
-  const start = new Date(form.value.pickupDate);
-  const end = new Date(form.value.returnDate);
-  const diff = Math.round((end.getTime() - start.getTime()) / 86400000);
-  return Math.max(1, diff);
+// 时间滚轮
+const hourList = computed(() => {
+  const list: string[] = [];
+  for (let h = 6; h <= 22; h++) list.push(String(h).padStart(2, '0'));
+  return list;
 });
+const minuteList = ['00', '15', '30', '45'];
+const timePickerValue = ref<[number, number]>([3, 0]); // 默认 09:00
+
+const onTimePickerChange = (e: { detail: { value: number[] } }) => {
+  const [hi, mi] = e.detail.value;
+  timePickerValue.value = [hi, mi];
+  const h = hourList.value[hi] ?? '09';
+  const m = minuteList[mi] ?? '00';
+  pendingPickupTime.value = `${h}:${m}`;
+};
+
+const pendingPickupDate = ref(form.value.pickupDate);
+const pendingPickupTime = ref(form.value.pickupTime);
+
+onMounted(() => {
+  const sysInfo = uni.getSystemInfoSync();
+  statusBarHeight.value = sysInfo.statusBarHeight || 0;
+});
+
+// 取车时间展示文本
+const pickupDateTimeText = computed(() => {
+  const item = dateList.value.find(d => d.iso === form.value.pickupDate);
+  if (!item) return `${form.value.pickupDate} ${form.value.pickupTime}`;
+  return `${item.weekday} ${form.value.pickupDate.slice(5)} ${form.value.pickupTime}`;
+});
+
+const pendingPickupDateText = computed(() => {
+  const item = dateList.value.find(d => d.iso === pendingPickupDate.value);
+  if (!item) return '';
+  return `${item.weekday} ${item.iso.slice(5)}`;
+});
+
+// 还车日期：根据取车日 + 天数自动推算，格式 "X号 周X前还车"
+const returnDateHint = computed(() => {
+  const start = new Date(`${form.value.pickupDate}T00:00:00`);
+  start.setDate(start.getDate() + rentalDays.value);
+  return `${start.getMonth() + 1}月${start.getDate()}日 ${form.value.pickupTime}前还车`;
+});
+
+const onShowDateSheet = () => {
+  pendingPickupDate.value = form.value.pickupDate;
+  pendingPickupTime.value = form.value.pickupTime;
+  showDateSheet.value = true;
+};
+
+const confirmPickupDateTime = () => {
+  const item = dateList.value.find(d => d.iso === pendingPickupDate.value);
+  if (item) {
+    form.value.pickupDate = item.iso;
+    form.value.pickupTime = pendingPickupTime.value;
+  }
+  showDateSheet.value = false;
+};
+
+const totalDays = computed(() => rentalDays.value);
 
 const totalText = computed(() =>
   (cars[pkgCarIdx.value].dayPrice * totalDays.value).toLocaleString()
-);
-
-const dateSheetTitle = computed(() =>
-  dateMode.value === 'pickup' ? '选择取车日期' : '选择还车日期'
 );
 
 const onPickAddress = (fld: 'pickup' | 'return') => {
@@ -326,46 +396,6 @@ const swapAddress = () => {
   form.value.return = t;
 };
 
-const onShowDateSheet = (mode: 'pickup' | 'return') => {
-  dateMode.value = mode;
-  pendingDate.value = mode === 'pickup' ? form.value.pickupDate : form.value.returnDate;
-  showDateSheet.value = true;
-};
-
-const onPickDateCell = (d: { iso: string }) => {
-  if (dateMode.value === 'return' && d.iso < form.value.pickupDate) {
-    uni.showToast({ title: '还车日期不能早于取车日期', icon: 'none' });
-    return;
-  }
-  pendingDate.value = d.iso;
-};
-
-const confirmDate = () => {
-  const item = dateList.value.find((d) => d.iso === pendingDate.value);
-  if (!item) {
-    showDateSheet.value = false;
-    return;
-  }
-  const monthDay = item.iso.slice(5);
-  const text = item.weekday === '今天' || item.weekday === '明天' ? `${item.weekday} ${monthDay}` : `${item.weekday} ${monthDay}`;
-  if (dateMode.value === 'pickup') {
-    form.value.pickupDate = item.iso;
-    form.value.pickupDateText = text;
-    /* 如果还车 < 取车，自动顺延为取车 + 1 天 */
-    if (form.value.returnDate <= item.iso) {
-      const nextDay = dateList.value.find((d) => d.iso > item.iso);
-      if (nextDay) {
-        form.value.returnDate = nextDay.iso;
-        form.value.returnDateText = `${nextDay.weekday} ${nextDay.iso.slice(5)}`;
-      }
-    }
-  } else {
-    form.value.returnDate = item.iso;
-    form.value.returnDateText = text;
-  }
-  showDateSheet.value = false;
-};
-
 const onShowFeeDetail = () => {
   showPackageSheet.value = false;
   setTimeout(() => {
@@ -388,7 +418,8 @@ const goConfirm = () => {
       `pickup=${encodeURIComponent(form.value.pickup)}`,
       `return=${encodeURIComponent(form.value.return)}`,
       `pickupDate=${form.value.pickupDate}`,
-      `returnDate=${form.value.returnDate}`,
+      `pickupTime=${form.value.pickupTime}`,
+      `rentalDays=${rentalDays.value}`,
     ].join('&');
     uni.navigateTo({ url: `/pages/rental/confirm?${params}` });
   }, 350);
@@ -503,14 +534,6 @@ const goConfirm = () => {
   }
 }
 
-.addr-tip {
-  display: block;
-  margin-top: 16px;
-  font-size: 11px;
-  line-height: 16px;
-  color: #86868B;
-  text-align: center;
-}
 
 /* ===== 车型卡 ===== */
 .car-card {
@@ -573,14 +596,7 @@ const goConfirm = () => {
 }
 
 .car-info {
-  padding: 16px 20px 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
-.car-info-left {
-  flex: 1;
+  padding: 16px 20px 20px;
 }
 
 .car-name {
@@ -588,43 +604,10 @@ const goConfirm = () => {
   line-height: 28px;
   font-weight: 600;
   color: #000000;
-  display: block;
-}
-
-.car-tagline {
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 18px;
-  color: #86868B;
-  display: block;
-}
-
-.car-info-right {
-  text-align: right;
-}
-
-.car-price {
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 700;
-  color: #000000;
-}
-
-.car-price-unit {
-  font-size: 11px;
-  font-weight: 500;
-  color: #86868B;
-}
-
-.car-km {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: #86868B;
 }
 
 .car-features {
-  padding: 16px 20px 20px;
+  margin-top: 16px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
@@ -722,9 +705,9 @@ const goConfirm = () => {
 
 .pkg-price-tag {
   display: block;
-  padding: 20px;
-  background: #000;
-  border-radius: 20px;
+  padding: 14px 20px;
+  background: #F2F2F2;
+  border-radius: 16px;
   text-align: center;
   margin-bottom: 20px;
 }
@@ -734,10 +717,10 @@ const goConfirm = () => {
 }
 
 .pkg-price-text {
-  font-size: 28px;
-  line-height: 36px;
-  font-weight: 700;
-  color: #FFF;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  color: #1A1C1C;
 }
 
 .pkg-row {
@@ -785,48 +768,100 @@ const goConfirm = () => {
   color: #000000;
 }
 
-.pkg-days-row {
+.pkg-col-full {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.return-hint {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+  color: #1A1C1C;
+}
+
+.pkg-stepper {
+  height: 56px;
   background: #F2F2F2;
   border-radius: 24px;
-  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  padding: 0 16px;
 }
 
-.pkg-days-label {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 500;
-  color: #5D5F5F;
+.stepper-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  .material-symbols-outlined {
+    font-size: 18px;
+    color: #1A1C1C;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
-.pkg-days-value {
-  font-size: 20px;
-  line-height: 28px;
+.stepper-value {
+  font-size: 15px;
+  line-height: 22px;
   font-weight: 700;
   color: #000000;
 }
 
-.pkg-warn {
+/* 日期弹窗 */
+.date-section-title {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: #86868B;
+  text-transform: uppercase;
+  padding: 12px 0 12px;
+}
+
+/* 时间滚轮 */
+.time-picker-wrap {
+  position: relative;
+  height: 200px;
+  margin-bottom: 16px;
+  background: #F2F2F2;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.time-picker {
+  width: 100%;
+  height: 100%;
+}
+
+.picker-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding: 0 4px;
+  justify-content: center;
+  height: 44px;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 500;
+  color: #1A1C1C;
+  font-variant-numeric: tabular-nums;
 }
 
-.pkg-warn-icon {
-  font-size: 14px;
-  color: #86868B;
-}
+.time-picker-mask { position: absolute; left: 0; right: 0; height: 78px; pointer-events: none; z-index: 2; }
+.time-picker-mask-top { top: 0; background: linear-gradient(to bottom, #F2F2F2 0%, rgba(242, 242, 242, 0.8) 60%, rgba(242, 242, 242, 0) 100%); }
+.time-picker-mask-bottom { bottom: 0; background: linear-gradient(to top, #F2F2F2 0%, rgba(242, 242, 242, 0.8) 60%, rgba(242, 242, 242, 0) 100%); }
+.time-picker-indicator { position: absolute; top: 50%; left: 24px; right: 24px; height: 44px; transform: translateY(-50%); border-top: 1px solid #E2E2E2; border-bottom: 1px solid #E2E2E2; pointer-events: none; z-index: 1; }
+.time-picker-colon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 22px; line-height: 28px; font-weight: 500; color: #1A1C1C; pointer-events: none; z-index: 3; }
 
-.pkg-warn-text {
-  font-size: 11px;
-  line-height: 16px;
-  color: #86868B;
-}
 
 /* sheet footer */
 .pkg-footer-row {

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 import {
-  Card, Table, Tag, Button, Select, Space, Modal, Message, Input, Form, DatePicker, Empty,
+  Card, Table, Tag, Button, Select, Space, Modal, Message, Input, Form, DatePicker, Empty, Checkbox,
 } from '@arco-design/web-react';
 import { IconSearch, IconPlus } from '@arco-design/web-react/icon';
 import { operatorAccounts, loginLogs, operationLogs, onlineUsers, currentUser } from '../data/mock';
@@ -54,6 +54,7 @@ export function AccountsPage() {
   const [toggleTarget, setToggleTarget] = useState<OperatorAccount | null>(null);
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
+  const [resetPwdForm] = Form.useForm();
 
   const filtered = useMemo(() => {
     let r = accounts;
@@ -115,13 +116,27 @@ export function AccountsPage() {
         setToggleVisible(false); setToggleTarget(null);
         return;
       }
+      // 停用：标记为disabled，移除在线用户（强制下线）
       setAccounts(accounts.map(a => a.id === toggleTarget.id ? { ...a, status: 'disabled' } : a));
-      Message.success('账号已停用');
+      onlineUsers.forEach((u, i) => { if (u.username === toggleTarget.username) onlineUsers.splice(i, 1); });
+      Message.success('账号已停用，该账号当前登录态立即失效');
     } else {
       setAccounts(accounts.map(a => a.id === toggleTarget.id ? { ...a, status: 'active' } : a));
       Message.success('账号已启用');
     }
     setToggleVisible(false); setToggleTarget(null);
+  };
+
+  const handleResetPwd = async () => {
+    try {
+      const v = await resetPwdForm.validate();
+      if (!selected) return;
+      // 重置密码：移除该账号的在线会话（强制下线）
+      onlineUsers.forEach((u, i) => { if (u.username === selected.username) onlineUsers.splice(i, 1); });
+      setResetVisible(false);
+      resetPwdForm.resetFields();
+      Message.success('密码已重置，该账号当前登录态立即失效');
+    } catch { /* */ }
   };
 
   const columns = [
@@ -249,62 +264,123 @@ export function AccountsPage() {
         )}
       </Modal>
 
-      {/* 重置密码 — D10-12 增加登录态失效提示 */}
+      {/* 重置密码 — 直接输入新密码 */}
       <Modal title="重置密码" visible={resetVisible}
-        onOk={() => { setResetVisible(false); Message.success('密码已重置，新密码已短信通知'); }}
-        onCancel={() => setResetVisible(false)}>
+        onOk={handleResetPwd}
+        onCancel={() => { setResetVisible(false); resetPwdForm.resetFields(); }}
+        okText="确认重置">
         {selected && (
-          <>
-            <p>确认重置 <strong>{selected.username}</strong>（{selected.name}）的登录密码？</p>
-            <p style={{ color: '#F53F3F', fontSize: 13, marginTop: 8 }}>
-              ⚠ 重置后新密码将通过短信发送至 {selected.phone}，<strong>该账号当前登录态立即失效</strong>。
+          <Form form={resetPwdForm} layout="vertical">
+            <p style={{ marginBottom: 16, color: '#4E5969', fontSize: 13 }}>
+              为 <strong>{selected.username}</strong>（{selected.name}）设置新密码
             </p>
-          </>
+            <Form.Item label="新密码" field="password" rules={[
+              { required: true, message: '请输入新密码' },
+              { match: PASSWORD_REGEX, message: '密码为 6-20 位，需包含字母和数字' },
+            ]}>
+              <Input.Password placeholder="6-20位字母+数字组合" />
+            </Form.Item>
+            <Form.Item label="确认新密码" field="confirmPassword" rules={[
+              { required: true, message: '请再次输入新密码' },
+              { validator: (v, cb) => {
+                const pw = resetPwdForm.getFieldValue('password');
+                if (v && pw && v !== pw) cb('两次输入的密码不一致');
+                else cb();
+              }},
+            ]}>
+              <Input.Password placeholder="再次输入新密码" />
+            </Form.Item>
+            <p style={{ color: '#F53F3F', fontSize: 12, marginTop: 8 }}>
+              ⚠ 重置后该账号当前登录态立即失效，需使用新密码重新登录。
+            </p>
+          </Form>
         )}
       </Modal>
     </div>
   );
 }
 
-// ===== 角色管理 — D10-01：改为只读展示，删除编辑权限功能 =====
+// ===== 角色管理 =====
 export function RolesPage() {
-  // 权限矩阵按需求 §10.2.2 静态展示
-  const roleData: { role: AccountRole; name: string; desc: string; modules: string[] }[] = [
-    {
-      role: 'super_admin', name: '超级管理员',
-      desc: '全部模块可见，可管理系统管理',
-      modules: ['工作台', '企业客户管理', '订单管理（全部）', '派车/改派', '车辆管理', '司机管理', '财务管理', '运营配置', '数据报表', '系统管理'],
-    },
-    {
-      role: 'ops_admin', name: '运营管理员',
-      desc: '业务管理（工作台、企业、订单、车辆、司机、运营配置）',
-      modules: ['工作台', '企业客户管理', '订单管理（全部）', '派车/改派', '车辆管理', '司机管理', '运营配置', '数据报表'],
-    },
-    {
-      role: 'finance_admin', name: '财务管理员',
-      desc: '财务（工作台、财务管理、数据分析）',
-      modules: ['工作台', '订单管理（只读）', '财务管理', '数据报表'],
-    },
-    {
-      role: 'cs_admin', name: '客服管理员',
-      desc: '工作台、订单（仅查看）',
-      modules: ['工作台（仅待办）', '订单管理（只读）', '数据报表'],
-    },
-  ];
+  const allModules = ['工作台', '企业客户管理', '订单管理（全部）', '派车/改派', '车辆管理', '司机管理', '财务管理', '运营配置', '数据报表', '系统管理'];
+  const [roles, setRoles] = useState([
+    { role: 'super_admin' as AccountRole, name: '超级管理员', desc: '全部模块可见，可管理系统管理', modules: [...allModules] },
+    { role: 'ops_admin' as AccountRole, name: '运营管理员', desc: '业务管理', modules: ['工作台', '企业客户管理', '订单管理（全部）', '派车/改派', '车辆管理', '司机管理', '运营配置', '数据报表'] },
+    { role: 'finance_admin' as AccountRole, name: '财务管理员', desc: '财务', modules: ['工作台', '订单管理（只读）', '财务管理', '数据报表'] },
+    { role: 'cs_admin' as AccountRole, name: '客服管理员', desc: '客服', modules: ['工作台（仅待办）', '订单管理（只读）', '数据报表'] },
+  ]);
+  const [roleModalVisible, setRoleModalVisible] = useState(false);
+  const [editingRole, setEditingRole] = useState<AccountRole | null>(null);
+  const [editRoleModules, setEditRoleModules] = useState<string[]>([]);
+  const [roleForm] = Form.useForm();
+
+  const openAdd = () => {
+    setEditingRole(null);
+    roleForm.resetFields();
+    setEditRoleModules([]);
+    setRoleModalVisible(true);
+  };
+
+  const openEdit = (r: typeof roles[0]) => {
+    if (r.role === 'super_admin') { Message.info('超级管理员不可编辑'); return; }
+    setEditingRole(r.role);
+    roleForm.setFieldsValue({ name: r.name, desc: r.desc, roleCode: r.role });
+    setEditRoleModules([...r.modules]);
+    setRoleModalVisible(true);
+  };
+
+  const handleRoleSave = async () => {
+    try {
+      const v = await roleForm.validate();
+      if (editingRole) {
+        setRoles(roles.map(r => r.role === editingRole ? { ...r, name: v.name, desc: v.desc, modules: editRoleModules } : r));
+        Message.success('角色已更新');
+      } else {
+        if (roles.some(r => r.role === v.roleCode)) { Message.error('角色编码已存在'); return; }
+        setRoles([...roles, { role: v.roleCode, name: v.name, desc: v.desc, modules: editRoleModules }]);
+        Message.success('角色已添加');
+      }
+      setRoleModalVisible(false);
+      roleForm.resetFields();
+    } catch { /* */ }
+  };
 
   const columns = [
-    { title: '角色', width: 130, render: (_: unknown, r: typeof roleData[0]) => <Tag color={roleMap[r.role].color}>{r.name}</Tag> },
-    { title: '编码', width: 140, render: (_: unknown, r: typeof roleData[0]) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.role}</span> },
+    { title: '角色', width: 130, render: (_: unknown, r: typeof roles[0]) => <Tag color={roleMap[r.role]?.color}>{r.name}</Tag> },
+    { title: '编码', width: 140, render: (_: unknown, r: typeof roles[0]) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.role}</span> },
     { title: '说明', dataIndex: 'desc', ellipsis: true },
-    { title: '权限范围', width: 540, render: (_: unknown, r: typeof roleData[0]) => <Space size={4} wrap>{r.modules.map(m => <Tag key={m} size="small">{m}</Tag>)}</Space> },
+    { title: '权限范围', width: 480, render: (_: unknown, r: typeof roles[0]) => <Space size={4} wrap>{r.modules.map(m => <Tag key={m} size="small">{m}</Tag>)}</Space> },
+    { title: '操作', width: 100, render: (_: unknown, r: typeof roles[0]) => (
+      <Button type="text" size="small" onClick={() => openEdit(r)} disabled={r.role === 'super_admin'}>
+        {r.role === 'super_admin' ? '不可编辑' : '编辑'}
+      </Button>
+    )},
   ];
 
   return (
     <div>
-      <Card title="角色管理" bodyStyle={{ padding: 0 }}
-        extra={<span style={{ color: '#86909c', fontSize: 12 }}>角色与权限矩阵不支持运营端自定义修改，如需调整由系统开发侧配置</span>}>
-        <Table columns={columns} data={roleData} rowKey="role" pagination={false} />
+      <Card title="角色管理" bodyStyle={{ padding: 0 }} extra={<Button type="primary" icon={<IconPlus />} size="small" onClick={openAdd}>新增角色</Button>}>
+        <Table columns={columns} data={roles} rowKey="role" pagination={false} />
       </Card>
+
+      <Modal title={editingRole ? '编辑角色' : '新增角色'} visible={roleModalVisible} onOk={handleRoleSave}
+        onCancel={() => { setRoleModalVisible(false); roleForm.resetFields(); }} style={{ width: 560 }}>
+        <Form form={roleForm} layout="vertical">
+          {!editingRole && <Form.Item label="角色编码" field="roleCode" rules={[{ required: true, message: '请输入' }, { match: /^[a-z_]+$/, message: '小写字母+下划线' }]}>
+            <Input placeholder="如：driver_admin" disabled={!!editingRole} />
+          </Form.Item>}
+          <Form.Item label="角色名称" field="name" rules={[{ required: true, message: '请输入' }, { maxLength: 20 }]}>
+            <Input placeholder="如：司机管理员" maxLength={20} />
+          </Form.Item>
+          <Form.Item label="说明" field="desc" rules={[{ required: true, message: '请输入' }, { maxLength: 50 }]}>
+            <Input placeholder="角色职责简述" maxLength={50} />
+          </Form.Item>
+          <Form.Item label="权限范围" required>
+            <Checkbox.Group direction="vertical" value={editRoleModules} onChange={v => setEditRoleModules(v as string[])}
+              options={allModules.map(m => ({ label: m, value: m }))} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
@@ -491,15 +567,6 @@ export function OnlineUsersPage() {
     <Card bodyStyle={{ padding: 0 }} title="当前在线用户">
       <Table columns={columns} data={users} rowKey="id" scroll={{ x: 1100 }} pagination={false} stripe
         noDataElement={<Empty description="暂无在线用户" />} />
-    </Card>
-  );
-}
-
-// D10-11：CityManagementPage 已迁移至 §8 运营配置 ConfigPage。此处保留导出占位以兼容路由，但不再渲染
-export function CityManagementPage() {
-  return (
-    <Card>
-      <Empty description={<>城市管理已迁移至 <a href="/config?tab=areas">运营配置 → 运营区域</a></>} />
     </Card>
   );
 }

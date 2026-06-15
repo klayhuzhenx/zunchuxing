@@ -99,27 +99,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-
-const pkgMap: Record<string, { tier: string; spec: string }> = {
-  'a-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km' },
-  'a-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km' },
-  'a-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km' },
-  'a-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km' },
-  'a-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km' },
-  'a-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km' },
-  'b-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km' },
-  'b-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km' },
-  'b-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km' },
-  'b-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km' },
-  'b-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km' },
-  'b-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km' },
-  'c-h-base': { tier: '尊享基础', spec: '半日租 · 4h/50km' },
-  'c-h-pro': { tier: '尊荣高级', spec: '半日租 · 4h/50km' },
-  'c-h-top': { tier: '尊御顶级', spec: '半日租 · 4h/50km' },
-  'c-f-base': { tier: '尊享基础', spec: '日租 · 8h/100km' },
-  'c-f-pro': { tier: '尊荣高级', spec: '日租 · 8h/100km' },
-  'c-f-top': { tier: '尊御顶级', spec: '日租 · 8h/100km' },
-};
+import { findPkgById, charterCars, payTimeoutSeconds } from '@/data/charter';
 
 const statusBarHeight = ref(0);
 const method = ref<'wechat' | 'alipay'>('wechat');
@@ -156,7 +136,7 @@ onLoad((opts: Record<string, string> | undefined) => {
   if (opts.product) productName.value = decodeURIComponent(opts.product);
 });
 
-const pkg = computed(() => pkgMap[pkgId.value] || pkgMap['a-f-pro']);
+const pkg = computed(() => findPkgById(pkgId.value)?.pkg || charterCars[0].packages[4]);
 const carName = computed(() => rentalCarNames[carIdx.value] || rentalCarNames[0]);
 
 /* 商品描述 */
@@ -206,7 +186,7 @@ const onBack = () => {
   /* 返回 = 取消支付，生成待支付订单 */
   uni.showModal({
     title: '确认离开？',
-    content: '订单未完成支付，离开后订单将保存为「待支付」状态，请在 30 分钟内完成支付',
+    content: `订单未完成支付，离开后订单将保存为「待支付」状态，请在 ${Math.round(payTimeoutSeconds / 60)} 分钟内完成支付`,
     confirmText: '确认离开',
     cancelText: '继续支付',
     success: (res) => {

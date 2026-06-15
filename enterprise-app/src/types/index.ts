@@ -21,11 +21,6 @@ export interface DaySchedule {
   status: 'ongoing' | 'not_started' | 'completed';
 }
 
-export interface OrderReview {
-  driverRating: number; vehicleRating: number; serviceRating: number;
-  comment?: string;
-}
-
 export interface Order {
   id: string; orderNo: string; type: OrderType; status: OrderStatus; subStatus?: string;
   passengerName: string; passengerPhone: string;
@@ -51,9 +46,13 @@ export interface Order {
   plateNo?: string; carModel?: string;
   paymentMethod?: PaymentMethod;
   baseFee: number; overtimeFee: number; overmileageFee: number;
+  pointsUsed?: number;
+  remoteDispatchDetail?: {
+    pickupKm: number; dropoffKm: number;
+    pickupFee: number; dropoffFee: number;
+  };
   paidAmount: number; refundAmount: number;
   cancelReason?: string;
-  review?: OrderReview;
   feeExtraDetail?: FeeExtraDetail;
   createdAt: string; paymentTime?: string;
 }
