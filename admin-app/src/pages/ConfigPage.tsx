@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card, Table, Tag, Button, Select, Space, Tabs, Modal, Message, Input, Form, InputNumber, Descriptions,
   Upload, Popconfirm, Tooltip, Image,
@@ -12,10 +12,12 @@ import {
   pointsConfig as pointsConfigData,
   opsCities as opsCitiesData,
   feeTypes as feeTypesData,
+  discountConfig as discountConfigData,
 } from '../data/mock';
 import type {
   VehicleModel, PricingRule, BenefitTag,
   OpsCity, FeeType, PointsConfig,
+  DiscountTier, DiscountConfig,
 } from '../types';
 
 // ===== 计费规则 Tab =====
@@ -23,15 +25,35 @@ import type {
 // C8-02：等待免费时长/费率、服务内容、权益标签
 // C8-03：状态按车型维度切换
 // C8-16：列表展示服务内容、等待费
+
+// 取消规则默认梯度（距出发时间越近扣费比例越高）
+const DEFAULT_CANCEL_TIERS = [
+  { fromHours: 2, toHours: 4, pct: 25 },
+  { fromHours: 1, toHours: 2, pct: 50 },
+  { fromHours: 0, toHours: 1, pct: 75 },
+];
+// 远调费默认梯度
+const DEFAULT_REMOTE_TIERS = [
+  { fromKm: 0, toKm: 5, amount: 100 },
+  { fromKm: 5, toKm: 10, amount: 200 },
+  { fromKm: 10, toKm: 30, amount: 400 },
+  { fromKm: 30, toKm: -1, amount: 1000 },
+];
+// 折扣梯度默认起始档
+const DEFAULT_DISCOUNT_TIER = { fromDays: 1, toDays: 3, coefficient: 0.95 };
+
 function PricingTab() {
   const [rules, setRules] = useState(pricingRules);
   const [bizTab, setBizTab] = useState('charter');
   const [modelFilter, setModelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
-  const [addCharterVisible, setAddCharterVisible] = useState(false);
-  const [addRentalVisible, setAddRentalVisible] = useState(false);
+  const [charterModal, setCharterModal] = useState<{ visible: boolean; editing: PricingRule | null }>({ visible: false, editing: null });
+  const [rentalModal, setRentalModal] = useState<{ visible: boolean; editing: PricingRule | null }>({ visible: false, editing: null });
   const [tagMgmtVisible, setTagMgmtVisible] = useState(false);
   const [platformTimeoutVisible, setPlatformTimeoutVisible] = useState(false);
+  // 梯度折扣：按包车/租车维度全局配置（不跟车型套餐走）
+  const [discounts, setDiscounts] = useState<DiscountConfig>(discountConfigData);
+  const [discountVisible, setDiscountVisible] = useState(false);
 
   const charterRules = useMemo(() => rules.filter(r => r.tier), [rules]);
   const rentalRules = useMemo(() => rules.filter(r => !r.tier), [rules]);
@@ -74,13 +96,11 @@ function PricingTab() {
     return `免费≥${free}h | 2h扣${t1}% | 1h扣${t2}% | 0h扣${t3}% | 超时${ov}%`;
   };
 
-  // 远调费摘要：把多档梯度拼成 "0~5km ¥100 | 5~10km ¥200 | ..." 形式
+  // 远调费摘要
   const remoteDispatchSummary = (r: PricingRule) => {
     const tiers = r.remoteDispatchTiers;
     if (!tiers || tiers.length === 0) return '未配置';
-    return tiers
-      .map(t => `${t.fromKm}~${t.toKm === -1 ? '∞' : t.toKm}km ¥${t.amount}`)
-      .join(' | ');
+    return tiers.map(t => `${t.fromKm}~${t.toKm === -1 ? '∞' : t.toKm}km ¥${t.amount}`).join(' | ');
   };
 
   // 停用/启用按「车型 + 套餐」维度
@@ -97,7 +117,18 @@ function PricingTab() {
     { title: '取消规则', width: 300, ellipsis: true, render: (_: unknown, r: PricingRule) => (
       <Tooltip content={cancelSummary(r)}><span style={{ fontSize: 12, color: '#86909c' }}>{cancelSummary(r)}</span></Tooltip>
     )},
-    { title: '超时费', width: 90, render: (_: unknown, r: PricingRule) => `¥${r.overtimeRate}/h` },
+    { title: '超时费(半日/整日)', width: 130, render: (_: unknown, r: PricingRule) => {
+      const half = r.halfDayOvertimeRate;
+      const whole = r.overtimeRate;
+      if (half) {
+        return (
+          <Tooltip content={`半日超时 ¥${half}/h · 整日超时 ¥${whole}/h`}>
+            <span style={{ fontSize: 12 }}>¥{half}/¥{whole}</span>
+          </Tooltip>
+        );
+      }
+      return <span style={{ fontSize: 12 }}>¥{whole}/h</span>;
+    }},
     { title: '超公里费', width: 100, render: (_: unknown, r: PricingRule) => `¥${r.extraMileageRate}/km` },
     { title: '等待费', width: 140, render: (_: unknown, r: PricingRule) => (
       <span style={{ fontSize: 12 }}>免费 {r.waitFreeMins ?? 15}min · ¥{r.waitRate ?? 1}/min</span>
@@ -109,7 +140,7 @@ function PricingTab() {
     {
       title: '操作', width: 160, fixed: 'right' as const, render: (_: unknown, r: PricingRule) => (
         <Space size={4}>
-          <Button type="text" size="small" onClick={() => Message.info(`编辑 ${r.modelName} · ${r.tier}`)}>编辑</Button>
+          <Button type="text" size="small" onClick={() => setCharterModal({ visible: true, editing: r })}>编辑</Button>
           {r.status === 'active'
             ? <Popconfirm title={`停用 ${r.modelName} · ${r.tier}？`} onOk={() => toggleRule(r.id, 'inactive')}>
                 <Button type="text" size="small" status="warning">停用</Button>
@@ -123,9 +154,7 @@ function PricingTab() {
   const rentalColumns = [
     { title: '车型', dataIndex: 'modelName', width: 160 },
     { title: '日租价', width: 120, render: (_: unknown, r: PricingRule) => `¥${r.dayPrice.toLocaleString()}` },
-    { title: '取消规则', width: 240, ellipsis: true, render: (_: unknown, r: PricingRule) => (
-      <Tooltip content={cancelSummary(r)}><span style={{ fontSize: 12, color: '#86909c' }}>{cancelSummary(r)}</span></Tooltip>
-    )},
+    { title: '押金', width: 100, render: (_: unknown, r: PricingRule) => (r.depositVehicle || r.depositViolation) ? `¥${((r.depositVehicle || 0) + (r.depositViolation || 0)).toLocaleString()}` : '-' },
     { title: '超时费', width: 100, render: (_: unknown, r: PricingRule) => `¥${r.overtimeRate}/h` },
     { title: '超公里费', width: 110, render: (_: unknown, r: PricingRule) => `¥${r.extraMileageRate}/km` },
     { title: '等待费', width: 140, render: (_: unknown, r: PricingRule) => (
@@ -134,11 +163,14 @@ function PricingTab() {
     { title: '远调费', width: 260, ellipsis: true, render: (_: unknown, r: PricingRule) => (
       <Tooltip content={remoteDispatchSummary(r)}><span style={{ fontSize: 12, color: '#86909c' }}>{remoteDispatchSummary(r)}</span></Tooltip>
     )},
+    { title: '取消规则', width: 240, ellipsis: true, render: (_: unknown, r: PricingRule) => (
+      <Tooltip content={cancelSummary(r)}><span style={{ fontSize: 12, color: '#86909c' }}>{cancelSummary(r)}</span></Tooltip>
+    )},
     { title: '备注', dataIndex: 'remark', width: 140, ellipsis: true, render: (v?: string) => v || '-' },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '启用' : '停用'}</Tag> },
     { title: '操作', width: 140, render: (_: unknown, r: PricingRule) => (
       <Space size={4}>
-        <Button type="text" size="small" onClick={() => Message.info('编辑')}>编辑</Button>
+        <Button type="text" size="small" onClick={() => setRentalModal({ visible: true, editing: r })}>编辑</Button>
         {r.status === 'active'
           ? <Popconfirm title={`停用 ${r.modelName} 租车计费？`} onOk={() => {
               setRules(prev => prev.map(x => x.id === r.id ? { ...x, status: 'inactive' } : x));
@@ -171,8 +203,9 @@ function PricingTab() {
           {bizTab === 'charter' && <Button onClick={() => setPkgNameVisible(true)}>套餐名称管理</Button>}
           <Button onClick={() => setTagMgmtVisible(true)}>管理权益标签</Button>
           <Button onClick={() => setPlatformTimeoutVisible(true)}>平台级超时</Button>
+          <Button onClick={() => setDiscountVisible(true)}>{bizTab === 'charter' ? '包车梯度折扣' : '租车梯度折扣'}</Button>
           <Button type="primary" icon={<IconPlus />}
-            onClick={() => bizTab === 'charter' ? setAddCharterVisible(true) : setAddRentalVisible(true)}>
+            onClick={() => bizTab === 'charter' ? setCharterModal({ visible: true, editing: null }) : setRentalModal({ visible: true, editing: null })}>
             {bizTab === 'charter' ? '新增套餐计费' : '新增车型计费'}
           </Button>
         </Space>
@@ -181,26 +214,32 @@ function PricingTab() {
       <Card bodyStyle={{ padding: 0 }}>
         <Table columns={bizTab === 'charter' ? charterColumns : rentalColumns}
           data={bizTab === 'charter' ? filteredCharter : filteredRental}
-          rowKey="id" scroll={{ x: bizTab === 'charter' ? 1860 : 1560 }}
+          rowKey="id" scroll={{ x: bizTab === 'charter' ? 1660 : 1500 }}
           pagination={{ pageSize: 15, showTotal: true }} stripe />
       </Card>
 
-      {/* 新增包车计费——每次一个套餐 */}
-      <CharterRuleModal visible={addCharterVisible} onClose={() => setAddCharterVisible(false)}
+      {/* 新增/编辑包车计费 */}
+      <CharterRuleModal visible={charterModal.visible} editingRule={charterModal.editing}
+        onClose={() => setCharterModal({ visible: false, editing: null })}
         existingRules={charterRules}
         pkgNames={pkgNames}
-        onSave={(newRule) => {
-          setRules(prev => [...prev, newRule]);
-          setAddCharterVisible(false);
+        onSave={(rule) => {
+          setRules(prev => prev.some(r => r.id === rule.id)
+            ? prev.map(r => r.id === rule.id ? rule : r)
+            : [...prev, rule]);
+          setCharterModal({ visible: false, editing: null });
           Message.success('规则保存成功');
         }} />
 
-      {/* 新增租车计费 */}
-      <RentalRuleModal visible={addRentalVisible} onClose={() => setAddRentalVisible(false)}
-        existingModelIds={rentalRules.map(r => r.modelId)}
-        onSave={(newRule: PricingRule) => {
-          setRules(prev => [...prev, newRule]);
-          setAddRentalVisible(false);
+      {/* 新增/编辑租车计费 */}
+      <RentalRuleModal visible={rentalModal.visible} editingRule={rentalModal.editing}
+        onClose={() => setRentalModal({ visible: false, editing: null })}
+        existingRules={rentalRules}
+        onSave={(rule: PricingRule) => {
+          setRules(prev => prev.some(r => r.id === rule.id)
+            ? prev.map(r => r.id === rule.id ? rule : r)
+            : [...prev, rule]);
+          setRentalModal({ visible: false, editing: null });
           Message.success('规则保存成功');
         }} />
 
@@ -214,155 +253,178 @@ function PricingTab() {
       {/* C8-05：平台级超时规则 */}
       <PlatformTimeoutModal visible={platformTimeoutVisible} onClose={() => setPlatformTimeoutVisible(false)} />
 
+      {/* 梯度折扣：按包车/租车维度全局配置 */}
+      <DiscountModal visible={discountVisible} bizType={bizTab as 'charter' | 'rental'}
+        tiers={bizTab === 'charter' ? discounts.charter : discounts.rental}
+        onClose={() => setDiscountVisible(false)}
+        onSave={(newTiers) => {
+          setDiscounts(prev => ({ ...prev, [bizTab]: newTiers }));
+          setDiscountVisible(false);
+          Message.success(`${bizTab === 'charter' ? '包车' : '租车'}梯度折扣保存成功`);
+        }} />
+
     </div>
   );
 }
 
-// ===== C8-01 包车计费弹窗（一次配置 3 档）=====
-// ===== 包车计费弹窗（单套餐 + 自定义梯度取消规则）=====
-function CharterRuleModal({ visible, onClose, existingRules, pkgNames, onSave }: {
+// ===== 包车计费弹窗（新增/编辑共用，模块化布局）=====
+function CharterRuleModal({ visible, onClose, editingRule, existingRules, pkgNames, onSave }: {
   visible: boolean; onClose: () => void;
+  editingRule?: PricingRule | null;
   existingRules: PricingRule[];
   pkgNames: string[];
   onSave: (rule: PricingRule) => void;
 }) {
   const [form] = Form.useForm();
+  const isEdit = !!editingRule;
 
   // 自定义梯度数组（可增删）
-  const [cancelTiers, setCancelTiers] = useState<{ fromHours: number; toHours: number; pct: number }[]>([
-    { fromHours: 2, toHours: 4, pct: 25 },
-    { fromHours: 1, toHours: 2, pct: 50 },
-    { fromHours: 0, toHours: 1, pct: 75 },
-  ]);
+  const [cancelTiers, setCancelTiers] = useState(DEFAULT_CANCEL_TIERS);
   const [cancelOverduePct, setCancelOverduePct] = useState<number>(100);
-
-  // 远调费梯度（可增删）：fromKm < 远调里程 ≤ toKm，最后一档 toKm = -1 表示无上限
-  const [remoteTiers, setRemoteTiers] = useState<{ fromKm: number; toKm: number; amount: number }[]>([
-    { fromKm: 0, toKm: 5, amount: 100 },
-    { fromKm: 5, toKm: 10, amount: 200 },
-    { fromKm: 10, toKm: 30, amount: 400 },
-    { fromKm: 30, toKm: -1, amount: 1000 },
-  ]);
+  const [remoteTiers, setRemoteTiers] = useState(DEFAULT_REMOTE_TIERS);
 
   const addRemoteTier = () => setRemoteTiers([...remoteTiers, { fromKm: 0, toKm: 1, amount: 100 }]);
   const removeRemoteTier = (idx: number) => setRemoteTiers(remoteTiers.filter((_, i) => i !== idx));
   const updateRemoteTier = (idx: number, key: 'fromKm' | 'toKm' | 'amount', val: number) =>
     setRemoteTiers(remoteTiers.map((t, i) => i === idx ? { ...t, [key]: val } : t));
 
-  const addTier = () => {
-    setCancelTiers([...cancelTiers, { fromHours: 0, toHours: 1, pct: 50 }]);
-  };
-  const removeTier = (idx: number) => {
-    setCancelTiers(cancelTiers.filter((_, i) => i !== idx));
-  };
-  const updateTier = (idx: number, key: 'fromHours' | 'toHours' | 'pct', val: number) => {
+  const addTier = () => setCancelTiers([...cancelTiers, { fromHours: 0, toHours: 1, pct: 50 }]);
+  const removeTier = (idx: number) => setCancelTiers(cancelTiers.filter((_, i) => i !== idx));
+  const updateTier = (idx: number, key: 'fromHours' | 'toHours' | 'pct', val: number) =>
     setCancelTiers(cancelTiers.map((t, i) => i === idx ? { ...t, [key]: val } : t));
-  };
+
+  // 打开弹窗时：编辑回填 / 新增重置
+  useEffect(() => {
+    if (!visible) return;
+    if (editingRule) {
+      form.setFieldsValue({
+        modelId: editingRule.modelId,
+        tier: editingRule.tier,
+        halfDayPrice: editingRule.halfDayPrice,
+        dayPrice: editingRule.dayPrice,
+        halfDayOvertimeRate: editingRule.halfDayOvertimeRate,
+        overtimeRate: editingRule.overtimeRate,
+        extraMileageRate: editingRule.extraMileageRate,
+        waitFreeMins: editingRule.waitFreeMins ?? 15,
+        waitRate: editingRule.waitRate ?? 1,
+        cancelFreeHours: editingRule.cancelFreeHours,
+        benefitTagIds: editingRule.benefitTagIds,
+        remark: editingRule.remark,
+      });
+      setCancelTiers(editingRule.cancelTiers?.length ? editingRule.cancelTiers : DEFAULT_CANCEL_TIERS);
+      setCancelOverduePct(editingRule.cancelOverduePct ?? 100);
+      setRemoteTiers(editingRule.remoteDispatchTiers?.length ? editingRule.remoteDispatchTiers : DEFAULT_REMOTE_TIERS);
+    } else {
+      form.resetFields();
+      setCancelTiers(DEFAULT_CANCEL_TIERS);
+      setCancelOverduePct(100);
+      setRemoteTiers(DEFAULT_REMOTE_TIERS);
+    }
+  }, [visible, editingRule, form]);
 
   const handleOk = async () => {
     try {
       const v = await form.validate();
-      // 套餐重复校验
-      const dup = existingRules.find(r => r.modelId === v.modelId && r.tier === v.tier);
+      // 套餐重复校验（编辑时排除自身）
+      const dup = existingRules.find(r => r.modelId === v.modelId && r.tier === v.tier && r.id !== editingRule?.id);
       if (dup) { Message.error('该车型下已存在此套餐，请直接编辑'); return; }
       // 梯度校验：每档 from < to，比例 1-100
       for (const t of cancelTiers) {
         if (t.fromHours >= t.toHours) {
           Message.error(`梯度区间错误：起始时间应小于结束时间（${t.fromHours}h ~ ${t.toHours}h）`); return;
         }
-        if (t.pct < 1 || t.pct > 100) {
-          Message.error('扣费比例需在 1-100 之间'); return;
-        }
+        if (t.pct < 1 || t.pct > 100) { Message.error('扣费比例需在 1-100 之间'); return; }
       }
-      // 远调费梯度校验：每档 from < to（toKm = -1 表示无上限，跳过比较），金额 > 0
+      // 远调费梯度校验
       for (const t of remoteTiers) {
         if (t.toKm !== -1 && t.fromKm >= t.toKm) {
           Message.error(`远调费梯度区间错误：起始里程应小于结束里程（${t.fromKm}km ~ ${t.toKm}km）`); return;
         }
-        if (t.amount < 0) {
-          Message.error('远调费金额不能为负数'); return;
-        }
+        if (t.amount < 0) { Message.error('远调费金额不能为负数'); return; }
       }
       const model = vehicleModels.find(m => m.id === v.modelId);
       if (!model) return;
       onSave({
-        id: `PR${Date.now()}`,
+        id: editingRule?.id ?? `PR${Date.now()}`,
         modelId: v.modelId, modelName: model.name,
         tier: v.tier,
         halfDayPrice: v.halfDayPrice, dayPrice: v.dayPrice,
-        serviceContent: v.serviceContent,
-        cancelFreeMins: 20, cancelFreeHours: v.cancelFreeHours,
+        serviceContent: editingRule?.serviceContent,
+        cancelFreeMins: editingRule?.cancelFreeMins ?? 20, cancelFreeHours: v.cancelFreeHours,
         cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 75,
         cancelTiers: [...cancelTiers],
         cancelOverduePct,
+        halfDayOvertimeRate: v.halfDayOvertimeRate,
         overtimeRate: v.overtimeRate, extraMileageRate: v.extraMileageRate,
         waitFreeMins: v.waitFreeMins ?? 15, waitRate: v.waitRate ?? 1,
         remoteDispatchTiers: [...remoteTiers],
         benefitTagIds: v.benefitTagIds,
-        remark: v.remark, status: 'active',
+        remark: v.remark, status: editingRule?.status ?? 'active',
       });
-      form.resetFields();
-      // 重置梯度为默认
-      setCancelTiers([
-        { fromHours: 2, toHours: 4, pct: 25 },
-        { fromHours: 1, toHours: 2, pct: 50 },
-        { fromHours: 0, toHours: 1, pct: 75 },
-      ]);
-      setCancelOverduePct(100);
-      setRemoteTiers([
-        { fromKm: 0, toKm: 5, amount: 100 },
-        { fromKm: 5, toKm: 10, amount: 200 },
-        { fromKm: 10, toKm: 30, amount: 400 },
-        { fromKm: 30, toKm: -1, amount: 1000 },
-      ]);
     } catch { /* validation failed */ }
   };
 
   return (
-    <Modal title="新增套餐计费" visible={visible} onOk={handleOk} onCancel={onClose} style={{ width: 720 }} okText="保存">
+    <Modal title={isEdit ? '编辑套餐计费' : '新增套餐计费'} visible={visible} onOk={handleOk} onCancel={onClose} style={{ width: 720 }} okText="保存">
       <Form form={form} layout="vertical">
-        <Card title="车型基础信息" size="small" style={{ marginBottom: 12 }}>
+        {/* 模块一：基础信息（含权益与备注）*/}
+        <Card title="基础信息" size="small" style={{ marginBottom: 12 }}>
           <Space size={12} style={{ display: 'flex' }}>
             <Form.Item label="车型" field="modelId" rules={[{ required: true, message: '请选择车型' }]} style={{ flex: 1 }}>
-              <Select options={vehicleModels.filter(v => v.status === 'active').map(v => ({ label: v.name, value: v.id }))} />
+              <Select disabled={isEdit} options={vehicleModels.filter(v => v.status === 'active').map(v => ({ label: v.name, value: v.id }))} />
             </Form.Item>
             <Form.Item label="套餐名称" field="tier" rules={[{ required: true, message: '请选择套餐' }]} style={{ flex: 1 }}>
-              <Select options={pkgNames.map(n => ({ label: n, value: n }))} />
+              <Select disabled={isEdit} options={pkgNames.map(n => ({ label: n, value: n }))} />
             </Form.Item>
           </Space>
-          <Space size={12} style={{ display: 'flex' }}>
-            <Form.Item label="超时长费(元/h)" field="overtimeRate" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="超公里费率(元/km)" field="extraMileageRate" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="等待免费(min)" field="waitFreeMins" initialValue={15} style={{ flex: 1 }}>
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="等待费(元/min)" field="waitRate" initialValue={1} style={{ flex: 1 }}>
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
-          <Form.Item label="备注" field="remark"><Input.TextArea maxLength={200} rows={1} /></Form.Item>
-        </Card>
-
-        <Card title="套餐配置" size="small" style={{ marginBottom: 12 }}>
-          <Space size={12} style={{ display: 'flex' }}>
-            <Form.Item label="半日租价(元/4小时/50km)" field="halfDayPrice" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="日租价(元/8小时/100km)" field="dayPrice" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          {isEdit && <div style={{ fontSize: 12, color: '#86909c', marginTop: -4, marginBottom: 8 }}>编辑模式下车型与套餐不可修改</div>}
           <Form.Item label="权益标签" field="benefitTagIds" rules={[{ required: true, message: '权益标签为必选项' }]}>
             <Select mode="multiple" placeholder="选择该套餐享有的权益标签"
               options={benefitTagsData.filter(t => t.status === 'active').map(t => ({ label: `${t.icon} ${t.name}`, value: t.id }))} />
           </Form.Item>
+          <Form.Item label="备注" field="remark"><Input.TextArea maxLength={200} rows={1} /></Form.Item>
         </Card>
 
-        <Card title="取消规则" size="small">
+        {/* 模块二：计费标准 */}
+        <Card title="计费标准" size="small" style={{ marginBottom: 12 }}>
+          <Space size={12} style={{ display: 'flex' }}>
+            <Form.Item label="半日租价(元/4小时/50km)" field="halfDayPrice" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="整日价(元/8小时/100km)" field="dayPrice" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Space>
+          <Space size={12} style={{ display: 'flex' }}>
+            <Form.Item label="半日超时费(元/h)" field="halfDayOvertimeRate" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}
+              extra={<span style={{ fontSize: 12, color: '#86909c' }}>半日套餐超时按此费率</span>}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="整日超时费(元/h)" field="overtimeRate" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}
+              extra={<span style={{ fontSize: 12, color: '#86909c' }}>整日套餐超时按此费率</span>}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="超公里费(元/km)" field="extraMileageRate" rules={[{ required: true }]} style={{ flex: 1 }}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Space>
+        </Card>
+
+        {/* 模块三：等待费 */}
+        <Card title="等待费" size="small" style={{ marginBottom: 12 }}>
+          <Space size={12} style={{ display: 'flex' }}>
+            <Form.Item label="等待免费时长(分钟)" field="waitFreeMins" initialValue={15} style={{ flex: 1 }}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="等待费(元/分钟)" field="waitRate" initialValue={1} style={{ flex: 1 }}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <div style={{ flex: 2 }} />
+          </Space>
+        </Card>
+
+        {/* 模块四：取消规则 */}
+        <Card title="取消规则" size="small" style={{ marginBottom: 12 }}>
           <Form.Item label="免费阈值（小时）" field="cancelFreeHours" rules={[{ required: true, message: '请填写免费阈值' }]} initialValue={4}>
             <InputNumber min={1} style={{ width: 200 }} placeholder="默认 4" suffix="小时" />
           </Form.Item>
@@ -402,7 +464,8 @@ function CharterRuleModal({ visible, onClose, existingRules, pkgNames, onSave }:
           </div>
         </Card>
 
-        <Card title="远调费用设置" size="small" style={{ marginTop: 12 }}>
+        {/* 模块五：远调费用 */}
+        <Card title="远调费用" size="small" style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>
             按上车/下车点到运营范围边缘的直线距离收取，自定义梯度。最后一档可填 -1 表示无上限。
           </div>
@@ -431,40 +494,64 @@ function CharterRuleModal({ visible, onClose, existingRules, pkgNames, onSave }:
   );
 }
 
-// ===== 租车计费弹窗 =====
-function RentalRuleModal({ visible, onClose, existingModelIds, onSave }: {
-  visible: boolean; onClose: () => void; existingModelIds: string[];
+// ===== 租车计费弹窗（新增/编辑共用，模块化布局）=====
+function RentalRuleModal({ visible, onClose, editingRule, existingRules, onSave }: {
+  visible: boolean; onClose: () => void;
+  editingRule?: PricingRule | null;
+  existingRules: PricingRule[];
   onSave: (rule: PricingRule) => void;
 }) {
   const [form] = Form.useForm();
-  const [cancelTiers, setCancelTiers] = useState<{ fromHours: number; toHours: number; pct: number }[]>([
-    { fromHours: 2, toHours: 4, pct: 25 },
-    { fromHours: 1, toHours: 2, pct: 50 },
-    { fromHours: 0, toHours: 1, pct: 75 },
-  ]);
+  const isEdit = !!editingRule;
+
+  const [cancelTiers, setCancelTiers] = useState(DEFAULT_CANCEL_TIERS);
   const [cancelOverduePct, setCancelOverduePct] = useState<number>(100);
   const addTier = () => setCancelTiers([...cancelTiers, { fromHours: 0, toHours: 1, pct: 50 }]);
   const removeTier = (idx: number) => setCancelTiers(cancelTiers.filter((_, i) => i !== idx));
   const updateTier = (idx: number, key: 'fromHours' | 'toHours' | 'pct', val: number) =>
     setCancelTiers(cancelTiers.map((t, i) => i === idx ? { ...t, [key]: val } : t));
 
-  // 远调费梯度
-  const [remoteTiers, setRemoteTiers] = useState<{ fromKm: number; toKm: number; amount: number }[]>([
-    { fromKm: 0, toKm: 5, amount: 100 },
-    { fromKm: 5, toKm: 10, amount: 200 },
-    { fromKm: 10, toKm: 30, amount: 400 },
-    { fromKm: 30, toKm: -1, amount: 1000 },
-  ]);
+  const [remoteTiers, setRemoteTiers] = useState(DEFAULT_REMOTE_TIERS);
   const addRemoteTier = () => setRemoteTiers([...remoteTiers, { fromKm: 0, toKm: 1, amount: 100 }]);
   const removeRemoteTier = (idx: number) => setRemoteTiers(remoteTiers.filter((_, i) => i !== idx));
   const updateRemoteTier = (idx: number, key: 'fromKm' | 'toKm' | 'amount', val: number) =>
     setRemoteTiers(remoteTiers.map((t, i) => i === idx ? { ...t, [key]: val } : t));
 
+  // 打开弹窗时：编辑回填 / 新增重置
+  useEffect(() => {
+    if (!visible) return;
+    if (editingRule) {
+      form.setFieldsValue({
+        modelId: editingRule.modelId,
+        dayPrice: editingRule.dayPrice,
+        overtimeRate: editingRule.overtimeRate,
+        extraMileageRate: editingRule.extraMileageRate,
+        depositVehicle: editingRule.depositVehicle,
+        depositViolation: editingRule.depositViolation,
+        waitFreeMins: editingRule.waitFreeMins ?? 15,
+        waitRate: editingRule.waitRate ?? 1,
+        cancelFreeHours: editingRule.cancelFreeHours,
+        remark: editingRule.remark,
+      });
+      setCancelTiers(editingRule.cancelTiers?.length ? editingRule.cancelTiers : DEFAULT_CANCEL_TIERS);
+      setCancelOverduePct(editingRule.cancelOverduePct ?? 100);
+      setRemoteTiers(editingRule.remoteDispatchTiers?.length ? editingRule.remoteDispatchTiers : DEFAULT_REMOTE_TIERS);
+    } else {
+      form.resetFields();
+      setCancelTiers(DEFAULT_CANCEL_TIERS);
+      setCancelOverduePct(100);
+      setRemoteTiers(DEFAULT_REMOTE_TIERS);
+    }
+  }, [visible, editingRule, form]);
+
   const handleOk = async () => {
     try {
       const v = await form.validate();
+      // 车型重复校验（编辑时排除自身）
+      const dup = existingRules.find(r => r.modelId === v.modelId && r.id !== editingRule?.id);
+      if (dup) { Message.error('该车型已配置租车计费，请直接编辑'); return; }
       for (const t of cancelTiers) {
-        if (t.fromHours >= t.toHours) { Message.error(`梯度区间错误：起始时间应小于结束时间`); return; }
+        if (t.fromHours >= t.toHours) { Message.error('梯度区间错误：起始时间应小于结束时间'); return; }
         if (t.pct < 1 || t.pct > 100) { Message.error('扣费比例需在 1-100 之间'); return; }
       }
       for (const t of remoteTiers) {
@@ -476,62 +563,78 @@ function RentalRuleModal({ visible, onClose, existingModelIds, onSave }: {
       const model = vehicleModels.find(m => m.id === v.modelId);
       if (!model) return;
       onSave({
-        id: `PR${Date.now()}`,
+        id: editingRule?.id ?? `PR${Date.now()}`,
         modelId: v.modelId, modelName: model.name,
         dayPrice: v.dayPrice,
-        cancelFreeMins: 20, cancelFreeHours: v.cancelFreeHours,
+        depositVehicle: v.depositVehicle, depositViolation: v.depositViolation,
+        cancelFreeMins: editingRule?.cancelFreeMins ?? 20, cancelFreeHours: v.cancelFreeHours,
         cancelMidHigh: 4, cancelMidLow: 2, cancelMidPct: 25, cancelHighPct: 75,
         cancelTiers: [...cancelTiers],
         cancelOverduePct,
         overtimeRate: v.overtimeRate, extraMileageRate: v.extraMileageRate,
         waitFreeMins: v.waitFreeMins ?? 15, waitRate: v.waitRate ?? 1,
         remoteDispatchTiers: [...remoteTiers],
-        remark: v.remark, status: 'active',
+        remark: v.remark, status: editingRule?.status ?? 'active',
       });
-      form.resetFields();
-      setCancelTiers([{ fromHours: 2, toHours: 4, pct: 25 }, { fromHours: 1, toHours: 2, pct: 50 }, { fromHours: 0, toHours: 1, pct: 75 }]);
-      setCancelOverduePct(100);
-      setRemoteTiers([
-        { fromKm: 0, toKm: 5, amount: 100 },
-        { fromKm: 5, toKm: 10, amount: 200 },
-        { fromKm: 10, toKm: 30, amount: 400 },
-        { fromKm: 30, toKm: -1, amount: 1000 },
-      ]);
     } catch { /* */ }
   };
 
   return (
-    <Modal title="新增租车计费规则" visible={visible} onOk={handleOk} onCancel={onClose} style={{ width: 640 }} okText="保存">
+    <Modal title={isEdit ? '编辑租车计费规则' : '新增租车计费规则'} visible={visible} onOk={handleOk} onCancel={onClose} style={{ width: 640 }} okText="保存">
       <Form form={form} layout="vertical">
-        <Form.Item label="车型" field="modelId" rules={[
-          { required: true, message: '请选择车型' },
-          { validator: (v, cb) => {
-            if (v && existingModelIds.includes(v)) cb('该车型已配置租车计费，请直接编辑');
-            else cb();
-          }},
-        ]}>
-          <Select options={vehicleModels.filter(v => v.status === 'active').map(v => ({ label: v.name, value: v.id }))} />
-        </Form.Item>
-        <Space size={12} style={{ display: 'flex' }}>
-          <Form.Item label="日租价(元/8小时/100km)" field="dayPrice" rules={[{ required: true }]} style={{ flex: 1 }}>
-            <InputNumber min={1} style={{ width: '100%' }} />
+        {/* 模块一：基础信息（含备注）*/}
+        <Card title="基础信息" size="small" style={{ marginBottom: 12 }}>
+          <Form.Item label="车型" field="modelId" rules={[{ required: true, message: '请选择车型' }]}>
+            <Select disabled={isEdit} options={vehicleModels.filter(v => v.status === 'active').map(v => ({ label: v.name, value: v.id }))} />
           </Form.Item>
-          <Form.Item label="超时长费(元/h)" field="overtimeRate" rules={[{ required: true }]} style={{ flex: 1 }}>
-            <InputNumber min={1} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item label="超公里费(元/km)" field="extraMileageRate" rules={[{ required: true }]} style={{ flex: 1 }}>
-            <InputNumber min={1} style={{ width: '100%' }} />
-          </Form.Item>
-        </Space>
-        <Space size={12} style={{ display: 'flex' }}>
-          <Form.Item label="等待免费时长(分钟)" field="waitFreeMins" initialValue={15} style={{ flex: 1 }}>
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item label="等待费(元/分钟)" field="waitRate" initialValue={1} style={{ flex: 1 }}>
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-        </Space>
-        <Card title="取消规则" size="small">
+          {isEdit && <div style={{ fontSize: 12, color: '#86909c', marginTop: -4, marginBottom: 8 }}>编辑模式下车型不可修改</div>}
+          <Form.Item label="备注" field="remark"><Input.TextArea maxLength={200} rows={1} /></Form.Item>
+        </Card>
+
+        {/* 模块二：计费标准 */}
+        <Card title="计费标准" size="small" style={{ marginBottom: 12 }}>
+          <Space size={12} style={{ display: 'flex' }}>
+            <Form.Item label="日租价(元/24小时/100km)" field="dayPrice" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="超时费(元/h)" field="overtimeRate" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="超公里费(元/km)" field="extraMileageRate" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Space>
+        </Card>
+
+        {/* 模块三：押金设置 */}
+        <Card title="押金设置" size="small" style={{ marginBottom: 12 }}>
+          <Space size={12} style={{ display: 'flex' }}>
+            <Form.Item label="车辆押金(元)" field="depositVehicle" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}
+              extra={<span style={{ fontSize: 12, color: '#86909c' }}>预计 7 日内退还</span>}>
+              <InputNumber min={0} style={{ width: '100%' }} placeholder="预计7日内退还" />
+            </Form.Item>
+            <Form.Item label="违章押金(元)" field="depositViolation" rules={[{ required: true, message: '必填' }]} style={{ flex: 1 }}
+              extra={<span style={{ fontSize: 12, color: '#86909c' }}>预计 30 日内退还</span>}>
+              <InputNumber min={0} style={{ width: '100%' }} placeholder="预计30日内退还" />
+            </Form.Item>
+          </Space>
+        </Card>
+
+        {/* 模块四：等待费 */}
+        <Card title="等待费" size="small" style={{ marginBottom: 12 }}>
+          <Space size={12} style={{ display: 'flex' }}>
+            <Form.Item label="等待免费时长(分钟)" field="waitFreeMins" initialValue={15} style={{ flex: 1 }}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="等待费(元/分钟)" field="waitRate" initialValue={1} style={{ flex: 1 }}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <div style={{ flex: 2 }} />
+          </Space>
+        </Card>
+
+        {/* 模块五：取消规则 */}
+        <Card title="取消规则" size="small" style={{ marginBottom: 12 }}>
           <Form.Item label="免费阈值（小时）" field="cancelFreeHours" rules={[{ required: true, message: '请填写免费阈值' }]} initialValue={4}>
             <InputNumber min={1} style={{ width: 200 }} placeholder="默认 4" suffix="小时" />
           </Form.Item>
@@ -570,7 +673,9 @@ function RentalRuleModal({ visible, onClose, existingModelIds, onSave }: {
             </div>
           </div>
         </Card>
-        <Card title="远调费用设置" size="small" style={{ marginTop: 12 }}>
+
+        {/* 模块六：远调费用 */}
+        <Card title="远调费用" size="small" style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>
             按上车/下车点到运营范围边缘的直线距离收取，自定义梯度。最后一档可填 -1 表示无上限。
           </div>
@@ -594,8 +699,65 @@ function RentalRuleModal({ visible, onClose, existingModelIds, onSave }: {
             </div>
           ))}
         </Card>
-        <Form.Item label="备注" field="remark" style={{ marginTop: 12 }}><Input.TextArea maxLength={200} rows={1} /></Form.Item>
       </Form>
+    </Modal>
+  );
+}
+
+// ===== 梯度折扣弹窗（按包车/租车维度全局配置）=====
+function DiscountModal({ visible, bizType, tiers, onClose, onSave }: {
+  visible: boolean; bizType: 'charter' | 'rental';
+  tiers: DiscountTier[];
+  onClose: () => void;
+  onSave: (tiers: DiscountTier[]) => void;
+}) {
+  const [list, setList] = useState<DiscountTier[]>(tiers);
+
+  // 打开时按当前业务类型回填
+  useEffect(() => {
+    if (visible) setList(tiers.length ? tiers.map(t => ({ ...t })) : []);
+  }, [visible, tiers]);
+
+  const addTier = () => setList([...list, { ...DEFAULT_DISCOUNT_TIER }]);
+  const removeTier = (idx: number) => setList(list.filter((_, i) => i !== idx));
+  const updateTier = (idx: number, key: 'fromDays' | 'toDays' | 'coefficient', val: number) =>
+    setList(list.map((t, i) => i === idx ? { ...t, [key]: val } : t));
+
+  const handleOk = () => {
+    for (const t of list) {
+      if (t.toDays !== -1 && t.fromDays >= t.toDays) {
+        Message.error(`梯度区间错误：起始天数应小于结束天数（${t.fromDays}天 ~ ${t.toDays}天）`); return;
+      }
+      if (t.coefficient < 0.1 || t.coefficient > 1) { Message.error('折扣系数需在 0.1-1 之间'); return; }
+    }
+    onSave(list.map(t => ({ ...t })));
+  };
+
+  const bizLabel = bizType === 'charter' ? '包车' : '租车';
+
+  return (
+    <Modal title={`${bizLabel}梯度折扣设置`} visible={visible} onOk={handleOk} onCancel={onClose} style={{ width: 640 }} okText="保存">
+      <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>
+        按{bizLabel}下单天数设置折扣系数，全局生效于所有{bizLabel}车型/套餐；区间左闭右开（≥起始 且 &lt;结束），下一档起始天数 = 上一档结束天数。最后一档结束天数可填 -1 表示无上限。
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>折扣梯度</span>
+        <Button size="mini" type="outline" icon={<IconPlus />} onClick={addTier}>添加梯度</Button>
+      </div>
+      {list.length === 0 && <div style={{ fontSize: 12, color: '#c9cdd4', padding: '4px 0' }}>暂未配置梯度折扣，点击"添加梯度"开始设置</div>}
+      {list.map((t, idx) => (
+        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '8px 12px', background: '#FAFBFC', borderRadius: 6 }}>
+          <span style={{ fontSize: 13, color: '#4e5969', minWidth: 50 }}>第 {idx + 1} 档</span>
+          <span style={{ fontSize: 12, color: '#86909c' }}>下单 ≥</span>
+          <InputNumber size="small" min={1} value={t.fromDays} onChange={v => updateTier(idx, 'fromDays', v as number)} style={{ width: 70 }} />
+          <span style={{ fontSize: 12, color: '#86909c' }}>天 且 &lt;</span>
+          <InputNumber size="small" min={-1} value={t.toDays} onChange={v => updateTier(idx, 'toDays', v as number)} style={{ width: 70 }} />
+          <span style={{ fontSize: 12, color: '#86909c' }}>天，折扣</span>
+          <InputNumber size="small" min={0.1} max={1} step={0.05} value={t.coefficient} onChange={v => updateTier(idx, 'coefficient', v as number)} style={{ width: 80 }} />
+          <div style={{ flex: 1 }} />
+          <Button size="mini" type="text" status="danger" icon={<IconDelete />} onClick={() => removeTier(idx)} />
+        </div>
+      ))}
     </Modal>
   );
 }
@@ -1031,9 +1193,9 @@ function QuotaTab() {
 // ===== 运营区域 Tab — C8-09/10/12/13 =====
 function AreaTab() {
   const [regions, setRegions] = useState([
-    { id: 'R001', name: '南山区核心商圈', city: '深圳', vehicleIds: ['V001', 'V002'], status: 'active' as const, updatedAt: '2026-06-01' },
-    { id: 'R002', name: '浦东陆家嘴', city: '上海', vehicleIds: ['V003'], status: 'active' as const, updatedAt: '2026-05-28' },
-    { id: 'R003', name: '福田CBD', city: '深圳', vehicleIds: [], status: 'inactive' as const, updatedAt: '2026-04-15' },
+    { id: 'R001', name: '南山区核心商圈', city: '深圳', status: 'active' as const, updatedAt: '2026-06-01' },
+    { id: 'R002', name: '浦东陆家嘴', city: '上海', status: 'active' as const, updatedAt: '2026-05-28' },
+    { id: 'R003', name: '福田CBD', city: '深圳', status: 'inactive' as const, updatedAt: '2026-04-15' },
   ]);
   const [keyword, setKeyword] = useState('');
   const [cityFilter, setCityFilter] = useState('');
@@ -1069,7 +1231,7 @@ function AreaTab() {
       }
       const newRegion = {
         id: 'R' + String(regions.length + 1).padStart(3, '0'),
-        name: v.name, city: v.city, vehicleIds: v.vehicleIds || [],
+        name: v.name, city: v.city,
         status: 'active' as const, updatedAt: new Date().toISOString().slice(0, 10),
       };
       setRegions([...regions, newRegion]);
@@ -1094,7 +1256,7 @@ function AreaTab() {
       if (regions.some(r => r.name === v.name && r.city === v.city && r.id !== editTarget.id)) {
         Message.error('该区域名称已存在'); return;
       }
-      setRegions(regions.map(r => r.id === editTarget.id ? { ...r, name: v.name, city: v.city, vehicleIds: v.vehicleIds || [], updatedAt: new Date().toISOString().slice(0, 10) } : r));
+      setRegions(regions.map(r => r.id === editTarget.id ? { ...r, name: v.name, city: v.city, updatedAt: new Date().toISOString().slice(0, 10) } : r));
       setEditVisible(false);
       Message.success('区域已更新');
     }).catch(() => {});
@@ -1103,7 +1265,6 @@ function AreaTab() {
   const columns = [
     { title: '区域名称', dataIndex: 'name', width: 140 },
     { title: '所属城市', dataIndex: 'city', width: 80 },
-    { title: '绑定车辆', dataIndex: 'vehicleIds', width: 80, render: (v: string[]) => (v || []).length },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'gray'} size="small">{v === 'active' ? '已启用' : '已停用'}</Tag> },
     { title: '更新时间', dataIndex: 'updatedAt', width: 100 },
     { title: '操作', width: 160, render: (_: unknown, r: typeof regions[0]) => (
@@ -1160,9 +1321,6 @@ function AreaTab() {
           <Form.Item label="所属城市" field="city" rules={[{ required: true, message: '请选择城市' }]}>
             <Select options={cities.filter(c => c.status === 'active').map(c => ({ label: c.name, value: c.name }))} />
           </Form.Item>
-          <Form.Item label="关联车辆" field="vehicleIds">
-            <Select mode="multiple" placeholder="选择可调度的车辆" options={vehicleOptions} style={{ width: '100%' }} />
-          </Form.Item>
           <p style={{ color: '#86909c', fontSize: 12, marginTop: 4 }}>
             完整功能需接入地图 SDK 绘制多边形围栏。当前版本保存区域基本信息。
           </p>
@@ -1177,9 +1335,6 @@ function AreaTab() {
           </Form.Item>
           <Form.Item label="所属城市" field="city" rules={[{ required: true, message: '请选择城市' }]}>
             <Select options={cities.filter(c => c.status === 'active').map(c => ({ label: c.name, value: c.name }))} />
-          </Form.Item>
-          <Form.Item label="关联车辆" field="vehicleIds">
-            <Select mode="multiple" placeholder="选择可调度的车辆" options={vehicleOptions} style={{ width: '100%' }} />
           </Form.Item>
           <p style={{ color: '#86909c', fontSize: 12, marginTop: 4 }}>
             编辑区域时，地图围栏必须在所选城市范围内（SDK 接入后强制执行）。

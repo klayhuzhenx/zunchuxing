@@ -14,9 +14,7 @@ const { Row, Col } = Grid;
 const { RangePicker } = DatePicker;
 
 const statusMap: Record<EnterpriseStatus, { label: string; color: string }> = {
-  pending: { label: '待审核', color: 'orangered' },
-  approved: { label: '已通过', color: 'green' },
-  rejected: { label: '已驳回', color: 'gray' },
+  active: { label: '生效中', color: 'green' },
   disabled: { label: '已禁用', color: 'red' },
 };
 
@@ -98,7 +96,7 @@ export default function EnterpriseDetail() {
   };
 
   const handleEnable = () => {
-    enterprise.status = 'approved';
+    enterprise.status = 'active';
     Message.success('企业已启用');
   };
 
@@ -157,16 +155,9 @@ export default function EnterpriseDetail() {
           <Text type="secondary" style={{ fontSize: 13 }}>{enterprise.code}</Text>
         </Space>
         <Space>
-          {enterprise.status === 'pending' && (
-            <>
-              <Button type="primary" status="success" onClick={handleApprove}>通过</Button>
-              <Button status="danger" onClick={() => setShowReject(true)}>驳回</Button>
-            </>
-          )}
-          {enterprise.status === 'approved' && null}
-          {enterprise.status === 'disabled' && null}
-          {enterprise.status === 'rejected' && (
-            <Button onClick={() => { enterprise.status = 'pending'; Message.success('已重新进入审核'); }}>重新审核</Button>
+          {enterprise.status === 'active' && null}
+          {enterprise.status === 'disabled' && (
+            <Button status="success" onClick={handleEnable}>启用</Button>
           )}
         </Space>
       </div>
@@ -212,21 +203,6 @@ export default function EnterpriseDetail() {
 
         <Tabs.TabPane key="consumption" title="消费记录">
           <Card>
-            {/* 三行汇总 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-              <div style={{ padding: '12px 16px', background: '#FFF1F0', borderRadius: 8 }}>
-                <div style={{ fontSize: 12, color: '#86909c' }}>消费总额</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#F53F3F', marginTop: 4 }}>¥{consumptionTotal.toLocaleString()}</div>
-              </div>
-              <div style={{ padding: '12px 16px', background: '#E8FFEA', borderRadius: 8 }}>
-                <div style={{ fontSize: 12, color: '#86909c' }}>退款总额</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#00B42A', marginTop: 4 }}>¥{refundTotal.toLocaleString()}</div>
-              </div>
-              <div style={{ padding: '12px 16px', background: '#F2F3F5', borderRadius: 8 }}>
-                <div style={{ fontSize: 12, color: '#86909c' }}>实际消费</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#1d2129', marginTop: 4 }}>¥{(consumptionTotal - refundTotal).toLocaleString()}</div>
-              </div>
-            </div>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
               </div>

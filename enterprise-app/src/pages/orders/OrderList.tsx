@@ -14,7 +14,8 @@ const { RangePicker } = DatePicker;
 const statusMap: Record<OrderStatus, { label: string; color: string }> = {
   unpaid: { label: '待支付', color: 'orange' },
   pending_dispatch: { label: '待派车', color: 'red' },
-  pending_start: { label: '待开始', color: 'arcoblue' },
+  pending_start: { label: '待接驾', color: 'arcoblue' },
+  pending_enroute: { label: '待接驾', color: 'arcoblue' },
   ongoing: { label: '行程中', color: 'cyan' },
   pending_extra: { label: '待结算', color: 'orangered' },
   completed: { label: '已完成', color: 'green' },
@@ -35,6 +36,49 @@ const statusTabs = [
   { key: 'cancelled', label: '已取消' },
 ];
 
+// 订单金额（动态：按状态展示不同含义）
+const orderAmountInfo = (r: Order): { amount: string; sub?: string; color?: string } => {
+  const gross = Math.round(r.baseFee * (r.days || 1) * r.discount);
+  const remote = (r.remoteDispatchDetail?.pickupFee ?? 0) + (r.remoteDispatchDetail?.dropoffFee ?? 0);
+  const extraTotal = r.baseFee * (r.days || 1) + r.overtimeFee + r.overmileageFee + remote;
+  switch (r.status) {
+    case 'unpaid':
+      return { amount: `¥${gross.toLocaleString()}` };
+    case 'pending_dispatch':
+    case 'pending_start':
+    case 'pending_enroute':
+    case 'ongoing':
+      return { amount: `¥${r.paidAmount.toLocaleString()}` };
+    case 'pending_extra':
+      return { amount: `¥${extraTotal.toLocaleString()}` };
+    case 'completed':
+      return { amount: `¥${(r.paidAmount - (r.refundAmount || 0)).toLocaleString()}` };
+    case 'cancelled':
+      if (r.paidAmount > 0) {
+        const penalty = r.paidAmount - (r.refundAmount || 0);
+        return { amount: `¥${r.paidAmount.toLocaleString()}`, sub: `违约金 ¥${penalty.toLocaleString()}`, color: '#F53F3F' };
+      }
+      return { amount: `¥${gross.toLocaleString()}` };
+    default:
+      return { amount: '—' };
+  }
+};
+
+// 押金状态：未收取 / 未退还 / 已退还
+const depositTotal = (r: Order) => (r.depositVehicle || 0) + (r.depositViolation || 0);
+
+const depositStatusOf = (r: Order): { label: string; color: string } => {
+  const total = depositTotal(r);
+  if (!total) return { label: '未收取', color: 'gray' };
+  const vRefunded = r.depositVehicleRefunded && (r.depositVehicle || 0) > 0 ? 1 : 0;
+  const viRefunded = r.depositViolationRefunded && (r.depositViolation || 0) > 0 ? 1 : 0;
+  const refundedCount = (r.depositVehicle ? vRefunded : 0) + (r.depositViolation ? viRefunded : 0);
+  const totalCount = (r.depositVehicle ? 1 : 0) + (r.depositViolation ? 1 : 0);
+  if (refundedCount === 0) return { label: '未退还', color: 'orangered' };
+  if (refundedCount < totalCount) return { label: '部分退还', color: 'orange' };
+  return { label: '已退还', color: 'green' };
+};
+
 // ===== 主组件 =====
 export default function OrderList() {
   const [orderType, setOrderType] = useState<OrderType>('charter');
@@ -50,7 +94,7 @@ export default function OrderList() {
   const filtered = useMemo(() => {
     let result = data.filter(o => o.type === orderType);
     if (activeTab !== 'all') {
-      if (activeTab === 'pending_start') result = result.filter(o => o.status === 'pending_dispatch' || o.status === 'pending_start');
+      if (activeTab === 'pending_start') result = result.filter(o => o.status === 'pending_dispatch' || o.status === 'pending_start' || o.status === 'pending_enroute');
       else result = result.filter(o => o.status === activeTab);
     }
     if (keyword) {
@@ -92,22 +136,28 @@ export default function OrderList() {
 
   const charterColumns = [
     { title: '订单号', dataIndex: 'orderNo', width: 170, render: (v: string, r: Order) => <a onClick={() => openDetail(r)} style={{ color: '#165DFF', cursor: 'pointer' }}>{v}</a> },
-    { title: '类型', width: 70, render: () => <Tag color="arcoblue" size="small">包车</Tag> },
+    { title: '订单类型', width: 80, render: () => <Tag color="arcoblue" size="small">包车</Tag> },
     { title: '用车人', width: 100, render: (_: unknown, r: Order) => `${r.passengerName || '—'} ${r.passengerPhone}` },
     { title: '用车时间', width: 200, render: (_: unknown, r: Order) => <div>{r.startTime} ~ {r.endTime?.split(' ')[1]}{r.days && r.days > 1 && <Tag size="small" color="arcoblue" style={{ marginLeft: 4 }}>{r.days}天</Tag>}</div> },
     { title: '上车地点', dataIndex: 'pickupAddress', width: 130, ellipsis: true },
     { title: '下车地点', dataIndex: 'dropoffAddress', width: 130, ellipsis: true },
     { title: '司机', width: 80, render: (_: unknown, r: Order) => r.driverName || '-' },
     { title: '车辆', dataIndex: 'plateNo', width: 100, render: (v: string) => v || '—' },
-    { title: '金额', width: 100, render: (_: unknown, r: Order) => `¥${r.paidAmount.toLocaleString()}` },
-    { title: '状态', width: 80, render: (_: unknown, r: Order) => <Tag color={statusMap[r.status].color} size="small">{statusMap[r.status].label}</Tag> },
+    { title: '订单金额', width: 130, render: (_: unknown, r: Order) => {
+      const info = orderAmountInfo(r);
+      return <div><div style={{ fontWeight: 700, fontSize: 14, color: info.color }}>{info.amount}</div>{info.sub && <div style={{ fontSize: 11, color: info.color || '#86909C', marginTop: 2 }}>{info.sub}</div>}</div>;
+    }},
+    { title: '订单状态', width: 80, render: (_: unknown, r: Order) => {
+      const label = r.type === 'rental' && (r.status === 'pending_start' || r.status === 'pending_enroute') ? '待取车' : statusMap[r.status].label;
+      return <Tag color={statusMap[r.status].color} size="small">{label}</Tag>;
+    }},
     { title: '下单时间', dataIndex: 'createdAt', width: 140 },
     actionColumn,
   ];
 
   const rentalColumns = [
     { title: '订单号', dataIndex: 'orderNo', width: 170, render: (v: string, r: Order) => <a onClick={() => openDetail(r)} style={{ color: '#165DFF', cursor: 'pointer' }}>{v}</a> },
-    { title: '类型', width: 70, render: () => <Tag color="purple" size="small">租车</Tag> },
+    { title: '订单类型', width: 80, render: () => <Tag color="purple" size="small">租车</Tag> },
     { title: '用车人', width: 100, render: (_: unknown, r: Order) => `${r.passengerName || '—'} ${r.passengerPhone}` },
     { title: '租期', width: 170, render: (_: unknown, r: Order) => <div>{r.rentalStart} ~ {r.rentalEnd} {r.days && <Tag size="small" color="purple" style={{ marginLeft: 4 }}>共{r.days}天</Tag>}</div> },
     { title: '取车地点', dataIndex: 'pickupAddress', width: 120, ellipsis: true, render: (v: string) => v || '—' },
@@ -115,8 +165,28 @@ export default function OrderList() {
     { title: '车辆', dataIndex: 'plateNo', width: 100, render: (v: string) => v || '—' },
     { title: '送车司机', width: 80, render: (_: unknown, r: Order) => r.deliveryDriver || '-' },
     { title: '收车司机', width: 80, render: (_: unknown, r: Order) => r.pickupDriver || '—' },
-    { title: '金额', width: 100, render: (_: unknown, r: Order) => `¥${r.paidAmount.toLocaleString()}` },
-    { title: '状态', width: 80, render: (_: unknown, r: Order) => <Tag color={statusMap[r.status].color} size="small">{statusMap[r.status].label}</Tag> },
+    { title: '已收押金', width: 100, render: (_: unknown, r: Order) => (r.userIdentity === 'enterprise_employee' || depositTotal(r) === 0) ? '—' : `¥${depositTotal(r).toLocaleString()}` },
+    { title: '已退押金', width: 100, render: (_: unknown, r: Order) => {
+      if (r.userIdentity === 'enterprise_employee' || depositTotal(r) === 0) return '—';
+      const vRefunded = r.depositVehicleRefunded ? (r.depositVehicle || 0) - (r.depositVehicleDeduct || 0) : 0;
+      const viRefunded = r.depositViolationRefunded ? (r.depositViolation || 0) - (r.depositViolationDeduct || 0) : 0;
+      const refunded = vRefunded + viRefunded;
+      if (refunded === 0) return '—';
+      const ded = (r.depositVehicleDeduct || 0) + (r.depositViolationDeduct || 0);
+      return `¥${refunded.toLocaleString()}${ded > 0 ? `（扣¥${ded}）` : ''}`;
+    }},
+    { title: '押金状态', width: 100, render: (_: unknown, r: Order) => {
+      const s = depositStatusOf(r);
+      return <Tag color={s.color} size="small">{s.label}</Tag>;
+    }},
+    { title: '订单金额', width: 130, render: (_: unknown, r: Order) => {
+      const info = orderAmountInfo(r);
+      return <div><div style={{ fontWeight: 700, fontSize: 14, color: info.color }}>{info.amount}</div>{info.sub && <div style={{ fontSize: 11, color: info.color || '#86909C', marginTop: 2 }}>{info.sub}</div>}</div>;
+    }},
+    { title: '订单状态', width: 80, render: (_: unknown, r: Order) => {
+      const label = r.type === 'rental' && (r.status === 'pending_start' || r.status === 'pending_enroute') ? '待取车' : statusMap[r.status].label;
+      return <Tag color={statusMap[r.status].color} size="small">{label}</Tag>;
+    }},
     { title: '下单时间', dataIndex: 'createdAt', width: 140 },
     actionColumn,
   ];
@@ -146,7 +216,7 @@ export default function OrderList() {
       </Card>
       <Card bodyStyle={{ padding: 0 }}>
         <Table columns={isCharter ? charterColumns : rentalColumns} data={filtered} rowKey="id"
-          scroll={{ x: isCharter ? 1700 : 1600 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
+          scroll={{ x: isCharter ? 1700 : 1900 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
       </Card>
       <Drawer width="60%" title={selectedOrder ? `订单详情 - ${selectedOrder.orderNo}` : '订单详情'}
         visible={drawerVisible} onCancel={() => setDrawerVisible(false)} footer={null}>
@@ -160,74 +230,148 @@ export default function OrderList() {
 interface AlertCfg { color: string; bg: string; title: string; body: (o: Order) => string }
 
 const charterAlert: Record<string, AlertCfg> = {
-  unpaid: { color: '#FF7D00', bg: '#FFF7E8', title: '等待支付', body: () => '订单已提交，等待员工完成支付' },
-  pending_dispatch: { color: '#FF7D00', bg: '#FFF7E8', title: '等待派车', body: () => '运营正在安排车辆与司机，请您耐心等待' },
-  pending_start: { color: '#165DFF', bg: '#E8F3FF', title: '行程待开始', body: (o) => `车辆和司机已确认：${o.driverName} · ${o.plateNo}` },
-  ongoing: { color: '#00B42A', bg: '#E8FFEA', title: '行程进行中', body: (o) => `${o.driverName} · ${o.plateNo}，当前行程进行中` },
-  completed: { color: '#00B42A', bg: '#E8FFEA', title: '行程已完成', body: () => '感谢使用尊出行，欢迎再次出行' },
-  cancelled: { color: '#F53F3F', bg: '#FFECE8', title: '订单已取消', body: (o) => o.cancelReason || '已取消' },
-  pending_extra: { color: '#F53F3F', bg: '#FFECE8', title: '差额待付', body: (o) => `行程结束产生额外费用 ¥${Math.max(0, o.baseFee + o.overtimeFee + o.overmileageFee + ((o.remoteDispatchDetail?.pickupFee ?? 0) + (o.remoteDispatchDetail?.dropoffFee ?? 0)) - (o.pointsUsed ? Math.floor(o.pointsUsed / 100) : 0) - o.paidAmount).toLocaleString()}，等待员工完成补款` },
+  unpaid: { color: '#FF7D00', bg: '#FFF7E8', title: '待支付', body: () => '订单已确认，请在支付超时前完成支付' },
+  pending_dispatch: { color: '#FF7D00', bg: '#FFF7E8', title: '待派车', body: () => '运营正在安排派车，请您耐心等待' },
+  pending_start: { color: '#165DFF', bg: '#E8F3FF', title: '待接驾', body: () => '司机已接单，准备出发中' },
+  pending_enroute: { color: '#165DFF', bg: '#E8F3FF', title: '待接驾', body: (o) => `${o.driverName} · ${o.plateNo} · 距离 2.3km · 预计 8 分钟到达` },
+  ongoing: { color: '#00B42A', bg: '#E8FFEA', title: '进行中', body: (o) => `${o.driverName} · ${o.plateNo}，祝您出行愉快` },
+  completed: { color: '#00B42A', bg: '#E8FFEA', title: '已完成', body: () => '感谢您的出行，欢迎再次使用尊出行' },
+  cancelled: { color: '#F53F3F', bg: '#FFECE8', title: '已取消', body: (o) => `${o.cancelReason || '已取消'}${o.paidAmount > 0 ? '，违约金 ¥' + ((o.paidAmount || 0) - (o.refundAmount || 0)).toLocaleString() : ''}` },
+  pending_extra: { color: '#F53F3F', bg: '#FFECE8', title: '待结算', body: () => '行程已完成，因超里程/超时产生额外费用，请及时结算' },
 };
 
 const rentalAlert: Record<string, AlertCfg> = {
-  unpaid: { color: '#FF7D00', bg: '#FFF7E8', title: '等待支付', body: () => '订单已提交，等待员工完成支付' },
-  pending_dispatch: { color: '#FF7D00', bg: '#FFF7E8', title: '等待派车', body: () => '运营正在安排送车司机与车辆' },
-  pending_start: { color: '#165DFF', bg: '#E8F3FF', title: '车辆已送达取车点', body: (o) => o.plateNo ? `车辆已送达取车点：${o.plateNo} · ${o.carModel}` : '运营正在安排送车，车辆送达后请前往取车点确认取车' },
-  ongoing: { color: '#00B42A', bg: '#E8FFEA', title: '行程进行中', body: () => '车辆使用中，请在约定时间内还车' },
-  completed: { color: '#00B42A', bg: '#E8FFEA', title: '行程已完成', body: () => '感谢使用尊出行' },
-  cancelled: { color: '#F53F3F', bg: '#FFECE8', title: '订单已取消', body: (o) => o.cancelReason || '已取消' },
-  pending_extra: { color: '#F53F3F', bg: '#FFECE8', title: '差额待付', body: (o) => `行程结束产生额外费用 ¥${Math.max(0, o.baseFee + o.overtimeFee + o.overmileageFee + ((o.remoteDispatchDetail?.pickupFee ?? 0) + (o.remoteDispatchDetail?.dropoffFee ?? 0)) - (o.pointsUsed ? Math.floor(o.pointsUsed / 100) : 0) - o.paidAmount).toLocaleString()}，等待员工完成补款` },
+  unpaid: { color: '#FF7D00', bg: '#FFF7E8', title: '待支付', body: () => '订单已确认，请在支付超时前完成支付' },
+  pending_dispatch: { color: '#FF7D00', bg: '#FFF7E8', title: '待派车', body: () => '运营正在安排派车，请您耐心等待' },
+  pending_start: { color: '#165DFF', bg: '#E8F3FF', title: '待取车', body: () => '等待司机将车辆送往取车点' },
+  pending_enroute: { color: '#165DFF', bg: '#E8F3FF', title: '待取车', body: (o) => o.plateNo ? `${o.driverName} · ${o.plateNo}，司机正在将车辆送往取车点，距离 2.3km · 预计 8 分钟到达` : '司机正在将车辆送往取车点' },
+  ongoing: { color: '#00B42A', bg: '#E8FFEA', title: '进行中', body: (o) => o.plateNo ? `${o.plateNo}，祝您用车愉快` : '祝您用车愉快' },
+  completed: { color: '#00B42A', bg: '#E8FFEA', title: '已完成', body: () => '感谢您的用车，欢迎再次使用尊出行' },
+  cancelled: { color: '#F53F3F', bg: '#FFECE8', title: '已取消', body: (o) => o.cancelReason || '已取消' },
+  pending_extra: { color: '#F53F3F', bg: '#FFECE8', title: '待结算', body: () => '行程已结束，因超里程/超时产生额外费用，请及时结算' },
 };
 
 // ===== 订单动态 =====
+// 时间偏移：基于 "YYYY-MM-DD HH:mm" 增减分钟
+function shiftMin(dt: string, mins: number): string {
+  const d = new Date((dt || '').replace(' ', 'T'));
+  if (isNaN(d.getTime())) return dt || '—';
+  d.setMinutes(d.getMinutes() + mins);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function payText(order: Order): string {
+  const m = order.paymentMethod === 'enterprise_credit' ? '企业额度' : order.paymentMethod === 'wechat' ? '微信' : '支付宝';
+  return `支付成功 — ${m} ¥${order.paidAmount.toLocaleString()}${order.pointsUsed ? ` 使用积分 ${order.pointsUsed.toLocaleString()}` : ''}`;
+}
+
 function buildCharterTimeline(order: Order): { label: string; dot: string }[] {
-  const items: { label: string; dot: string }[] = [];
+  const items: { label: string; dot: string }[] = []; // 最新在上
+  const st = order.startTime || '';
+  const et = order.endTime || '';
+  const remoteFee = (order.remoteDispatchDetail?.pickupFee ?? 0) + (order.remoteDispatchDetail?.dropoffFee ?? 0);
+  const extraTotal = Math.max(0, order.overtimeFee + order.overmileageFee + remoteFee - (order.pointsUsed ? Math.floor(order.pointsUsed / 100) : 0));
+  const plate = order.plateNo || '';
+  // 取消/退款/提前结束
   if (order.status === 'cancelled') {
-    items.push({ label: `订单已取消${order.cancelReason ? ' (' + order.cancelReason + ')' : ''}`, dot: 'red' });
-    if (order.paymentTime) items.push({ label: `支付成功（${order.paymentMethod === 'enterprise_credit' ? '企业额度' : order.paymentMethod === 'wechat' ? '微信' : '支付宝'}）· ¥${order.paidAmount.toLocaleString()}${order.pointsUsed ? ` 使用积分 ${order.pointsUsed.toLocaleString()}` : ''}`, dot: 'green' });
-    items.push({ label: `订单已提交 · ${order.createdAt}`, dot: 'gray' });
-    return items;
+    items.push({ label: `${order.createdAt}　订单已取消 — ${order.cancelReason || '—'}${order.refundAmount ? `，退款 ¥${order.refundAmount.toLocaleString()}` : ''}`, dot: 'red' });
   }
-  if (order.status === 'pending_extra') {
-    items.push({ label: `行程结束（有待结算 ¥${Math.max(0, order.baseFee + order.overtimeFee + order.overmileageFee + ((order.remoteDispatchDetail?.pickupFee ?? 0) + (order.remoteDispatchDetail?.dropoffFee ?? 0)) - (order.pointsUsed ? Math.floor(order.pointsUsed / 100) : 0) - order.paidAmount).toLocaleString()}）`, dot: 'red' });
-  }
+  (order.refundRecords || []).forEach(r => {
+    if (r.type === 'manual') items.push({ label: `${r.time}　${r.operator || '运营'} 发起退款 — ¥${r.amount.toLocaleString()}，原因：${r.reason || '—'}`, dot: 'red' });
+    else if (r.orderRefundType === 'early_end') items.push({ label: `${r.time}　提前结束行程 — 退款 ¥${r.amount.toLocaleString()}`, dot: 'red' });
+    else items.push({ label: `${r.time}　退款 ¥${r.amount.toLocaleString()} — ${r.orderRefundType === 'cancel' ? '取消订单' : '—'}`, dot: 'red' });
+  });
+  // 订单完成 / 结算完成
   if (order.status === 'completed') {
-    items.push({ label: '行程结束', dot: 'green' });
+    items.push({ label: `${shiftMin(et, 15)}　订单已完成`, dot: 'green' });
+    if (extraTotal > 0) items.push({ label: `${shiftMin(et, 15)}　结算完成 — ¥${extraTotal.toLocaleString()}`, dot: 'green' });
   }
+  // 差额待结算
+  if (order.status === 'pending_extra') {
+    items.push({ label: `${et}　需补款 ¥${extraTotal.toLocaleString()}`, dot: 'red' });
+  }
+  // 当日行程结束
+  if (['completed', 'pending_extra'].includes(order.status)) {
+    items.push({ label: `${et}　当日行程结束 — 用时 10h，里程 ${100 + order.overmileageFee / 5}km`, dot: 'green' });
+  }
+  // 行程开始
   if (['ongoing', 'completed', 'pending_extra'].includes(order.status)) {
-    items.push({ label: '行程开始', dot: 'green' });
+    items.push({ label: `${st}　行程开始 — ${order.driverName || '—'}·${plate}`, dot: 'green' });
   }
-  if (order.driverName && order.plateNo && ['pending_start', 'ongoing', 'completed', 'pending_extra'].includes(order.status)) {
-    items.push({ label: `已派车 · ${order.carModel} ${order.plateNo} · ${order.driverName}`, dot: 'blue' });
+  // 司机到达
+  if (['ongoing', 'completed', 'pending_extra'].includes(order.status)) {
+    items.push({ label: `${shiftMin(st, -8)}　${order.driverName || '司机'} 已到达上车点`, dot: 'blue' });
   }
-  if (order.paymentTime) items.push({ label: `支付成功（${order.paymentMethod === 'enterprise_credit' ? '企业额度' : order.paymentMethod === 'wechat' ? '微信' : '支付宝'}）· ¥${order.paidAmount.toLocaleString()}${order.pointsUsed ? ` 使用积分 ${order.pointsUsed.toLocaleString()}` : ''}`, dot: 'green' });
-  items.push({ label: `订单已提交 · ${order.createdAt}`, dot: 'gray' });
+  // 司机出发
+  if (['pending_enroute', 'ongoing', 'completed', 'pending_extra'].includes(order.status)) {
+    items.push({ label: `${shiftMin(st, -30)}　${order.driverName || '司机'} 已出发`, dot: 'blue' });
+  }
+  // 派车
+  if (plate && ['pending_start', 'pending_enroute', 'ongoing', 'completed', 'pending_extra'].includes(order.status)) {
+    items.push({ label: `${(order.schedules?.[0]?.date || st).split(' ')[0]}　已派车 — ${plate}`, dot: 'blue' });
+  }
+  // 支付成功
+  if (order.paymentTime) items.push({ label: `${order.paymentTime}　${payText(order)}`, dot: 'green' });
+  // 订单提交
+  items.push({ label: `${order.createdAt}　订单已提交`, dot: 'gray' });
   return items;
 }
 
 function buildRentalTimeline(order: Order): { label: string; dot: string }[] {
-  const items: { label: string; dot: string }[] = [];
+  const items: { label: string; dot: string }[] = []; // 最新在上
+  const st = order.rentalStart ? `${order.rentalStart} 08:00` : (order.startTime || '');
+  const et = order.rentalEnd ? `${order.rentalEnd} 18:00` : (order.endTime || '');
+  const remoteFee = (order.remoteDispatchDetail?.pickupFee ?? 0) + (order.remoteDispatchDetail?.dropoffFee ?? 0);
+  const extraTotal = Math.max(0, order.overtimeFee + order.overmileageFee + remoteFee - (order.pointsUsed ? Math.floor(order.pointsUsed / 100) : 0));
+  const plate = order.plateNo || '';
+  // 取消/退款/提前结束
   if (order.status === 'cancelled') {
-    items.push({ label: `订单已取消${order.cancelReason ? ' (' + order.cancelReason + ')' : ''}`, dot: 'red' });
-    if (order.paymentTime) items.push({ label: `支付成功（${order.paymentMethod === 'enterprise_credit' ? '企业额度' : order.paymentMethod === 'wechat' ? '微信' : '支付宝'}）· ¥${order.paidAmount.toLocaleString()}${order.pointsUsed ? ` 使用积分 ${order.pointsUsed.toLocaleString()}` : ''}`, dot: 'green' });
-    items.push({ label: `订单已提交 · ${order.createdAt}`, dot: 'gray' });
-    return items;
+    items.push({ label: `${order.createdAt}　订单已取消 — ${order.cancelReason || '—'}${order.refundAmount ? `，退款 ¥${order.refundAmount.toLocaleString()}` : ''}`, dot: 'red' });
+  }
+  (order.refundRecords || []).forEach(r => {
+    if (r.type === 'manual') items.push({ label: `${r.time}　${r.operator || '运营'} 发起退款 — ¥${r.amount.toLocaleString()}，原因：${r.reason || '—'}`, dot: 'red' });
+    else if (r.orderRefundType === 'early_end') items.push({ label: `${r.time}　提前结束行程 — 退款 ¥${r.amount.toLocaleString()}`, dot: 'red' });
+    else items.push({ label: `${r.time}　退款 ¥${r.amount.toLocaleString()} — ${r.orderRefundType === 'cancel' ? '取消订单' : '—'}`, dot: 'red' });
+  });
+  // 押金退还
+  if (order.depositVehicleRefunded && order.depositVehicleRefundedAt) {
+    const vRefund = (order.depositVehicle || 0) - (order.depositVehicleDeduct || 0);
+    items.push({ label: `${order.depositVehicleRefundedAt}　退还车辆押金 ¥${vRefund.toLocaleString()}${(order.depositVehicleDeduct || 0) > 0 ? `（扣 ¥${(order.depositVehicleDeduct || 0).toLocaleString()}）` : ''}`, dot: 'green' });
+  }
+  if (order.depositViolationRefunded && order.depositViolationRefundedAt) {
+    const viRefund = (order.depositViolation || 0) - (order.depositViolationDeduct || 0);
+    items.push({ label: `${order.depositViolationRefundedAt}　退还违章押金 ¥${viRefund.toLocaleString()}${(order.depositViolationDeduct || 0) > 0 ? `（扣 ¥${(order.depositViolationDeduct || 0).toLocaleString()}）` : ''}`, dot: 'green' });
+  }
+  // 订单完成 / 结算完成
+  if (order.status === 'completed') {
+    items.push({ label: `${shiftMin(et, 15)}　订单已完成`, dot: 'green' });
+    if (extraTotal > 0) items.push({ label: `${shiftMin(et, 15)}　结算完成 — ¥${extraTotal.toLocaleString()}`, dot: 'green' });
   }
   if (order.status === 'pending_extra') {
-    items.push({ label: `已还车（有待结算 ¥${(order.baseFee + order.overtimeFee + order.overmileageFee - order.paidAmount).toLocaleString()}）`, dot: 'red' });
+    items.push({ label: `${et}　需补款 ¥${extraTotal.toLocaleString()}`, dot: 'red' });
   }
-  if (order.status === 'completed') items.push({ label: '已还车', dot: 'green' });
+  // 确认收车
+  if (['completed', 'pending_extra'].includes(order.status)) {
+    items.push({ label: `${et}　收车完成 — 里程 ${120 + order.overmileageFee / 5}km，用车 ${order.days} 天`, dot: 'green' });
+    items.push({ label: `${shiftMin(et, -40)}　收车司机 ${order.pickupDriver || '—'} 已出发`, dot: 'blue' });
+  }
+  // 行程开始
   if (['ongoing', 'completed', 'pending_extra'].includes(order.status)) {
-    items.push({ label: '已确认取车', dot: 'green' });
+    items.push({ label: `${st}　行程开始 — ${plate}`, dot: 'green' });
+    items.push({ label: `${shiftMin(st, -5)}　车辆已送达取车点 — ${order.pickupAddress || '—'}`, dot: 'green' });
+    items.push({ label: `${shiftMin(st, -30)}　送车司机 ${order.deliveryDriver || '—'} 已出发`, dot: 'blue' });
   }
-  if (order.plateNo && ['pending_start', 'ongoing', 'completed', 'pending_extra'].includes(order.status)) {
-    items.push({ label: '车辆已送达取车点', dot: 'blue' });
+  // 派车
+  if (plate && ['pending_start', 'ongoing', 'completed', 'pending_extra'].includes(order.status)) {
+    items.push({ label: `${(order.schedules?.[0]?.date || order.rentalStart || st).split(' ')[0]}　已派车 — ${plate}。送车司机 ${order.deliveryDriver || '—'}、收车司机 ${order.pickupDriver || '—'}`, dot: 'blue' });
   }
-  if (order.deliveryDriver && ['pending_start', 'ongoing', 'completed', 'pending_extra'].includes(order.status)) {
-    items.push({ label: `送车已派发 · ${order.deliveryDriver} · ${order.plateNo} · ${order.carModel}`, dot: 'blue' });
+  // 支付成功（含押金）
+  if (order.paymentTime) {
+    const depSuffix = depositTotal(order) ? `（含押金 ¥${depositTotal(order).toLocaleString()}）` : '';
+    items.push({ label: `${order.paymentTime}　${payText(order)}${depSuffix}`, dot: 'green' });
   }
-  if (order.paymentTime) items.push({ label: `支付成功（${order.paymentMethod === 'enterprise_credit' ? '企业额度' : order.paymentMethod === 'wechat' ? '微信' : '支付宝'}）· ¥${order.paidAmount.toLocaleString()}${order.pointsUsed ? ` 使用积分 ${order.pointsUsed.toLocaleString()}` : ''}`, dot: 'green' });
-  items.push({ label: `订单已提交 · ${order.createdAt}`, dot: 'gray' });
+  items.push({ label: `${order.createdAt}　订单已提交`, dot: 'gray' });
   return items;
 }
 
@@ -270,7 +414,7 @@ function OrderDetailPanel({ order }: { order: Order }) {
   const showFullFee = ['completed', 'pending_extra', 'ongoing'].includes(order.status);
 
   // 费用明细弹窗
-  const [feeModal, setFeeModal] = useState<{ visible: boolean; type: 'waiting' | 'overtime' | 'mileage' | 'remote' | 'other' }>({ visible: false, type: 'overtime' });
+  const [feeModal, setFeeModal] = useState<{ visible: boolean; type: 'waiting' | 'overtime' | 'mileage' | 'remote' | 'other' | 'refund' | 'main' | 'mainFull' }>({ visible: false, type: 'overtime' });
 
   const feeRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' };
 
@@ -283,6 +427,11 @@ function OrderDetailPanel({ order }: { order: Order }) {
       }}>
         <strong style={{ color: alertCfg.color }}>{alertCfg.title}</strong>
         <div style={{ color: '#4E5969', fontSize: 13, marginTop: 4 }}>{alertCfg.body(order)}</div>
+        {order.status === 'cancelled' && (order.paidAmount || 0) > 0 && (
+          <div style={{ color: '#F53F3F', fontSize: 13, marginTop: 4, fontWeight: 600 }}>
+            违约金 ¥{((order.paidAmount || 0) - (order.refundAmount || 0)).toLocaleString()}
+          </div>
+        )}
       </div>
 
       {/* 基本信息 */}
@@ -290,7 +439,6 @@ function OrderDetailPanel({ order }: { order: Order }) {
         <Descriptions column={2} size="small" data={[
           { label: '订单号', value: order.orderNo },
           { label: '订单类型', value: <Tag color={isCharter ? 'arcoblue' : 'purple'} size="small">{isCharter ? '包车出行' : '租车出行'}</Tag> },
-          { label: '订单状态', value: <Tag color={statusMap[order.status].color} size="small">{statusMap[order.status].label}{order.subStatus ? ` · ${order.subStatus}` : ''}</Tag> },
           { label: '下单时间', value: order.createdAt },
         ]} />
       </Card>
@@ -328,7 +476,11 @@ function OrderDetailPanel({ order }: { order: Order }) {
           { label: '车型', value: isCharter
             ? `${order.carModel || '待定'} · 尊享套餐（日租 / 8小时 / 100km）`
             : `${order.carModel || '待定'}（日租 / 8小时 / 100km）` },
-          { label: isCharter ? '套餐价' : '日租价', value: `¥${order.baseFee.toLocaleString()} / 天` },
+          { label: isCharter ? '套餐价' : '日租价', value: (() => {
+            const disc = Math.round(order.baseFee * order.discount);
+            if (order.discount < 1) return <><span style={{ fontWeight: 700 }}>¥{disc.toLocaleString()}</span><span style={{ fontSize: 13, color: '#86909C', textDecoration: 'line-through', marginLeft: 8 }}>¥{order.baseFee.toLocaleString()}</span> / 天</>;
+            return `¥${order.baseFee.toLocaleString()} / 天`;
+          })() },
         ]} />
       </Card>
 
@@ -391,80 +543,134 @@ function OrderDetailPanel({ order }: { order: Order }) {
         </Card>
       )}
 
-      {/* 费用明细 — 与运营端一致 */}
-      <Card title="费用明细" style={{ marginBottom: 16 }} size="small">
-        {/* 套餐费 */}
-        <div style={feeRowStyle}>
-          <span style={{ fontSize: 14, color: '#4E5969' }}>套餐费</span>
-          <span style={{ fontSize: 14 }}>¥{order.baseFee.toLocaleString()} × {order.days || 1} 天 = ¥{(order.baseFee * (order.days || 1)).toLocaleString()}</span>
-        </div>
-        {/* 等待费 */}
-        <div style={feeRowStyle}>
-          <span style={{ fontSize: 14, color: '#4E5969' }}>等待费 · 免费15min ¥1/min</span>
-          <span style={{ fontSize: 14, fontWeight: 500, color: '#86909c' }}>¥0</span>
-        </div>
-        {/* 超时长费 */}
-        <div style={{ ...feeRowStyle, cursor: order.overtimeFee > 0 ? 'pointer' : 'default' }}
-          onClick={() => { if (order.overtimeFee > 0) setFeeModal({ visible: true, type: 'overtime' }); }}>
-          <span style={{ fontSize: 14, color: order.overtimeFee > 0 ? '#F53F3F' : '#4E5969' }}>超时长费 · ¥100/h</span>
-          <span style={{ fontSize: 14, fontWeight: 500, color: order.overtimeFee > 0 ? '#F53F3F' : '#000' }}>
-            {order.overtimeFee > 0 ? `¥${order.overtimeFee.toLocaleString()} 明细 ›` : '¥0'}
-          </span>
-        </div>
-        {/* 超里程费 */}
-        <div style={{ ...feeRowStyle, cursor: order.overmileageFee > 0 ? 'pointer' : 'default' }}
-          onClick={() => { if (order.overmileageFee > 0) setFeeModal({ visible: true, type: 'mileage' }); }}>
-          <span style={{ fontSize: 14, color: order.overmileageFee > 0 ? '#F53F3F' : '#4E5969' }}>超里程费 · ¥{isCharter ? '5' : '10'}/km</span>
-          <span style={{ fontSize: 14, fontWeight: 500, color: order.overmileageFee > 0 ? '#F53F3F' : '#000' }}>
-            {order.overmileageFee > 0 ? `¥${order.overmileageFee.toLocaleString()} 明细 ›` : '¥0'}
-          </span>
-        </div>
-        {/* 远调费 */}
+      {/* 费用信息 */}
+      <Card title="费用信息" style={{ marginBottom: 16 }} size="small">
         {(() => {
-          const rd = order.remoteDispatchDetail;
-          const totalFee = rd ? rd.pickupFee + rd.dropoffFee : 0;
-          const totalKm = rd ? rd.pickupKm + rd.dropoffKm : 0;
-          const hasFee = totalFee > 0;
-          return (
-            <div style={{ ...feeRowStyle, cursor: hasFee ? 'pointer' : 'default' }}
-              onClick={() => { if (hasFee) setFeeModal({ visible: true, type: 'remote' }); }}>
-              <span style={{ fontSize: 14, color: hasFee ? '#F53F3F' : '#4E5969' }}>
-                远调费{totalKm > 0 ? ` · ${totalKm.toFixed(1)}km` : ''}
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: hasFee ? '#F53F3F' : '#000' }}>
-                {hasFee ? `¥${totalFee.toLocaleString()} 明细 ›` : '¥0'}
-              </span>
+          const disc = Math.round(order.baseFee * (order.days || 1) * order.discount);
+          const gross = order.baseFee * (order.days || 1);
+          const remote = (order.remoteDispatchDetail?.pickupFee ?? 0) + (order.remoteDispatchDetail?.dropoffFee ?? 0);
+          const extraTotal = gross + order.overtimeFee + order.overmileageFee + remote;
+          const paid = order.paidAmount;
+          const refund = order.refundAmount || 0;
+          const st = order.status;
+          const fmt = (n: number) => `¥${n.toLocaleString()}`;
+
+          if (st === 'unpaid') return (<>
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'main' })}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>订单金额</span>
+              <span style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>{fmt(disc)}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span>
+            </div>
+            {order.discount < 1 && (
+              <div style={feeRowStyle}>
+                <span style={{ fontSize: 13, color: '#FF7D00' }}>（共优惠¥{(gross - disc).toLocaleString()}）</span>
+                <span style={{ fontSize: 14, color: '#86909C', textDecoration: 'line-through' }}>{fmt(gross)}</span>
+              </div>
+            )}
+            {pointsUsed > 0 && (
+              <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#00B42A' }}>积分抵扣（{pointsUsed.toLocaleString()} 积分）</span><span style={{ fontSize: 14, fontWeight: 500, color: '#00B42A' }}>-¥{pointsDeduction.toLocaleString()}</span></div>
+            )}
+          </>);
+
+          if (['pending_dispatch','pending_start','pending_enroute','ongoing'].includes(st)) return (
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'main' })}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>已付订单金额</span>
+              <span style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>{fmt(paid)}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span>
             </div>
           );
+
+          if (st === 'pending_extra') return (<>
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'main' })}>
+              <span style={{ fontSize: 14, color: '#4E5969' }}>已付订单金额</span>
+              <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{fmt(paid)}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span>
+            </div>
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'mainFull' })}>
+              <span style={{ fontSize: 14, color: '#4E5969' }}>应付订单金额</span>
+              <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{fmt(extraTotal)}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span>
+            </div>
+            <div style={{ borderTop: '1px solid #e5e6eb', margin: '4px 0', paddingTop: 8, ...feeRowStyle }}>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>需补款</span>
+              <span style={{ fontSize: 24, fontWeight: 700, color: '#F53F3F' }}>{fmt(extraTotal - paid)}</span>
+            </div>
+            {pointsUsed > 0 && (
+              <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#00B42A' }}>积分抵扣（{pointsUsed.toLocaleString()} 积分）</span><span style={{ fontSize: 14, fontWeight: 500, color: '#00B42A' }}>-¥{pointsDeduction.toLocaleString()}</span></div>
+            )}
+          </>);
+
+          if (st === 'completed') return (<>
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'mainFull' })}>
+              <span style={{ fontSize: 14, color: '#4E5969' }}>已付订单金额</span>
+              <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{fmt(paid)}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span>
+            </div>
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'refund' })}>
+              <span style={{ fontSize: 14, color: refund > 0 ? '#F53F3F' : '#4E5969' }}>退款金额</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: refund > 0 ? '#F53F3F' : '#000', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {refund > 0 ? `-¥${refund.toLocaleString()}` : '¥0'}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span>
+              </span>
+            </div>
+            <div style={{ borderTop: '1px solid #e5e6eb', margin: '4px 0', paddingTop: 8, ...feeRowStyle }}>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>实付订单金额</span>
+              <span style={{ fontSize: 24, fontWeight: 700 }}>{fmt(paid - refund)}</span>
+            </div>
+          </>);
+
+          if (st === 'cancelled' && paid > 0) return (<>
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'mainFull' })}>
+              <span style={{ fontSize: 14, color: '#4E5969' }}>已付订单金额</span>
+              <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{fmt(paid)}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span>
+            </div>
+            <div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'refund' })}>
+              <span style={{ fontSize: 14, color: '#4E5969' }}>退款金额</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#F53F3F', display: 'flex', alignItems: 'center', gap: 4 }}>
+                -¥{refund.toLocaleString()}<span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span>
+              </span>
+            </div>
+            <div style={{ borderTop: '1px solid #e5e6eb', margin: '4px 0', paddingTop: 8, ...feeRowStyle }}>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>实付订单金额</span>
+              <span style={{ fontSize: 24, fontWeight: 700 }}>{fmt(paid - refund)}</span>
+            </div>
+          </>);
+
+          return null;
         })()}
-        {/* 其他费用 */}
-        <div style={{ ...feeRowStyle, cursor: (order.overtimeFee > 0 || order.overmileageFee > 0) ? 'pointer' : 'default' }}
-          onClick={() => { if (order.overtimeFee > 0 || order.overmileageFee > 0) setFeeModal({ visible: true, type: 'other' }); }}>
-          <span style={{ fontSize: 14, color: order.overtimeFee > 0 || order.overmileageFee > 0 ? '#F53F3F' : '#4E5969' }}>其他费用</span>
-          <span style={{ fontSize: 14, fontWeight: 500, color: order.overtimeFee > 0 || order.overmileageFee > 0 ? '#F53F3F' : '#000' }}>
-            {order.overtimeFee > 0 || order.overmileageFee > 0 ? `¥${Math.round((order.overtimeFee + order.overmileageFee) * 0.1).toLocaleString()} 明细 ›` : '¥0'}
-          </span>
-        </div>
-        {/* 积分抵扣 */}
-        {pointsUsed > 0 && (
-          <div style={feeRowStyle}>
-            <span style={{ fontSize: 14, color: '#00B42A' }}>积分抵扣（使用 {pointsUsed.toLocaleString()} 积分）</span>
-            <span style={{ fontSize: 14, fontWeight: 500, color: '#00B42A' }}>-¥{pointsDeduction.toLocaleString()}</span>
-          </div>
-        )}
-        {/* 合计费用 */}
-        <div style={{ borderTop: '1px solid #e5e6eb', margin: '4px 0', paddingTop: 8, ...feeRowStyle }}>
-          <span style={{ fontSize: 15, fontWeight: 600 }}>合计费用</span>
-          <span style={{ fontSize: 18, fontWeight: 700 }}>¥{Math.max(0, order.baseFee * (order.days || 1) + order.overtimeFee + order.overmileageFee + ((order.remoteDispatchDetail?.pickupFee ?? 0) + (order.remoteDispatchDetail?.dropoffFee ?? 0)) - pointsDeduction).toLocaleString()}</span>
-        </div>
-        {/* 待结算费用 */}
-        {order.status === 'pending_extra' && (
-          <div style={{ ...feeRowStyle, color: '#F53F3F' }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#F53F3F' }}>待结算费用</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#F53F3F' }}>¥{Math.max(0, order.overtimeFee + order.overmileageFee + ((order.remoteDispatchDetail?.pickupFee ?? 0) + (order.remoteDispatchDetail?.dropoffFee ?? 0)) - pointsDeduction).toLocaleString()}</span>
-          </div>
-        )}
       </Card>
+
+      {/* 押金信息（仅租车 · 个人身份 · 单独卡片） */}
+      {!isCharter && order.userIdentity !== 'enterprise_employee' && depositTotal(order) > 0 && (() => {
+        const s = depositStatusOf(order);
+        const vRefunded = order.depositVehicleRefunded;
+        const viRefunded = order.depositViolationRefunded;
+        return (
+          <Card title="押金信息" style={{ marginBottom: 16 }} size="small"
+            extra={<Tag color={s.color} size="small">{s.label}</Tag>}>
+            <Descriptions column={2} size="small" data={[
+              { label: '收取押金', value: `¥${depositTotal(order).toLocaleString()}` },
+              { label: '收取时间', value: order.depositVehiclePaidAt || order.depositViolationPaidAt || '—' },
+            ]} />
+            <Card size="small" title="车辆押金" style={{ marginTop: 12, background: '#FAFBFC' }}
+              extra={<Tag color={vRefunded ? 'green' : 'red'} size="small">{vRefunded ? '已退款' : '未退'}</Tag>}>
+              <Descriptions column={2} size="small" data={[
+                { label: '金额', value: `¥${(order.depositVehicle || 0).toLocaleString()}` },
+                ...(vRefunded ? [
+                  { label: '扣款', value: (order.depositVehicleDeduct || 0) > 0 ? <span style={{ color: '#F53F3F' }}>-¥{(order.depositVehicleDeduct || 0).toLocaleString()}</span> : '¥0' },
+                  { label: '已退', value: <span style={{ color: '#00B42A' }}>¥{((order.depositVehicle || 0) - (order.depositVehicleDeduct || 0)).toLocaleString()}</span> },
+                  { label: '退还时间', value: order.depositVehicleRefundedAt || '—' },
+                ] : []),
+              ]} />
+            </Card>
+            <Card size="small" title="违章押金" style={{ marginTop: 8, background: '#FAFBFC' }}
+              extra={<Tag color={viRefunded ? 'green' : 'red'} size="small">{viRefunded ? '已退款' : '未退'}</Tag>}>
+              <Descriptions column={2} size="small" data={[
+                { label: '金额', value: `¥${(order.depositViolation || 0).toLocaleString()}` },
+                ...(viRefunded ? [
+                  { label: '扣款', value: (order.depositViolationDeduct || 0) > 0 ? <span style={{ color: '#F53F3F' }}>-¥{(order.depositViolationDeduct || 0).toLocaleString()}</span> : '¥0' },
+                  { label: '已退', value: <span style={{ color: '#00B42A' }}>¥{((order.depositViolation || 0) - (order.depositViolationDeduct || 0)).toLocaleString()}</span> },
+                  { label: '退还时间', value: order.depositViolationRefundedAt || '—' },
+                ] : []),
+              ]} />
+            </Card>
+          </Card>
+        );
+      })()}
 
       {/* 订单动态 */}
       <Card title="订单动态" style={{ marginBottom: 16 }} size="small">
@@ -477,19 +683,57 @@ function OrderDetailPanel({ order }: { order: Order }) {
         </Timeline>
       </Card>
 
-      {/* 取消原因 */}
-      {order.status === 'cancelled' && order.cancelReason && (
-        <Card title="取消原因" style={{ marginBottom: 16 }} size="small">
-          <p style={{ color: '#F53F3F', fontSize: 14 }}>{order.cancelReason}</p>
-        </Card>
-      )}
-
       {/* 费用明细弹窗 */}
       {feeModal.visible && (
         <FeeDetailSheet
-          title={feeModal.type === 'waiting' ? '等待费明细' : feeModal.type === 'overtime' ? '超时费明细' : feeModal.type === 'mileage' ? '超公里费明细' : feeModal.type === 'remote' ? '远调费明细' : '其他费用明细'}
+          title={feeModal.type === 'main' || feeModal.type === 'mainFull' ? '费用信息' : feeModal.type === 'waiting' ? '等待费明细' : feeModal.type === 'overtime' ? '超时费明细' : feeModal.type === 'mileage' ? '超公里费明细' : feeModal.type === 'remote' ? '远调费明细' : feeModal.type === 'refund' ? '退款明细' : '其他费用明细'}
           onClose={() => setFeeModal({ visible: false, type: 'overtime' })}
         >
+          {/* main：费用信息（套餐明细） */}
+          {feeModal.type === 'main' && (() => {
+            const disc = Math.round(order.baseFee * (order.days || 1) * order.discount);
+            const gross = order.baseFee * (order.days || 1);
+            const unitDisc = Math.round(order.baseFee * order.discount);
+            const coefLabel = `${(order.discount * 10).toFixed(1).replace(/\.0$/, '')}折`;
+            const dayLabel = isCharter ? '下单天数' : '租车天数';
+            const hintLabel = `${isCharter ? '包车' : '租车'}${order.days}天，享${coefLabel}`;
+            const rd = order.remoteDispatchDetail;
+            const remoteFee = (rd?.pickupFee ?? 0) + (rd?.dropoffFee ?? 0);
+            return (<div>
+              <div style={feeRowStyle}><span style={{ fontSize: 15, fontWeight: 700 }}>套餐总价</span><span style={{ fontSize: 18, fontWeight: 700 }}>¥{disc.toLocaleString()}</span></div>
+              {order.discount < 1 && (<div style={feeRowStyle}><span style={{ fontSize: 12, color: '#FF7D00' }}>共优惠¥{(gross - disc).toLocaleString()}</span><span style={{ fontSize: 12, color: '#86868B', textDecoration: 'line-through' }}>¥{gross.toLocaleString()}</span></div>)}
+              <div style={{ margin: '8px 0', padding: '12px 16px', background: '#F5F5F7', borderRadius: 12 }}>
+                <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>套餐单价</span><span style={{ fontSize: 16, fontWeight: 700 }}>¥{unitDisc.toLocaleString()}</span></div>
+                <div style={feeRowStyle}><span style={{ fontSize: 12, color: '#86868B' }}>{hintLabel}</span><span style={{ fontSize: 12, color: '#86868B', textDecoration: 'line-through' }}>¥{order.baseFee.toLocaleString()}</span></div>
+                <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>{dayLabel}</span><span style={{ fontSize: 14, fontWeight: 500 }}>{order.days}天</span></div>
+              </div>
+              {remoteFee > 0 && <div style={feeRowStyle}><span style={{ fontSize: 15, fontWeight: 700 }}>远调费</span><span style={{ fontSize: 15, fontWeight: 700 }}>¥{remoteFee.toLocaleString()}</span></div>}
+            </div>);
+          })()}
+          {/* mainFull：全量费用明细 */}
+          {feeModal.type === 'mainFull' && (() => {
+            const disc = Math.round(order.baseFee * (order.days || 1) * order.discount);
+            const gross = order.baseFee * (order.days || 1);
+            const unitDisc = Math.round(order.baseFee * order.discount);
+            const coefLabel = `${(order.discount * 10).toFixed(1).replace(/\.0$/, '')}折`;
+            const dayLabel = isCharter ? '下单天数' : '租车天数';
+            const hintLabel = `${isCharter ? '包车' : '租车'}${order.days}天，享${coefLabel}`;
+            const rd = order.remoteDispatchDetail;
+            const remoteFee = (rd?.pickupFee ?? 0) + (rd?.dropoffFee ?? 0);
+            return (<div>
+              <div style={feeRowStyle}><span style={{ fontSize: 15, fontWeight: 700 }}>套餐总价</span><span style={{ fontSize: 18, fontWeight: 700 }}>¥{disc.toLocaleString()}</span></div>
+              {order.discount < 1 && (<div style={feeRowStyle}><span style={{ fontSize: 12, color: '#FF7D00' }}>共优惠¥{(gross - disc).toLocaleString()}</span><span style={{ fontSize: 12, color: '#86868B', textDecoration: 'line-through' }}>¥{gross.toLocaleString()}</span></div>)}
+              <div style={{ margin: '8px 0', padding: '12px 16px', background: '#F5F5F7', borderRadius: 12 }}>
+                <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>套餐单价</span><span style={{ fontSize: 16, fontWeight: 700 }}>¥{unitDisc.toLocaleString()}</span></div>
+                <div style={feeRowStyle}><span style={{ fontSize: 12, color: '#86868B' }}>{hintLabel}</span><span style={{ fontSize: 12, color: '#86868B', textDecoration: 'line-through' }}>¥{order.baseFee.toLocaleString()}</span></div>
+                <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>实际使用天数</span><span style={{ fontSize: 14, fontWeight: 500 }}>{order.days}天</span></div>
+              </div>
+              <div style={{ borderTop: '1px solid #f0f0f0', margin: '4px 0', paddingTop: 8 }} />
+              {remoteFee > 0 && (<div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'remote' })}><span style={{ fontSize: 14, color: '#F53F3F' }}>实际远调费</span><span style={{ fontSize: 14, fontWeight: 500, color: '#F53F3F', display: 'flex', alignItems: 'center', gap: 4 }}>¥{remoteFee.toLocaleString()} <span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span></div>)}
+              {order.overtimeFee > 0 && (<div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'overtime' })}><span style={{ fontSize: 14, color: '#F53F3F' }}>超时费</span><span style={{ fontSize: 14, fontWeight: 500, color: '#F53F3F', display: 'flex', alignItems: 'center', gap: 4 }}>¥{order.overtimeFee.toLocaleString()} <span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span></div>)}
+              {order.overmileageFee > 0 && (<div style={{ ...feeRowStyle, cursor: 'pointer' }} onClick={() => setFeeModal({ visible: true, type: 'mileage' })}><span style={{ fontSize: 14, color: '#F53F3F' }}>超里程费</span><span style={{ fontSize: 14, fontWeight: 500, color: '#F53F3F', display: 'flex', alignItems: 'center', gap: 4 }}>¥{order.overmileageFee.toLocaleString()} <span style={{ fontSize: 16, color: '#C9CDD4' }}>›</span></span></div>)}
+            </div>);
+          })()}
           {/* 等待费明细 */}
           {feeModal.type === 'waiting' && order.feeExtraDetail?.waitFee && (
             <div>
@@ -578,6 +822,26 @@ function OrderDetailPanel({ order }: { order: Order }) {
                   {i < (order.feeExtraDetail?.otherFees?.length || 1) - 1 && <FeeDivider />}
                 </div>
               ))}
+            </div>
+          )}
+          {/* 退款明细：手工退款 + 订单退款 */}
+          {feeModal.type === 'refund' && (
+            <div>
+              {(() => {
+                const records = order.refundRecords && order.refundRecords.length > 0 ? order.refundRecords : [
+                  { id: 'r1', amount: 2000, time: '06-13 10:30', type: '差额退还', reason: '提前结束行程，差额自动退还' },
+                  { id: 'r2', amount: 800, time: '06-14 16:00', type: '平台退款', reason: '运营手动退款：维修补偿' },
+                  { id: 'r3', amount: 6264, time: '06-09 18:00', type: '取消退款', reason: '支付超时全额自动退款' },
+                ];
+                return records.map((r: any, i: number) => (
+                  <div key={r.id || i} style={{ marginBottom: i < records.length - 1 ? 12 : 0, padding: '12px 16px', background: '#F5F5F7', borderRadius: 12 }}>
+                    <FeeRow label="退款金额" value={<span style={{ fontSize: 16, fontWeight: 700, color: '#F53F3F' }}>-¥{(r.amount || 0).toLocaleString()}</span>} />
+                    <FeeRow label="申请退款时间" value={r.time || '—'} />
+                    <FeeRow label="退款类型" value={order.status === 'cancelled' ? '取消退款' : (typeof r.type === 'string' && !['manual','order'].includes(r.type) ? r.type : (r.type === 'manual' ? '手工退款' : '订单退款'))} />
+                    <FeeRow label="备注" value={r.reason || r.remark || '—'} />
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </FeeDetailSheet>

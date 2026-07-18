@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+<title>租车出行 · 计价规则 · 尊出行</title>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: #f9f9f9;
+    color: #1a1c1c;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 40px;
+    overflow-x: hidden;
+  }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; display: inline-block; vertical-align: middle; }
+
+  .header {
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0d1b2a 100%);
+    padding: 28px 24px 24px;
+    position: relative; overflow: hidden;
+  }
+  .header::after {
+    content: ''; position: absolute; top: -60%; right: -20%;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,87,255,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-brand { font-size: 13px; color: rgba(255,255,255,.5); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .header-title { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: .02em; position: relative; z-index: 1; }
+  .header-title span { color: #b6c4ff; }
+  .header-sub { font-size: 13px; color: rgba(255,255,255,.55); margin-top: 4px; position: relative; z-index: 1; }
+
+  .switcher-wrap { padding: 20px 24px 16px; background: #fff; border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; z-index: 10; }
+  .switcher-label { font-size: 12px; font-weight: 500; color: #86868B; letter-spacing: .03em; margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
+  .switcher-label .material-symbols-outlined { font-size: 16px; }
+  .model-tabs { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 0 -24px; padding: 0 24px 4px; }
+  .model-tabs::-webkit-scrollbar { display: none; }
+  .model-tab {
+    flex-shrink: 0; padding: 10px 22px; border-radius: 24px;
+    font-size: 14px; font-weight: 500;
+    border: 1.5px solid #e2e2e2; background: #fff; color: #1a1c1c;
+    cursor: pointer; transition: all .25s ease; white-space: nowrap;
+  }
+  .model-tab.active { background: #000; color: #fff; border-color: #000; }
+  .model-tab:not(.active):hover { background: #f5f5f5; }
+
+  .content { padding: 20px 24px; }
+  .section { background: #fff; border-radius: 32px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.03); }
+  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .section-icon { width: 32px; height: 32px; border-radius: 10px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .section-icon .material-symbols-outlined { font-size: 18px; color: #000; }
+  .section-title { font-size: 17px; font-weight: 600; color: #000; }
+  .section-desc { font-size: 14px; color: #1a1c1c; line-height: 1.7; margin-bottom: 14px; }
+  .section-desc-sm { font-size: 13px; color: #616363; line-height: 1.6; margin-bottom: 10px; }
+  .section-note { font-size: 13px; color: #616363; line-height: 1.65; margin-top: 12px; padding: 12px 16px; background: #f8f8f8; border-radius: 16px; border-left: 3px solid #0057FF; }
+
+  .table-wrap { border-radius: 16px; border: 1px solid #f0f0f0; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { background: #f8f8f8; font-weight: 600; color: #616363; font-size: 12px; letter-spacing: .02em; padding: 12px 16px; text-align: left; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+  tbody td { padding: 12px 16px; border-bottom: 1px solid #f5f5f5; line-height: 1.5; color: #1a1c1c; }
+  tbody tr:last-child td { border-bottom: none; }
+  .price { font-weight: 600; color: #000; white-space: nowrap; }
+  .price-danger { font-weight: 600; color: #FF4D4F; }
+  .price-free { font-weight: 600; color: #0057FF; }
+
+  .footer { padding: 8px 24px 0; text-align: center; }
+  .footer-card { background: #fff; border-radius: 32px; padding: 20px 24px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+  .footer-card p { font-size: 13px; color: #616363; line-height: 1.7; }
+  .footer-card strong { color: #1a1c1c; }
+  .hotline-wrap { background: linear-gradient(135deg, #f8f8ff 0%, #f0f4ff 100%); border: 1px solid #e8edff; }
+  .hotline-label { font-size: 12px; font-weight: 500; color: #86868B; letter-spacing: .03em; }
+  .hotline-phone { font-size: 20px; font-weight: 700; color: #0057FF; margin-top: 4px; letter-spacing: .5px; }
+  .hotline-note { font-size: 12px; color: #86868B; margin-top: 4px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: #86868B; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">ZUNCHUXING</div>
+  <div class="header-title">租车出行 <span>·</span> 计价规则</div>
+  <div class="header-sub">了解费用构成，行程更安心</div>
+</div>
+
+<div class="switcher-wrap">
+  <div class="switcher-label">
+    <span class="material-symbols-outlined">directions_car</span>
+    选择车型查看对应计价规则
+  </div>
+  <div class="model-tabs" id="modelTabs"></div>
+</div>
+
+<div class="content" id="content">
+  <div class="empty-state">请选择车型以查看计价规则</div>
+</div>
+
+<div class="footer">
+  <div class="footer-card">
+    <p>计费规则可能在运营后台更新，规则变更后仅影响新生成的订单。<br><strong>您已下单的订单，计价规则以下单时的版本为准</strong>。</p>
+  </div>
+  <div class="footer-card hotline-wrap" style="margin-bottom:0;">
+    <div class="hotline-label">客服热线</div>
+    <div class="hotline-phone" id="hotline">—</div>
+    <div class="hotline-note">如对费用有疑问，请拨打客服热线咨询</div>
+  </div>
+</div>
+
+<script>
+const pageData = {
+  global: { hotline: "0571-64000010" },
+  currentModel: null,
+  models: {
+    model_1: {
+      name: "增程星辉尊享版",
+      dailyPrice: 1500, deposit: 5000,
+      overtimeFee: 200, overMileageFee: 10,
+      waitFreeMinutes: 15, waitFee: 1, waitFeeCap: 2000,
+      remoteTiers: [
+        { limit: 5, fee: 100 }, { limit: 10, fee: 200 },
+        { limit: 30, fee: 400 }, { limit: -1, fee: 1000 }
+      ],
+      cancelRules: { freeThreshold: 4, tier1Threshold: 2, tier2Threshold: 1, tier1Rate: 25, tier2Rate: 50, tier3Rate: 75, overtimeRate: 100 }
+    },
+    model_2: {
+      name: "增程星辉行政版",
+      dailyPrice: 1800, deposit: 6000,
+      overtimeFee: 250, overMileageFee: 12,
+      waitFreeMinutes: 15, waitFee: 1, waitFeeCap: 2000,
+      remoteTiers: [
+        { limit: 5, fee: 100 }, { limit: 10, fee: 200 },
+        { limit: 30, fee: 400 }, { limit: -1, fee: 1000 }
+      ],
+      cancelRules: { freeThreshold: 4, tier1Threshold: 2, tier2Threshold: 1, tier1Rate: 25, tier2Rate: 50, tier3Rate: 75, overtimeRate: 100 }
+    },
+    model_3: {
+      name: "增程星耀行政版",
+      dailyPrice: 2200, deposit: 8000,
+      overtimeFee: 300, overMileageFee: 15,
+      waitFreeMinutes: 15, waitFee: 1, waitFeeCap: 2000,
+      remoteTiers: [
+        { limit: 5, fee: 100 }, { limit: 10, fee: 200 },
+        { limit: 30, fee: 400 }, { limit: -1, fee: 1000 }
+      ],
+      cancelRules: { freeThreshold: 4, tier1Threshold: 2, tier2Threshold: 1, tier1Rate: 25, tier2Rate: 50, tier3Rate: 75, overtimeRate: 100 }
+    }
+  }
+};
+
+function render() {
+  var modelId = pageData.currentModel;
+  if (!modelId || !pageData.models[modelId]) {
+    renderTabs(null);
+    document.getElementById('content').innerHTML = '<div class="empty-state">暂无车型数据</div>';
+    document.getElementById('hotline').textContent = pageData.global.hotline || '—';
+    return;
+  }
+  var model = pageData.models[modelId];
+  renderTabs(modelId);
+  renderContent(model);
+  document.getElementById('hotline').textContent = pageData.global.hotline || '—';
+}
+
+function renderTabs(activeId) {
+  var container = document.getElementById('modelTabs');
+  var keys = Object.keys(pageData.models);
+  if (keys.length === 0) { container.innerHTML = '<div style="font-size:13px;color:#86868B;padding:4px 0;">暂无车型</div>'; return; }
+  container.innerHTML = keys.map(function(id) {
+    var m = pageData.models[id];
+    var a = id === activeId ? ' active' : '';
+    return '<div class="model-tab' + a + '" data-model="' + id + '">' + escHtml(m.name) + '</div>';
+  }).join('');
+  container.querySelectorAll('.model-tab').forEach(function(el) {
+    el.addEventListener('click', function() { pageData.currentModel = this.dataset.model; render(); });
+  });
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderContent(model) {
+  var c = document.getElementById('content');
+  var html = '';
+
+  // 日租价
+  html += sec('calendar_month', '日租价', function() {
+    var h = '<div class="section-desc">每款车型有各自的日租价格，按 24 小时为一个使用周期。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>车型</th><th>日租价格</th></tr></thead><tbody>';
+    h += '<tr><td>' + escHtml(model.name) + '</td><td><span class="price">¥' + fmt(model.dailyPrice) + '</span>（含 24 小时 / 100 km）</td></tr>';
+    h += '</tbody></table></div><div class="section-note">多日订单按日租价 × 天数计算。</div>';
+    return h;
+  });
+
+  // 押金
+  html += sec('lock', '押金', function() {
+    var h = '<div class="section-desc">个人身份下单需支付押金。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>押金</th></tr></thead><tbody>';
+    h += '<tr><td><span class="price">¥' + fmt(model.deposit) + '</span></td></tr>';
+    h += '</tbody></table></div><div class="section-note">行程结束后预计7个工作日退还押金，如有车辆损耗或欠费按实际扣除后返还。产生的违章费用及扣分由驾驶人承担。</div>';
+    return h;
+  });
+
+  // 超时费
+  html += sec('schedule', '超时费', function() {
+    var h = '<div class="section-desc">从取车时间开始计时，到还车时间为止。实际使用时长超出套餐内包含的服务时长后，超出的部分按车型单独计费。</div>';
+    h += '<div class="section-desc-sm">多日订单每日单独记录用车时长，最后汇总结算。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>计费项</th><th>收费标准</th></tr></thead><tbody>';
+    h += '<tr><td>超时长费</td><td><span class="price">¥' + fmt(model.overtimeFee) + '/小时</span>，不足 1 小时按 1 小时计</td></tr>';
+    h += '</tbody></table></div>';
+    return h;
+  });
+
+  // 超里程费
+  html += sec('route', '超里程费', function() {
+    var h = '<div class="section-desc">从取车到还车，实际行驶里程超出套餐内包含的里程后，超出的部分按车型单独计费。</div>';
+    h += '<div class="section-desc-sm">多日订单每日单独记录行驶里程，最后汇总结算。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>计费项</th><th>收费标准</th></tr></thead><tbody>';
+    h += '<tr><td>超公里费</td><td><span class="price">¥' + fmt(model.overMileageFee) + '/公里</span></td></tr>';
+    h += '</tbody></table></div>';
+    return h;
+  });
+
+  // 等待费
+  html += sec('timer', '等待费', function() {
+    var h = '<div class="section-desc">送车人员按约定时间送达取车点后开始计时，免费等待一段时间。超出免费时长后按分钟计费，费用有上限。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>免费时长</th><th>超出后计费</th><th>费用上限</th></tr></thead><tbody>';
+    h += '<tr><td><span class="price">' + fmt(model.waitFreeMinutes) + ' 分钟</span></td>';
+    h += '<td><span class="price">¥' + fmt(model.waitFee) + '/分钟</span></td>';
+    h += '<td><span class="price">¥' + fmt(model.waitFeeCap) + '</span></td></tr>';
+    h += '</tbody></table></div>';
+    return h;
+  });
+
+  // 远调费
+  html += sec('distance', '远调费', function() {
+    var h = '<div class="section-desc">取车点或还车点超出市内运营区域时，按到运营区域边缘的直线距离分梯度计费。租车展示「取车远调距离」和「还车远调距离」两段，都在运营区域内则不产生远调费。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>里程区间</th><th>费用</th></tr></thead><tbody>';
+    for (var i = 0; i < (model.remoteTiers || []).length; i++) {
+      var tier = model.remoteTiers[i];
+      var prev = i > 0 ? model.remoteTiers[i-1].limit : 0;
+      var range = tier.limit === -1 ? '远调里程 > ' + prev + ' km' : prev + ' km < 远调里程 ≤ ' + tier.limit + ' km';
+      h += '<tr><td>' + range + '</td><td><span class="price">¥' + fmt(tier.fee) + '</span></td></tr>';
+    }
+    h += '</tbody></table></div>';
+    h += '<div class="section-note">远调费以订单实际结束时距离运营区域的距离为准计算。</div>';
+    return h;
+  });
+
+  // 取消费
+  var cr = model.cancelRules || {};
+  html += sec('cancel', '取消费', function() {
+    var h = '<div class="section-desc">订单进入行程中后不可取消。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>取消时间</th><th>扣费比例</th></tr></thead><tbody>';
+    h += '<tr><td>距出发时间 ≥ ' + fmt(cr.freeThreshold) + ' 小时</td><td><span class="price-free">免费取消</span></td></tr>';
+    h += '<tr><td>' + fmt(cr.freeThreshold) + ' 小时内 ~ ' + fmt(cr.tier1Threshold) + ' 小时前</td><td>扣除订单金额的 <span class="price-danger">' + fmt(cr.tier1Rate) + '%</span></td></tr>';
+    h += '<tr><td>' + fmt(cr.tier1Threshold) + ' 小时内 ~ ' + fmt(cr.tier2Threshold) + ' 小时前</td><td>扣除订单金额的 <span class="price-danger">' + fmt(cr.tier2Rate) + '%</span></td></tr>';
+    h += '<tr><td>' + fmt(cr.tier2Threshold) + ' 小时内 ~ 出发前</td><td>扣除订单金额的 <span class="price-danger">' + fmt(cr.tier3Rate) + '%</span></td></tr>';
+    h += '<tr><td>超过约定时间取消</td><td>扣除订单金额的 <span class="price-danger">' + fmt(cr.overtimeRate) + '%</span></td></tr>';
+    h += '</tbody></table></div>';
+    return h;
+  });
+
+  // 第三方费用
+  html += sec('receipt_long', '第三方费用', function() {
+    return '<div class="section-desc">行程中产生的高速费、停车费等第三方费用，乘客需自行支付。</div>';
+  });
+
+  // 折扣说明
+  html += sec('percent', '折扣说明', function() {
+    var h = '<div class="section-desc">平台根据租车天数提供梯度折扣，具体折扣系数以后台配置为准。</div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>租车天数</th><th>折扣系数</th></tr></thead><tbody>';
+    h += '<tr><td>1 ~ 3 天</td><td><span class="price">1.00</span></td></tr>';
+    h += '<tr><td>4 ~ 7 天</td><td><span class="price">0.95</span></td></tr>';
+    h += '<tr><td>7 天以上</td><td><span class="price">0.90</span></td></tr>';
+    h += '</tbody></table></div>';
+    h += '<div class="section-note">折扣系数根据后台配置动态调整，以下单时页面展示为准。</div>';
+    return h;
+  });
+
+  // 提前结束
+  html += sec('event_busy', '提前结束', function() {
+    var h = '<div class="section-desc">已开始的行程提前结束，将收取一定比例的违约金。</div>';
+    h += '<div class="section-note">具体违约金金额及退费规则，请联系平台运营人员沟通确认。</div>';
+    return h;
+  });
+
+  c.innerHTML = html;
+}
+
+function sec(icon, title, fn) {
+  var h = '<div class="section"><div class="section-header">';
+  h += '<div class="section-icon"><span class="material-symbols-outlined">' + icon + '</span></div>';
+  h += '<div class="section-title">' + title + '</div></div>';
+  h += fn();
+  h += '</div>';
+  return h;
+}
+
+function fmt(n) { return (n == null) ? '—' : Number(n).toLocaleString('zh-CN'); }
+
+(function init() {
+  var keys = Object.keys(pageData.models);
+  if (keys.length > 0) { pageData.currentModel = keys[0]; }
+  render();
+})();
+</script>
+</body>
+</html>

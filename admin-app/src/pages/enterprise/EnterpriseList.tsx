@@ -11,11 +11,11 @@ import { enterprises, quotaChanges } from '../../data/mock';
 import type { Enterprise, EnterpriseStatus } from '../../types';
 
 const statusMap: Record<EnterpriseStatus, { label: string; color: string }> = {
-  pending: { label: '待审核', color: 'orangered' },
-  approved: { label: '已通过', color: 'green' },
-  rejected: { label: '已驳回', color: 'gray' },
+  active: { label: '生效中', color: 'green' },
   disabled: { label: '已禁用', color: 'red' },
 };
+
+const sourceLabels: Record<string, string> = { miniapp: '小程序申请', h5: '鸿蒙应用（H5）', backend: '后台添加' };
 
 export default function EnterpriseList() {
   const navigate = useNavigate();
@@ -57,7 +57,7 @@ export default function EnterpriseList() {
       });
     }
     if (searchParams.get('quota') === 'low') {
-      result = result.filter(e => e.remainingQuota < 2000 && e.status === 'approved');
+      result = result.filter(e => e.remainingQuota < 2000 && e.status === 'active');
     }
     // 注册时间范围筛选
     if (dateRange.length === 2 && dateRange[0] && dateRange[1]) {
@@ -90,7 +90,7 @@ export default function EnterpriseList() {
         totalQuota: 0,
         usedAmount: 0,
         remainingQuota: 0,
-        status: 'approved',
+        status: 'active',
         source: 'backend',
         createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
         adminName: values.contactName,
@@ -154,11 +154,9 @@ export default function EnterpriseList() {
   };
 
   const handleEnable = (record: Enterprise) => {
-    setData(data.map(e => e.id === record.id ? { ...e, status: 'approved' as EnterpriseStatus } : e));
+    setData(data.map(e => e.id === record.id ? { ...e, status: 'active' as EnterpriseStatus } : e));
     Message.success(`企业「${record.name}」已启用`);
   };
-
-  const sourceLabels: Record<string, string> = { miniapp: '小程序申请', backend: '后台添加' };
 
   const columns = [
     { title: '企业名称', dataIndex: 'name', width: 200, render: (_: string, r: Enterprise) => (
@@ -187,18 +185,7 @@ export default function EnterpriseList() {
       render: (_: unknown, record: Enterprise) => (
         <Space size={4}>
           <Button type="text" size="small" onClick={() => navigate(`/enterprise/${record.id}`)}>详情</Button>
-          {record.status === 'pending' && (
-            <Popconfirm
-              title="确定通过该企业的入驻申请吗？"
-              onOk={() => {
-                setData(data.map(e => e.id === record.id ? { ...e, status: 'approved' as EnterpriseStatus } : e));
-                Message.success('审核已通过');
-              }}
-            >
-              <Button type="text" size="small" status="success">通过</Button>
-            </Popconfirm>
-          )}
-          {record.status === 'approved' && (
+          {record.status === 'active' && (
             <>
               <Button type="text" size="small" onClick={() => { setSelectedEnterprise(record); setShowQuotaModal(true); }}>调整额度</Button>
               <Button type="text" size="small" status="danger" onClick={() => { setDisableTarget(record); setDisableVisible(true); }}>禁用</Button>
@@ -206,12 +193,6 @@ export default function EnterpriseList() {
           )}
           {record.status === 'disabled' && (
             <Button type="text" size="small" status="success" onClick={() => handleEnable(record)}>启用</Button>
-          )}
-          {record.status === 'rejected' && (
-            <Button type="text" size="small" onClick={() => {
-              setData(data.map(e => e.id === record.id ? { ...e, status: 'pending' as EnterpriseStatus } : e));
-              Message.success('已重新进入审核');
-            }}>重新审核</Button>
           )}
         </Space>
       ),
@@ -230,7 +211,7 @@ export default function EnterpriseList() {
               options={Object.entries(statusMap).map(([k, v]) => ({ label: v.label, value: k }))} />
             <Select placeholder="创建来源" style={{ width: 140 }} mode="multiple"
               value={sourceFilter} onChange={setSourceFilter}
-              options={[{ label: '小程序申请', value: 'miniapp' }, { label: '后台添加', value: 'backend' }]} />
+              options={[{ label: '小程序申请', value: 'miniapp' }, { label: '鸿蒙应用（H5）', value: 'h5' }, { label: '后台添加', value: 'backend' }]} />
             {/* 剩余额度筛选 */}
             <Space size={4}>
               <Select placeholder="额度" style={{ width: 80 }}
@@ -298,14 +279,6 @@ export default function EnterpriseList() {
             { match: /^1[3-9]\d{9}$/, message: '手机号格式不正确' },
           ]}>
             <Input placeholder="11位手机号" maxLength={11} />
-          </Form.Item>
-          <Form.Item field="adminPassword" label="初始密码" rules={[
-            { required: true, message: '请输入初始密码' },
-            { minLength: 8, message: '密码至少8位' },
-            { maxLength: 20, message: '密码不超过20位' },
-            { match: /^(?=.*[a-zA-Z])(?=.*\d).+$/, message: '密码需包含字母和数字' },
-          ]}>
-            <Input.Password placeholder="8-20位字母+数字组合" />
           </Form.Item>
           <Form.Item field="remark" label="备注">
             <Input.TextArea placeholder="记录新增原因" maxLength={200} showWordLimit />

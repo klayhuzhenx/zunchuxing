@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人隐私政策摘要</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f7fa;
+            color: #1f2937;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 750px;
+            margin: 0 auto;
+            padding: 0 16px 20px;
+        }
+        /* 顶部导航栏 */
+        .header {
+            padding: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f2f5;
+            margin-bottom: 16px;
+            position: sticky;
+            top: 0;
+            background-color: #f5f7fa;
+            z-index: 10;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .full-version-btn {
+            background-color: #165dff;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        /* 基础信息模块 */
+        .base-info-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        }
+        .base-info-item {
+            font-size: 15px;
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+        .base-info-item:last-child {
+            margin-bottom: 0;
+        }
+        .base-info-item strong {
+            color: #1f2937;
+            font-weight: 600;
+        }
+        /* 摘要说明模块 */
+        .summary-desc {
+            background-color: #e8f3ff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .summary-desc p {
+            font-size: 15px;
+            color: #1f2937;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+        .summary-desc p:last-child {
+            margin-bottom: 0;
+        }
+        .summary-desc strong {
+            color: #165dff;
+            font-weight: 600;
+        }
+        /* 内容卡片通用样式 */
+        .content-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        }
+        /* 标题层级 */
+        .chapter-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #165dff;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+        .sub-chapter {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        /* 正文样式 */
+        .content-text {
+            font-size: 15px;
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+        .content-text:last-child {
+            margin-bottom: 0;
+        }
+        .content-text strong {
+            color: #1f2937;
+            font-weight: 600;
+        }
+        /* 列表样式 */
+        .content-list {
+            padding-left: 22px;
+            margin-bottom: 10px;
+        }
+        .content-list li {
+            font-size: 15px;
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 6px;
+        }
+        .content-list li:last-child {
+            margin-bottom: 0;
+        }
+        /* 表格样式 - 响应式适配 */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            margin: 16px 0;
+            border-radius: 8px;
+            border: 1px solid #f0f2f5;
+        }
+        .content-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        .content-table thead {
+            background-color: #f8fafc;
+        }
+        .content-table th {
+            padding: 12px 10px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .content-table td {
+            padding: 12px 10px;
+            font-size: 14px;
+            color: #4b5563;
+            border-bottom: 1px solid #f0f2f5;
+            line-height: 1.6;
+        }
+        .content-table tr:last-child td {
+            border-bottom: none;
+        }
+        /* 底部说明 */
+        .footer-desc {
+            text-align: center;
+            font-size: 14px;
+            color: #6b7280;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航栏：查看完整版政策按钮 链接可自行填写href内容 -->
+        <div class="header">
+            <h1>个人隐私政策摘要</h1>
+            <a href="https://oss.jachx.com/jaciov/%E5%92%8C%E8%BD%A6%E8%81%94-%E9%9A%90%E7%A7%81%E6%94%BF%E7%AD%96.html" class="full-version-btn" target="_blank">查看完整版隐私政策</a>
+        </div>
+
+        <!-- 基础信息模块 -->
+        <div class="base-info-card">
+            <div class="base-info-item"><strong>版本生效日期：</strong>2026 年 04 月 10 日</div>
+            <div class="base-info-item"><strong>运营主体：</strong>合肥和行科技有限公司</div>
+            <div class="base-info-item"><strong>注册地址：</strong>安徽省合肥市经济开发区紫蓬路 1325 号</div>
+            <div class="base-info-item"><strong>适用范围：</strong>和车联 web 端、微信公众号、微信小程序及相关车联网联运营平台服务</div>
+        </div>
+
+        <!-- 摘要说明 -->
+        <div class="summary-desc">
+            <p>本摘要为《和车联隐私政策》的精简说明，旨在帮助您快速了解个人信息处理核心规则。完整内容请查阅完整版隐私政策，您使用和车联平台任一产品或服务，即表示您同意我们按照完整版政策处理您的个人信息。</p>
+            <p>我们严格遵循合法、正当、必要原则，仅收集实现服务必需的个人信息；非必要信息的处理会单独征求您的明示同意，拒绝提供非必要信息不影响基础业务功能的正常使用。</p>
+        </div>
+
+        <!-- 一、个人信息收集规则 -->
+        <div class="content-card">
+            <h2 class="chapter-title">一、个人信息收集规则</h2>
+            <p class="content-text">
+                根据《常见类型移动互联网应用程序必要个人信息范围规定》，和车联核心归类为地图导航类，兼具用车服务类复合属性，实现基础业务功能的必要个人信息包括：
+            </p>
+            <ul class="content-list">
+                <li>用户电话号码；</li>
+                <li>用户以及车辆位置信息、行踪轨迹；</li>
+                <li>车辆信息、车队信息（租赁 / 物流场景）。</li>
+            </ul>
+            <p class="content-text">各业务功能收集的信息范围如下：</p>
+            
+            <!-- 业务功能收集信息表格 -->
+            <div class="table-wrapper">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>业务功能模块</th>
+                            <th>核心收集信息</th>
+                            <th>拒绝提供的影响</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>账号登录与个人资料管理</td>
+                            <td>手机号、微信 OpenID（微信登录）、用户名、头像、登录 IP、登录 / 操作日志信息</td>
+                            <td>无法完成账号登录，无法使用平台基础服务</td>
+                        </tr>
+                        <tr>
+                            <td>车联网核心服务（车辆数据看板、实时定位、历史轨迹、车辆列表、车队管理）</td>
+                            <td>车辆唯一标识信息（底盘号、车牌号等）、车辆实时 / 历史位置信息、运行状态信息、车队基础信息、人员管理信息（姓名、手机号、身份证号用于身份核验）、账号权限信息</td>
+                            <td>无法使用车辆定位、轨迹回放、车队管理等核心车联网服务</td>
+                        </tr>
+                        <tr>
+                            <td>统计分析服务（运行分析、充电分析、驾驶行为统计、能耗报表）</td>
+                            <td>车辆行驶 / 充电 / 能耗 / 驾驶行为相关数据、位置信息、司机身份信息、车队归属信息</td>
+                            <td>无法查看对应运营数据统计与分析内容</td>
+                        </tr>
+                        <tr>
+                            <td>安全与适配保障</td>
+                            <td>设备型号、操作系统版本、网络信息、位置相关信息、访问日志信息</td>
+                            <td>无法保障 App 正常适配运行、账号安全与风险防控</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="content-text">
+                <strong>法定豁免情形：</strong>为履行法定义务、应对突发公共安全事件、处理合法公开信息等法律法规规定的情形，我们收集 / 使用您的个人信息无需征得您的授权同意。
+            </p>
+        </div>
+
+        <!-- 二、设备权限调用说明 -->
+        <div class="content-card">
+            <h2 class="chapter-title">二、设备权限调用说明</h2>
+            <p class="content-text">
+                我们仅在您使用对应业务功能时，通过弹窗单独征得您的明示同意后调用相关设备权限；您可随时通过设备 / 小程序设置关闭权限，关闭后不影响其他非相关功能的正常使用。核心权限调用规则如下：
+            </p>
+
+            <!-- 设备权限表格 -->
+            <div class="table-wrapper">
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th>设备权限</th>
+                            <th>核心调用目的</th>
+                            <th>对应业务功能</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>位置权限</td>
+                            <td>获取车辆定位坐标、加载地图数据、标记充电 / 异常驾驶位置</td>
+                            <td>车辆实时定位、历史轨迹、寻车、充电分析、驾驶行为统计</td>
+                        </tr>
+                        <tr>
+                            <td>网络权限</td>
+                            <td>同步车辆 / 车队 / 账号数据、保障信息实时性、生成统计报表</td>
+                            <td>全平台基础服务、所有需联网的功能模块</td>
+                        </tr>
+                        <tr>
+                            <td>存储权限</td>
+                            <td>缓存轨迹 / 报表数据、存储个人设置与政策文档、提升加载体验</td>
+                            <td>历史轨迹、统计分析服务、个人信息与设置服务</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="content-text"><strong>设备权限列表</strong></p>
+        </div>
+
+        <!-- 三、第三方 SDK 使用说明 -->
+        <div class="content-card">
+            <h2 class="chapter-title">三、第三方 SDK 使用说明</h2>
+            <p class="content-text">
+                我们仅为实现特定功能接入第三方 SDK，并对 SDK 进行严格安全检测；SDK 相关权限调用会单独征求您的同意。接入详情如下：
+            </p>
+            <ul class="content-list">
+                <li>腾讯地图定位 SDK：用于实现用户定位、地图展示、车辆定位 / 轨迹展示、搜索导航服务，收集位置相关信息。</li>
+                <li>微信 Open SDK：用于实现微信账号快捷授权登录，收集您的微信 OpenID。</li>
+            </ul>
+            <p class="content-text">收集个人信息的第三方SDK说明</p>
+        </div>
+
+        <!-- 四、个人信息使用规则 -->
+        <div class="content-card">
+            <h2 class="chapter-title">四、个人信息使用规则</h2>
+            <ul class="content-list">
+                <li>我们仅将您的个人信息用于本政策列明的、与实现服务目的直接或合理关联的场景，不会超出范围使用。</li>
+                <li>我们会对去标识化的个人信息进行统计分析，用于产品优化、新功能开发，统计信息不会包含您的身份识别信息。</li>
+                <li>我们仅会向您发送服务必需的验证码、服务提醒短信，绝不会通过短信、电话等方式开展任何营销、推销活动。</li>
+                <li>超出原定目的使用您的个人信息，我们会再次征得您的明示同意。</li>
+            </ul>
+        </div>
+
+        <!-- 五、个人信息的共享、转让与公开披露 -->
+        <div class="content-card">
+            <h2 class="chapter-title">五、个人信息的共享、转让与公开披露</h2>
+            <ul class="content-list">
+                <li>共享：我们不会擅自将您的个人信息与第三方共享，仅在获得您的明确同意后，向您指定的第三方共享授权范围内的信息。</li>
+                <li>转让：如发生收购、兼并、重组等主体变更，我们会要求变更后的主体继续遵守本隐私政策；如需变更个人信息使用目的，会事先征得您的明示同意。</li>
+                <li>公开披露：除非事先获得您的明确同意、依照法律规定必须披露，或为保护相关方合法权益且对信息去标识化处理，我们不会公开披露您的个人信息。</li>
+            </ul>
+        </div>
+
+        <!-- 六、个人信息的存储与安全保护 -->
+        <div class="content-card">
+            <h2 class="chapter-title">六、个人信息的存储与安全保护</h2>
+            <ul class="content-list">
+                <li>存储地域：我们收集的您的个人信息，全部在中国内地存储和使用；如需向境外传输，会另行告知并征得您的同意。</li>
+                <li>保存期限：您使用服务期间，我们会持续保存您的个人信息；您注销账号后，我们将在法律法规规定的最短必需期限届满后，对您的个人信息进行删除或匿名化处理；违法违约记录、涉刑事案件相关信息将按法规要求延长保存期限。</li>
+                <li>安全保障：我们建立了数据分类分级、全生命周期安全管控体系，对个人敏感信息加密存储，采用加密传输、严格权限控制、安全审计等技术与管理措施保障信息安全；已通过信息系统安全等级保护三级备案、ITSS 三级、CMMI 三级认证。</li>
+                <li>安全事件处置：发生个人信息安全事件后，我们将按法规要求及时告知您事件详情、处置措施、风险防范建议，并向监管部门上报处置情况。</li>
+            </ul>
+        </div>
+
+        <!-- 七、您的个人信息主体权利 -->
+        <div class="content-card">
+            <h2 class="chapter-title">七、您的个人信息主体权利</h2>
+            <p class="content-text">
+                您对您的个人信息享有以下法定权利，我们将在验证您的身份后15 日内对您的请求作出答复或合理解释：
+            </p>
+            <ul class="content-list">
+                <li>查询、复制、修改、删除权：您可通过【我的】-【设置】查询、复制、修改您的个人信息；可通过联系官方客服提交个人信息删除申请，注销账号可同步申请删除全部个人信息。</li>
+                <li>撤回同意权：您可通过【我的】-【隐私管理】调整授权范围、撤回隐私政策授权，也可通过设备 / 小程序设置关闭相关权限；撤回授权不影响此前基于您的同意开展的信息处理行为。</li>
+                <li>账号注销权：您可通过联系和车联人工客服提交账号注销申请，注销后我们将停止为您提供服务，并按法规要求处理您的个人信息。</li>
+                <li>异议与投诉权：您可通过本政策列明的渠道反馈您的意见、建议或投诉。</li>
+            </ul>
+            <p class="content-text">
+                <strong>响应例外：</strong>对于与履行法定义务、国家安全、公共安全、刑事侦查、商业秘密等法定情形相关的请求，我们将无法响应。
+            </p>
+        </div>
+
+        <!-- 八、政策更新与平台关停 -->
+        <div class="content-card">
+            <h2 class="chapter-title">八、政策更新与平台关停</h2>
+            <ul class="content-list">
+                <li>政策更新：我们会根据业务迭代、法规要求修订本政策，更新后将通过平台 “我的 - 设置 - 隐私政策” 发布最新版本，并通过首页公告提示；未经您的明确同意，我们不会削减您按本政策享有的权利。</li>
+                <li>平台关停：如平台暂停或终止运营，我们将通过平台显著位置、官方渠道发布公告，并在法规要求的最短存储期限届满后，对您的个人信息依法进行删除或匿名化处理。</li>
+            </ul>
+        </div>
+
+        <!-- 九、联系我们与维权渠道 -->
+        <div class="content-card">
+            <h2 class="chapter-title">九、联系我们与维权渠道</h2>
+            <ul class="content-list">
+                <li>人工客服：通过手机端 “我的 - 关注和车联公众号”，在公众号内联系人工客服反馈问题。</li>
+                <li>个人信息专用反馈邮箱：zhangwei@jachx.com</li>
+                <li>维权途径：如您对我们的回复不满意，或认为我们的个人信息处理行为损害了您的合法权益，可向被告住所地有管辖权的法院提起诉讼。</li>
+            </ul>
+        </div>
+
+        <!-- 底部说明 -->
+        <p class="footer-desc">说明：以上仅展示核心个人信息及简要政策，完整版本请点击右上角《查看完整版隐私政策》进行查看。</p>
+    </div>
+</body>
+</html>

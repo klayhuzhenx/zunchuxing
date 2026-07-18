@@ -26,7 +26,7 @@ export default function EnterpriseLayout() {
   const handleMenuClick = (key: string) => {
     const routeMap: Record<string, string> = {
       dashboard: '/', employees: '/employees', orders: '/orders',
-      quota: '/quota', billing: '/billing', invoice: '/invoice',
+      quota: '/quota', billing: '/billing', invoice: '/invoice', payment: '/payment',
       'enterprise-info': '/enterprise-info',
     };
     navigate(routeMap[key] || '/');
@@ -66,9 +66,10 @@ export default function EnterpriseLayout() {
             key="finance-group"
             title={<span><IconSafe />财务管理</span>}
           >
-            <Item key="quota"><IconDesktop />额度与消费</Item>
-            <Item key="billing"><IconCommon />账单管理</Item>
+            <Item key="quota"><IconDesktop />额度消费</Item>
+            <Item key="billing"><IconCommon />企业账单</Item>
             <Item key="invoice"><IconDriveFile />发票管理</Item>
+            <Item key="payment"><IconSafe />付款管理</Item>
           </SubMenu>
           <Item key="enterprise-info"><IconSettings />企业信息</Item>
         </Menu>

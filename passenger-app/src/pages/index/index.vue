@@ -3,55 +3,54 @@
     <!-- 顶部 sticky header -->
     <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="header-inner">
-        <view>
-          <text class="header-title">尊出行</text>
-          <text v-if="enterpriseName" class="header-enterprise">{{ enterpriseName }}</text>
-        </view>
+        <text class="header-title">尊出行</text>
       </view>
     </view>
 
     <!-- 主内容 -->
-    <view class="main">
-      <!-- Banner -->
-      <view class="section banner-section">
-        <view class="banner">
-          <!-- 实际图片可替换为 <image src="..." mode="aspectFill" /> -->
-          <view class="banner-img" />
-          <view class="banner-mask" />
-          <view class="banner-content">
-            <text class="banner-title">尊出行</text>
-            <text class="banner-subtitle">高端出行服务平台</text>
+    <scroll-view scroll-y class="main">
+      <!-- 服务入口卡片 -->
+      <view class="cards">
+        <!-- 包车出行 -->
+        <view class="card" @click="goCharter">
+          <image
+            class="card-img"
+            src="/static/image-5.png"
+            mode="aspectFill"
+          />
+          <view class="card-gradient" />
+          <view class="card-content">
+            <text class="card-badge">尊享服务</text>
+            <text class="card-title">包车出行</text>
+            <text class="card-desc">专业司机 · 定制行程</text>
           </view>
-          <view class="banner-dots">
-            <view class="dot dot-active" />
-            <view class="dot" />
+          <view class="card-arrow">
+            <text class="material-symbols-outlined">arrow_outward</text>
+          </view>
+        </view>
+
+        <!-- 租车出行 -->
+        <view class="card" @click="goRental">
+          <image
+            class="card-img"
+            src="/static/image-4.png"
+            mode="aspectFill"
+          />
+          <view class="card-gradient" />
+          <view class="card-content">
+            <text class="card-badge">自由驾享</text>
+            <text class="card-title">租车出行</text>
+            <text class="card-desc">自驾随心 · 一日起程</text>
+          </view>
+          <view class="card-arrow">
+            <text class="material-symbols-outlined">arrow_outward</text>
           </view>
         </view>
       </view>
 
-      <!-- 服务入口 2x2 grid -->
-      <view class="section service-section">
-        <view class="service-grid">
-          <view class="service-card" @click="goCharter">
-            <view class="service-icon-wrap">
-              <text class="material-symbols-outlined service-icon">directions_car</text>
-            </view>
-            <text class="service-title">包车出行</text>
-            <text class="service-desc">4h / 8h 套餐</text>
-          </view>
-          <view class="service-card" @click="goRental">
-            <view class="service-icon-wrap">
-              <text class="material-symbols-outlined service-icon">vpn_key</text>
-            </view>
-            <text class="service-title">租车出行</text>
-            <text class="service-desc">尊界车主专享</text>
-          </view>
-        </view>
-      </view>
+      <view class="bottom-spacer" />
+    </scroll-view>
 
-    </view>
-
-    <!-- 底部 tab bar -->
     <tab-bar current="home" />
   </view>
 </template>
@@ -61,20 +60,11 @@ import { ref, onMounted } from 'vue';
 import TabBar from '@/components/tab-bar.vue';
 
 const statusBarHeight = ref(0);
-const enterpriseName = ref('');
 
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync();
   statusBarHeight.value = sysInfo.statusBarHeight || 0;
-  const token = uni.getStorageSync('token');
-  if (token) {
-    enterpriseName.value = '华为技术有限公司';
-  }
 });
-
-const onMenu = () => {
-  uni.showToast({ title: '菜单', icon: 'none' });
-};
 
 const goCharter = () => uni.navigateTo({ url: '/pages/charter/index' });
 const goRental = () => uni.navigateTo({ url: '/pages/rental/index' });
@@ -83,17 +73,10 @@ const goRental = () => uni.navigateTo({ url: '/pages/rental/index' });
 <style lang="scss" scoped>
 .page {
   height: 100vh;
-  background: #F9F9F9;
+  background: #F8FAFC;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-/* ===== Main ===== */
-.main {
-  flex: 1;
-  height: 0;
-  padding-bottom: 24px;
 }
 
 /* ===== Header ===== */
@@ -101,208 +84,136 @@ const goRental = () => uni.navigateTo({ url: '/pages/rental/index' });
   position: sticky;
   top: 0;
   z-index: 50;
-  background: #F9F9F9;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .header-inner {
-  height: 56px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
 }
 
-.header-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -8px;
-
-  .material-symbols-outlined {
-    font-size: 24px;
-    color: #000000;
-  }
-
-  &:active {
-    opacity: 0.7;
-  }
-}
-
-.header-icon-placeholder {
-  width: 24px;
-  height: 24px;
-}
-
 .header-title {
-  font-size: 28px;
-  line-height: 36px;
-  font-weight: 700;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 800;
   letter-spacing: -0.01em;
   color: #000000;
 }
 
-.section {
-  padding: 0 24px;
-  margin-top: 32px;
+/* ===== Main ===== */
+.main {
+  flex: 1;
+  height: 0;
 }
 
-.banner-section {
-  margin-top: 8px;
+.bottom-spacer {
+  height: 32px;
 }
 
-/* ===== Banner ===== */
-.banner {
+/* ===== 卡片 ===== */
+.cards {
+  padding: 32px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 5 / 4;
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-}
-
-.banner-img {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #2c2c2e 0%, #1a1a1c 50%, #0a0a0c 100%);
-  /* 真实项目可换成 <image src="https://..."/> */
-}
-
-.banner-img::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 30% 30%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 70%, rgba(0, 87, 255, 0.18) 0%, transparent 50%);
-}
-
-.banner-mask {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.banner-content {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 32px;
-}
-
-.banner-title {
-  font-size: 32px;
-  line-height: 40px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: #FFFFFF;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.banner-subtitle {
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 500;
-  letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.9);
-  text-transform: uppercase;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.banner-dots {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-}
-
-.dot {
-  width: 6px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.dot-active {
-  width: 24px;
-  background: #FFFFFF;
-}
-
-/* ===== 服务卡片 ===== */
-.service-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.service-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 24px;
-  background: #FFFFFF;
-  border: 1px solid #F2F2F2;
-  border-radius: 32px;
-  transition: all 0.2s ease;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
 
   &:active {
-    transform: scale(0.95);
-    opacity: 0.9;
+    transform: scale(0.97);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 }
 
-.service-icon-wrap {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #F2F2F2;
+.card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition: transform 1s ease;
+}
+
+.card:active .card-img {
+  transform: scale(1.05);
+}
+
+.card-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.6), transparent, transparent);
+}
+
+.card-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 32px 32px;
+}
+
+.card-badge {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #FFFFFF;
+  background: #0052FF;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  margin-bottom: 8px;
+  width: fit-content;
+}
+
+.card-title {
+  display: block;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+
+.card-desc {
+  display: block;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.card-arrow {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
-}
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 
-.service-icon {
-  font-size: 28px;
-  color: #1A1C1C;
-}
-
-.service-card:active .service-icon-wrap {
-  background: #000000;
-}
-
-.service-card:active .service-icon {
-  color: #FFFFFF;
-}
-
-.service-title {
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-  color: #000000;
-}
-
-.service-desc {
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: #86868B;
-}
-
-.header-enterprise {
-  display: block;
-  font-size: 12px;
-  color: #86868B;
-  font-weight: 500;
-  margin-top: 2px;
+  .material-symbols-outlined {
+    font-size: 14px;
+    color: #FFFFFF;
+  }
 }
 </style>

@@ -2,10 +2,10 @@ import { useState, useMemo } from 'react';
 import {
   Card, Table, Tag, Button, Input, Select, Space, Drawer, Descriptions,
   Modal, Message, Form, InputNumber, DatePicker, Grid, Timeline, Image,
-  Upload, Popconfirm,
+  Upload,
 } from '@arco-design/web-react';
 import { IconSearch, IconPlus, IconDownload, IconEye } from '@arco-design/web-react/icon';
-import { vehicles, drivers, vehicleModels } from '../../data/mock';
+import { vehicles, drivers, vehicleModels, opsCities } from '../../data/mock';
 import type { Vehicle, VehicleStatus } from '../../types';
 
 const { RangePicker } = DatePicker;
@@ -17,9 +17,7 @@ const statusMap: Record<VehicleStatus, { label: string; color: string }> = {
 
 const colorOptions = ['黑色', '白色', '银色', '金色', '深蓝', '灰色', '红色'];
 const typeOptions = ['轿车', 'SUV', 'MPV', '豪华轿车'];
-function getDriverOptions() {
-  return drivers.filter(d => d.status === 'active').map(d => ({ label: `${d.name} ${d.phone}`, value: d.name }));
-}
+const driverFilterOptions = drivers.filter(d => d.status === 'active').map(d => ({ label: `${d.name} ${d.phone}`, value: d.name }));
 
 export default function VehicleList() {
   const [data, setData] = useState<Vehicle[]>(vehicles);
@@ -27,6 +25,7 @@ export default function VehicleList() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [driverFilter, setDriverFilter] = useState('');
+  const [areaFilter, setAreaFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -35,7 +34,6 @@ export default function VehicleList() {
   const [disableVisible, setDisableVisible] = useState(false);
   const [disableReason, setDisableReason] = useState('');
   const [enableVisible, setEnableVisible] = useState(false);
-  const [enableReason, setEnableReason] = useState('');
   const [driverMgmtVisible, setDriverMgmtVisible] = useState(false);
   const [pendingAddDrivers, setPendingAddDrivers] = useState<string[]>([]);
   const [pendingRemoveDrivers, setPendingRemoveDrivers] = useState<Set<string>>(new Set());
@@ -44,11 +42,20 @@ export default function VehicleList() {
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
 
+  // 管理司机弹窗：可选司机（仅"在岗"且排除已绑定/已添加）
+  const mgmtDriverOptions = useMemo(() => {
+    const bound = (selectedVehicle?.driverBindings || []).map(b => b.driverName).filter(n => !pendingRemoveDrivers.has(n));
+    const exclude = new Set([...bound, ...pendingAddDrivers]);
+    return drivers.filter(d => d.status === 'active' && !exclude.has(d.name))
+      .map(d => ({ label: `${d.name} ${d.phone}`, value: d.name }));
+  }, [selectedVehicle, pendingAddDrivers, pendingRemoveDrivers]);
+
   const filtered = useMemo(() => {
     let result = data;
     if (statusFilter.length > 0) result = result.filter(v => statusFilter.includes(v.status));
     if (typeFilter.length > 0) result = result.filter(v => typeFilter.includes(v.type));
     if (driverFilter) result = result.filter(v => (v.driverBindings || []).some(b => b.driverName.includes(driverFilter)));
+    if (areaFilter.length > 0) result = result.filter(v => (v.areaIds || []).some(a => areaFilter.includes(a)));
     if (dateRange) {
       const [s, e] = dateRange;
       result = result.filter(v => v.createdAt >= s && v.createdAt <= e);
@@ -58,7 +65,7 @@ export default function VehicleList() {
       result = result.filter(v => v.plateNo.toLowerCase().includes(kw) || v.brand.toLowerCase().includes(kw) || v.model.toLowerCase().includes(kw));
     }
     return result;
-  }, [data, keyword, statusFilter, typeFilter, driverFilter, dateRange]);
+  }, [data, keyword, statusFilter, typeFilter, driverFilter, areaFilter, dateRange]);
 
   const openDetail = (v: Vehicle) => { setSelectedVehicle(v); setEditMode(false); setDrawerVisible(true); };
   const openEdit = (v: Vehicle) => { setSelectedVehicle(v); editForm.setFieldsValue(v); setEditMode(true); };
@@ -106,14 +113,14 @@ export default function VehicleList() {
   };
 
   const handleEnable = () => {
-    if (!selectedVehicle || !enableReason.trim()) { Message.warning('请填写启用原因'); return; }
+    if (!selectedVehicle) return;
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
-    const record = { type: 'enable' as const, reason: enableReason, operator: '当前运营', time: now };
+    const record = { type: 'enable' as const, reason: '', operator: '当前运营', time: now };
     setData(data.map(v => v.id === selectedVehicle.id ? {
       ...v, status: 'in_use' as VehicleStatus,
       statusChangeRecords: [...(v.statusChangeRecords || []), record],
     } : v));
-    setEnableVisible(false); setEnableReason(''); Message.success('车辆已启用');
+    setEnableVisible(false); Message.success('车辆已启用');
   };
 
   // Driver management
@@ -138,7 +145,6 @@ export default function VehicleList() {
     } else {
       setPendingRemoveDrivers(new Set(pendingRemoveDrivers).add(name));
     }
-    Message.success(`已解绑司机 ${name}`);
   };
 
   const handleUndoRemove = (name: string) => {
@@ -149,25 +155,21 @@ export default function VehicleList() {
 
   const handleSaveDriverMgmt = () => {
     if (!selectedVehicle) return;
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
-    const currentBindings = selectedVehicle.driverBindings || [];
-    const removedNames = new Set([...pendingRemoveDrivers]);
-    const keptBindings = currentBindings.filter(b => !removedNames.has(b.driverName));
-    const newBindings = pendingAddDrivers
-      .filter(n => !currentBindings.some(b => b.driverName === n))
-      .map(n => {
-        const d = drivers.find(x => x.name === n);
-        return { driverName: n, driverPhone: d?.phone || '', boundAt: now };
-      });
-    const allBindings = [...keptBindings, ...newBindings];
-    const newRecords = [
-      ...pendingAddDrivers.filter(n => !currentBindings.some(b => b.driverName === n)).map(n => ({ driverName: n, driverPhone: drivers.find(d=>d.name===n)?.phone||'', boundAt: now })),
-      ...[...pendingRemoveDrivers].map(n => { const existing = currentBindings.find(b=>b.driverName===n); return { driverName: n, driverPhone: existing?.driverPhone||'', boundAt: existing?.boundAt||'', unboundAt: now }; }),
-    ];
-
-    setData(data.map(v => v.id === selectedVehicle.id ? { ...v, driverBindings: allBindings } : v));
+    const hasChanges = pendingAddDrivers.length > 0 || pendingRemoveDrivers.size > 0;
+    if (hasChanges) {
+      const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+      const currentBindings = selectedVehicle.driverBindings || [];
+      const keptBindings = currentBindings.filter(b => !pendingRemoveDrivers.has(b.driverName));
+      const newBindings = pendingAddDrivers
+        .filter(n => !currentBindings.some(b => b.driverName === n))
+        .map(n => {
+          const d = drivers.find(x => x.name === n);
+          return { driverName: n, driverPhone: d?.phone || '', boundAt: now };
+        });
+      setData(data.map(v => v.id === selectedVehicle.id ? { ...v, driverBindings: [...keptBindings, ...newBindings] } : v));
+      Message.success('司机绑定已更新');
+    }
     setDriverMgmtVisible(false);
-    if (newRecords.length > 0) Message.success('司机绑定已更新');
   };
 
   const columns = [
@@ -182,6 +184,12 @@ export default function VehicleList() {
       if (bd.length === 0) return <span style={{ color: '#86909c' }}>未绑定</span>;
       return <a onClick={(e) => { e.stopPropagation(); setBoundDriversPreview(bd); }}>{bd.length === 1 ? bd[0].driverName : `${bd.length}位司机`}</a>;
     }},
+    { title: '运营区域', width: 140, render: (_: unknown, r: Vehicle) => {
+      const ids = r.areaIds || [];
+      if (ids.length === 0) return <span style={{ color: '#86909c' }}>未选择</span>;
+      const names = ids.map(id => opsCities.find(c => c.id === id)?.name).filter(Boolean);
+      return names.length > 2 ? <span>{names.slice(0, 2).join('、')} 等{names.length}个</span> : <span>{names.join('、') || '—'}</span>;
+    }},
     { title: '车辆状态', dataIndex: 'status', width: 80, render: (v: VehicleStatus) => <Tag color={statusMap[v].color} size="small">{statusMap[v].label}</Tag> },
     { title: '添加时间', dataIndex: 'createdAt', width: 110 },
     { title: '操作', width: 240, fixed: 'right' as const, render: (_: unknown, r: Vehicle) => (
@@ -193,7 +201,9 @@ export default function VehicleList() {
             <Button type="text" size="small" status="warning" onClick={() => openDriverMgmt(r)}>管理司机</Button>
             <Button type="text" size="small" status="danger" onClick={() => { setSelectedVehicle(r); setDisableVisible(true); }}>停用</Button>
           </>
-        ) : null}
+        ) : (
+          <Button type="text" size="small" status="success" onClick={() => { setSelectedVehicle(r); setEnableVisible(true); }}>启用</Button>
+        )}
       </Space>
     )},
   ];
@@ -208,7 +218,16 @@ export default function VehicleList() {
           <Select placeholder="车辆分类" style={{ width: 160 }} mode="multiple" value={typeFilter} onChange={setTypeFilter}
             options={typeOptions.map(t => ({ label: t, value: t }))} />
           <Select placeholder="绑定司机" style={{ width: 160 }} value={driverFilter || undefined} onChange={v => setDriverFilter(v || '')} allowClear showSearch
-            options={getDriverOptions()} />
+            options={driverFilterOptions} />
+          <Select placeholder="运营区域" style={{ width: 200 }} mode="multiple" value={areaFilter.length === 0 ? ['__all__'] : areaFilter}
+            onChange={(vals) => {
+              if (vals.includes('__all__')) { setAreaFilter([]); return; }
+              setAreaFilter(vals);
+            }}
+            options={[
+              { label: '全部', value: '__all__' },
+              ...opsCities.filter(c => c.status === 'active').map(c => ({ label: c.name, value: c.id })),
+            ]} />
           <RangePicker style={{ width: 260 }} placeholder={['添加时间起', '添加时间止']}
             onChange={(_, ds) => setDateRange(ds && ds[0] && ds[1] ? ds as [string, string] : null)} />
           <div style={{ flex: 1 }} />
@@ -251,7 +270,7 @@ export default function VehicleList() {
               </Card>
             )}
 
-            {/* 行驶证 — 含上传/更换 */}
+            {/* 行驶证 — 仅展示 */}
             <Card title="行驶证" size="small" style={{ marginBottom: 16 }}>
               <Space size={20} align="start" wrap>
                 <div>
@@ -261,23 +280,6 @@ export default function VehicleList() {
                   ) : (
                     <div style={{ width: 200, height: 140, border: '1px dashed #c9cdd4', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#86909c', fontSize: 12 }}>暂无正本</div>
                   )}
-                  <Upload
-                    accept="image/jpeg,image/png,image/webp"
-                    showUploadList={false}
-                    customRequest={(option) => {
-                      const f = option.file as File;
-                      if (f.size > 5 * 1024 * 1024) { Message.error('照片不能超过 5MB'); return; }
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        setData(data.map(v => v.id === selectedVehicle.id ? { ...v, licenseFront: reader.result as string } : v));
-                        setSelectedVehicle({ ...selectedVehicle, licenseFront: reader.result as string });
-                        Message.success('行驶证上传成功');
-                      };
-                      reader.readAsDataURL(f);
-                    }}
-                  >
-                    <Button size="mini" style={{ marginTop: 8 }}>{selectedVehicle.licenseFront ? '更换' : '上传'}正本</Button>
-                  </Upload>
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>副本</div>
@@ -286,26 +288,8 @@ export default function VehicleList() {
                   ) : (
                     <div style={{ width: 200, height: 140, border: '1px dashed #c9cdd4', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#86909c', fontSize: 12 }}>暂无副本</div>
                   )}
-                  <Upload
-                    accept="image/jpeg,image/png,image/webp"
-                    showUploadList={false}
-                    customRequest={(option) => {
-                      const f = option.file as File;
-                      if (f.size > 5 * 1024 * 1024) { Message.error('照片不能超过 5MB'); return; }
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        setData(data.map(v => v.id === selectedVehicle.id ? { ...v, licenseBack: reader.result as string } : v));
-                        setSelectedVehicle({ ...selectedVehicle, licenseBack: reader.result as string });
-                        Message.success('行驶证上传成功');
-                      };
-                      reader.readAsDataURL(f);
-                    }}
-                  >
-                    <Button size="mini" style={{ marginTop: 8 }}>{selectedVehicle.licenseBack ? '更换' : '上传'}副本</Button>
-                  </Upload>
                 </div>
               </Space>
-              <div style={{ fontSize: 12, color: '#86909c', marginTop: 12 }}>仅支持 JPG/PNG/WebP，单张 ≤ 5MB</div>
             </Card>
 
             {/* 绑定司机 */}
@@ -362,67 +346,48 @@ export default function VehicleList() {
 
       {/* Driver Management Modal */}
       <Modal title="管理司机" visible={driverMgmtVisible}
-        onOk={handleSaveDriverMgmt}
-        onCancel={() => { setDriverMgmtVisible(false); setPendingAddDrivers([]); setPendingRemoveDrivers(new Set()); }}
+        onOk={handleSaveDriverMgmt} okText="确认"
+        onCancel={() => { setDriverMgmtVisible(false); setPendingAddDrivers([]); setPendingRemoveDrivers(new Set()); }} cancelText="取消"
         style={{ width: 600 }}>
         {selectedVehicle && (
           <div>
-            {/* Current bindings */}
+            {/* 绑定司机列表 */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>已绑定司机</div>
-              {(selectedVehicle.driverBindings || []).length === 0 ? (
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>绑定司机</div>
+              {(selectedVehicle.driverBindings || []).length === 0 && pendingAddDrivers.length === 0 ? (
                 <div style={{ color: '#86909c', padding: '8px 0' }}>暂无绑定司机</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {(selectedVehicle.driverBindings || []).map(b => (
-                    <div key={b.driverName} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 12px', background: pendingRemoveDrivers.has(b.driverName) ? '#FFF1F0' : '#f7f8fa', borderRadius: 4,
-                      textDecoration: pendingRemoveDrivers.has(b.driverName) ? 'line-through' : 'none',
-                    }}>
-                      <span>{b.driverName} {b.driverPhone} · 绑定于 {b.boundAt}</span>
-                      {pendingRemoveDrivers.has(b.driverName) ? (
-                        <Button size="mini" onClick={() => handleUndoRemove(b.driverName)}>撤销</Button>
-                      ) : (
-                        <Popconfirm
-                          title={`确定解绑该车辆与司机 ${b.driverName} 的绑定关系吗？`}
-                          onOk={() => handleRemoveDriver(b.driverName)}
-                        >
-                          <Button size="mini" status="danger">解绑</Button>
-                        </Popconfirm>
-                      )}
+                  {/* 原始绑定（排除已标记移除的） */}
+                  {(selectedVehicle.driverBindings || []).filter(b => !pendingRemoveDrivers.has(b.driverName)).map(b => (
+                    <div key={b.driverName} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f7f8fa', borderRadius: 4 }}>
+                      <span>{b.driverName} {b.driverPhone}</span>
+                      <Button size="mini" status="danger" onClick={() => handleRemoveDriver(b.driverName)}>移除</Button>
                     </div>
                   ))}
+                  {/* 新添加 */}
+                  {pendingAddDrivers.map(n => {
+                    const d = drivers.find(x => x.name === n);
+                    return (
+                      <div key={'new-' + n} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#E8FFEA', borderRadius: 4 }}>
+                        <span>{n} {d?.phone || ''}</span>
+                        <Button size="mini" status="danger" onClick={() => setPendingAddDrivers(pendingAddDrivers.filter(x => x !== n))}>移除</Button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Pending adds */}
-            {pendingAddDrivers.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8, color: '#00B42A' }}>待添加</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {pendingAddDrivers.map(n => (
-                    <div key={n} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#E8FFEA', borderRadius: 4 }}>
-                      <span>{n}</span>
-                      <Button size="mini" status="danger" onClick={() => setPendingAddDrivers(pendingAddDrivers.filter(x => x !== n))}>移除</Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Add driver */}
-            <div style={{ marginTop: 16 }}>
-              <Select
-                placeholder="搜索在岗司机以添加"
-                style={{ width: '100%' }}
-                showSearch
-                options={getDriverOptions()}
-                onChange={v => { if (v) handleAddDriver(v); }}
-                value={undefined}
-              />
-            </div>
+            <Select
+              placeholder="搜索在岗司机以添加"
+              style={{ width: '100%' }}
+              showSearch
+              options={mgmtDriverOptions}
+              onChange={v => { if (v) handleAddDriver(v); }}
+              value={undefined}
+            />
           </div>
         )}
       </Modal>
@@ -451,6 +416,21 @@ export default function VehicleList() {
               <Select options={[4,5,6,7].map(s => ({ label: `${s}座`, value: s }))} disabled /></Form.Item></Grid.Col>
             <Grid.Col span={12}><Form.Item label="颜色" field="color" rules={[{ required: true }]}><Select options={colorOptions.map(c => ({ label: c, value: c }))} allowCreate /></Form.Item></Grid.Col>
           </Grid.Row>
+          <Form.Item label="运营区域" field="areaIds">
+            <Select mode="multiple" placeholder="选择运营区域（可多选）"
+              onChange={(vals) => {
+                if (vals.includes('__all__')) {
+                  const allIds = opsCities.filter(c => c.status === 'active').map(c => c.id);
+                  // 用当前 form 实例设置（addForm / editForm 分别处理）
+                  addForm.setFieldValue('areaIds', allIds);
+                  return;
+                }
+              }}
+              options={[
+                { label: '全部', value: '__all__' },
+                ...opsCities.filter(c => c.status === 'active').map(c => ({ label: c.name, value: c.id })),
+              ]} />
+          </Form.Item>
           <Grid.Row gutter={16}>
             <Grid.Col span={12}><Form.Item label="车架号(VIN)" field="vin"
               rules={[{ match: /^[A-HJ-NPR-Z0-9]{17}$/, message: '请输入17位车架号（不含 I/O/Q）' }]}>
@@ -519,6 +499,20 @@ export default function VehicleList() {
               <Select options={[4,5,6,7].map(s => ({ label: `${s}座`, value: s }))} /></Form.Item></Grid.Col>
             <Grid.Col span={12}><Form.Item label="颜色" field="color" rules={[{ required: true }]}><Select options={colorOptions.map(c => ({ label: c, value: c }))} allowCreate /></Form.Item></Grid.Col>
           </Grid.Row>
+          <Form.Item label="运营区域" field="areaIds">
+            <Select mode="multiple" placeholder="选择运营区域（可多选）"
+              onChange={(vals) => {
+                if (vals.includes('__all__')) {
+                  const allIds = opsCities.filter(c => c.status === 'active').map(c => c.id);
+                  editForm.setFieldValue('areaIds', allIds);
+                  return;
+                }
+              }}
+              options={[
+                { label: '全部', value: '__all__' },
+                ...opsCities.filter(c => c.status === 'active').map(c => ({ label: c.name, value: c.id })),
+              ]} />
+          </Form.Item>
           <Grid.Row gutter={16}>
             <Grid.Col span={12}><Form.Item label="车架号(VIN)" field="vin"
               rules={[{ match: /^[A-HJ-NPR-Z0-9]{17}$/, message: '请输入17位车架号（不含 I/O/Q）' }]}>
@@ -567,9 +561,8 @@ export default function VehicleList() {
       </Modal>
 
       {/* Enable Modal */}
-      <Modal title="启用车辆" visible={enableVisible} onOk={handleEnable} onCancel={() => { setEnableVisible(false); setEnableReason(''); }}>
+      <Modal title="启用车辆" visible={enableVisible} onOk={handleEnable} onCancel={() => { setEnableVisible(false); }}>
         <p>确定重新启用车辆 <strong>{selectedVehicle?.plateNo}</strong> 吗？</p>
-        <Input.TextArea placeholder="启用原因（必填）" style={{ marginTop: 12 }} value={enableReason} onChange={setEnableReason} maxLength={200} />
       </Modal>
 
       {/* 绑定司机只读预览弹窗 */}

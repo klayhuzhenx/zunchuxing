@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Modal, Select, Input, Button, Tag, Space, Message, Typography, Table, Radio, Grid } from '@arco-design/web-react';
 import { IconLeft, IconRight } from '@arco-design/web-react/icon';
-import { vehicles } from '../data/mock';
+import { vehicles, drivers, opsCities } from '../data/mock';
 import type { Order, DaySchedule } from '../types';
 
 const { Text } = Typography;
@@ -19,7 +19,7 @@ const driverOccupation: Record<string, { date: number; label: string; color: str
 };
 const allDrivers = ['王师傅','李师傅','赵师傅','陈师傅','黄师傅','周师傅','刘师傅','钱师傅'];
 
-function VehiclePicker({ visible, onClose, onSelect }: { visible: boolean; onClose: () => void; onSelect: (plate: string, model: string) => void }) {
+function VehiclePicker({ visible, onClose, onSelect, areaId }: { visible: boolean; onClose: () => void; onSelect: (plate: string, model: string) => void; areaId?: string }) {
   const [sel, setSel] = useState(''); const [month, setMonth] = useState(new Date().getMonth()+1);
   const y = new Date().getFullYear(); const dim = new Date(y, month, 0).getDate(); const fd = new Date(y, month-1, 1).getDay();
   const calDays = useMemo(() => {
@@ -31,9 +31,9 @@ function VehiclePicker({ visible, onClose, onSelect }: { visible: boolean; onClo
   return (
     <Modal title="选择车辆" visible={visible} onCancel={onClose} footer={null} style={{width:900}}>
       <Row gutter={20}>
-        <Col span={8}><Text type="secondary" style={{fontSize:12,marginBottom:8,display:'block'}}>车辆列表</Text>
+        <Col span={8}><Text type="secondary" style={{fontSize:12,marginBottom:8,display:'block'}}>车辆列表{areaId ? `（${opsCities.find(c=>c.id===areaId)?.name||areaId}区域）` : ''}</Text>
           <div style={{maxHeight:420,overflow:'auto'}}>
-            {vehicles.filter(v=>v.status==='in_use').map(v=>(
+            {vehicles.filter(v=>v.status==='in_use' && (!areaId || (v.areaIds||[]).includes(areaId))).map(v=>(
               <div key={v.plateNo} onClick={()=>setSel(v.plateNo)} style={{padding:'10px 12px',cursor:'pointer',borderRadius:4,marginBottom:4,background:sel===v.plateNo?'#E8F3FF':'#fafafa',border:sel===v.plateNo?'1px solid #165DFF':'1px solid transparent'}}>
                 <div style={{fontWeight:500}}>{v.plateNo}</div><div style={{fontSize:12,color:'#86909c'}}>{v.brand} {v.model} · {v.seats}座</div></div>))}
           </div>
@@ -50,7 +50,7 @@ function VehiclePicker({ visible, onClose, onSelect }: { visible: boolean; onClo
         </Col></Row></Modal>);
 }
 
-function DriverPicker({ visible, onClose, onSelect }: { visible: boolean; onClose: () => void; onSelect: (name: string) => void }) {
+function DriverPicker({ visible, onClose, onSelect, areaId }: { visible: boolean; onClose: () => void; onSelect: (name: string) => void; areaId?: string }) {
   const [sel, setSel] = useState(''); const [month, setMonth] = useState(new Date().getMonth()+1);
   const y = new Date().getFullYear(); const dim = new Date(y, month, 0).getDate(); const fd = new Date(y, month-1, 1).getDay();
   const calDays = useMemo(() => {
@@ -62,9 +62,9 @@ function DriverPicker({ visible, onClose, onSelect }: { visible: boolean; onClos
   return (
     <Modal title="选择司机" visible={visible} onCancel={onClose} footer={null} style={{width:900}}>
       <Row gutter={20}>
-        <Col span={8}><Text type="secondary" style={{fontSize:12,marginBottom:8,display:'block'}}>司机列表</Text>
+        <Col span={8}><Text type="secondary" style={{fontSize:12,marginBottom:8,display:'block'}}>司机列表{areaId ? `（${opsCities.find(c=>c.id===areaId)?.name||areaId}区域）` : ''}</Text>
           <div style={{maxHeight:420,overflow:'auto'}}>
-            {allDrivers.map(d=><div key={d} onClick={()=>setSel(d)} style={{padding:'10px 12px',cursor:'pointer',borderRadius:4,marginBottom:4,background:sel===d?'#E8F3FF':'#fafafa',border:sel===d?'1px solid #165DFF':'1px solid transparent'}}><div style={{fontWeight:500}}>{d}</div></div>)}</div>
+            {drivers.filter(d=>d.status==='active' && (!areaId || (d.areaIds||[]).includes(areaId))).map(d=><div key={d.name} onClick={()=>setSel(d.name)} style={{padding:'10px 12px',cursor:'pointer',borderRadius:4,marginBottom:4,background:sel===d.name?'#E8F3FF':'#fafafa',border:sel===d.name?'1px solid #165DFF':'1px solid transparent'}}><div style={{fontWeight:500}}>{d.name}</div><div style={{fontSize:12,color:'#86909c'}}>{d.phone}</div></div>)}</div>
           <Button type="primary" long style={{marginTop:12}} disabled={!sel} onClick={()=>{onSelect(sel);onClose();}}>确定选择</Button>
         </Col>
         <Col span={16}>
@@ -100,6 +100,15 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
   const [rowVehicleModels, setRowVehicleModels] = useState<Record<string,string>>({});
   const [rowDrivers, setRowDrivers] = useState<Record<string,string>>({});
   const scheduleRows = useMemo(() => order && !isRental ? buildSchedules(order) : [], [order, isRental]);
+
+  // 根据下单取车地址匹配运营区域
+  const orderAreaId = useMemo(() => {
+    if (!order?.pickupAddress) return undefined;
+    for (const c of opsCities) {
+      if (order.pickupAddress.includes(c.name)) return c.id;
+    }
+    return undefined;
+  }, [order?.pickupAddress]);
 
   const handleSubmit = () => {
     if (!order) return;
@@ -198,9 +207,11 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
               </div>
               <Row gutter={16} style={{marginBottom:16}}>
                 <Col span={12}><Text type="secondary" style={{fontSize:12,marginBottom:4,display:'block'}}>送车司机</Text>
-                  <Select placeholder="选择送车司机" value={deliveryDriver||undefined} onChange={setDeliveryDriver} options={allDrivers.map(d=>({label:d,value:d}))} style={{width:'100%'}} allowClear /></Col>
+                  <Select placeholder="选择送车司机" value={deliveryDriver||undefined} onChange={setDeliveryDriver}
+                    options={drivers.filter(d=>d.status==='active' && (!orderAreaId || (d.areaIds||[]).includes(orderAreaId))).map(d=>({label:d.name,value:d.name}))} style={{width:'100%'}} allowClear /></Col>
                 <Col span={12}><Text type="secondary" style={{fontSize:12,marginBottom:4,display:'block'}}>收车司机</Text>
-                  <Select placeholder="选择收车司机" value={pickupDriver||undefined} onChange={setPickupDriver} options={allDrivers.map(d=>({label:d,value:d}))} style={{width:'100%'}} allowClear /></Col>
+                  <Select placeholder="选择收车司机" value={pickupDriver||undefined} onChange={setPickupDriver}
+                    options={drivers.filter(d=>d.status==='active' && (!orderAreaId || (d.areaIds||[]).includes(orderAreaId))).map(d=>({label:d.name,value:d.name}))} style={{width:'100%'}} allowClear /></Col>
               </Row>
             </>
           ) : (
@@ -240,7 +251,8 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
                       {title:'司机',width:150,render:(_:unknown,row:{_key:string})=>{
                         const c = hasConflict(scheduleRows.find(r=>r._key===row._key)?.date || '', undefined, rowDrivers[row._key]);
                         return <div style={c.driverConflict ? { background: '#FFECE8', padding: 2, borderRadius: 2 } : {}}>
-                          <Select placeholder="选择司机" value={rowDrivers[row._key]||undefined} onChange={v=>setRowDrivers(prev=>({...prev,[row._key]:v}))} options={allDrivers.map(d=>({label:d,value:d}))} style={{width:'100%'}} size="small" allowClear />
+                          <Select placeholder="选择司机" value={rowDrivers[row._key]||undefined} onChange={v=>setRowDrivers(prev=>({...prev,[row._key]:v}))}
+                            options={drivers.filter(d=>d.status==='active' && (!orderAreaId || (d.areaIds||[]).includes(orderAreaId))).map(d=>({label:d.name,value:d.name}))} style={{width:'100%'}} size="small" allowClear />
                         </div>;
                       }},
                     ]}
@@ -260,11 +272,11 @@ export default function DispatchModal({ visible, order, onClose, onComplete }: P
           )}
         </div>
       </div>}
-      <VehiclePicker visible={showVehiclePicker} onClose={()=>setShowVehiclePicker(false)}
+      <VehiclePicker visible={showVehiclePicker} onClose={()=>setShowVehiclePicker(false)} areaId={orderAreaId}
         onSelect={(p,m)=>{
           if (isRental || mode === 'same') { setVehicle(p); setVehicleModel(m); }
           else if (rowPickerTarget) { selectVehicleForRow(rowPickerTarget, p, m); setRowPickerTarget(''); }
         }}/>
-      <DriverPicker visible={showDriverPicker} onClose={()=>setShowDriverPicker(false)} onSelect={setDriver}/>
+      <DriverPicker visible={showDriverPicker} onClose={()=>setShowDriverPicker(false)} areaId={orderAreaId} onSelect={setDriver}/>
     </Modal>);
 }

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人信息收集清单</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f7fa;
+            color: #1f2937;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            padding: 0 16px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 顶部导航栏 */
+        .header {
+            padding: 16px 0;
+            flex-shrink: 0;
+            text-align: center;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        /* 滚动容器 - 适配一屏内滚动 */
+        .scroll-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding-top: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* 手风琴折叠样式 */
+        .accordion-item {
+            background-color: #ffffff;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+        .accordion-checkbox {
+            display: none;
+        }
+        .accordion-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1f2937;
+            cursor: pointer;
+            user-select: none;
+        }
+        .accordion-label::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-right: 2px solid #9ca3af;
+            border-bottom: 2px solid #9ca3af;
+            transform: rotate(45deg);
+            transition: transform 0.2s ease;
+        }
+        .accordion-checkbox:checked + .accordion-label::after {
+            transform: rotate(-135deg);
+            border-color: #165dff;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background-color: #fafbfc;
+        }
+        .accordion-checkbox:checked ~ .accordion-content {
+            max-height: 500px;
+        }
+        .content-inner {
+            padding: 0 16px 14px;
+        }
+        .info-row {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .info-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+        .info-text {
+            font-size: 13px;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部标题栏 -->
+        <div class="header">
+            <h1>个人信息收集清单</h1>
+        </div>
+
+        <!-- 一屏滚动容器 -->
+        <div class="scroll-wrapper">
+            <!-- 1. 用户账号登录 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item1" class="accordion-checkbox">
+                <label for="item1" class="accordion-label">用户账号登录</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">手机号、短信验证码、账户密码、微信 OpenID</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写 / 授权、微信 Open SDK 获取</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">完成用户账号注册与登录，核验账号使用权限</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 个人资料完善 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item2" class="accordion-checkbox">
+                <label for="item2" class="accordion-label">个人资料完善</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">用户名、头像、手机号、车辆信息、登录 IP、浏览器类型、登录操作日志</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">完善用户账号信息，保障服务正常运行与账号安全，支撑车联网基础管理功能</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 车辆快捷数据看板服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item3" class="accordion-checkbox">
+                <label for="item3" class="accordion-label">车辆快捷数据看板服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、结构号、品牌型号、车辆关联经销商名称、车队名称、车辆数量信息、末次有效定位位置信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动录入、车辆终端同步、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现车队 / 车辆当日 / 昨日核心数据快捷查看，快速掌握车辆运营概况</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 车辆实时定位服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item4" class="accordion-checkbox">
+                <label for="item4" class="accordion-label">车辆实时定位服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、结构号、车辆实时位置信息、车辆点火 / 熄火状态、实时行驶速度、车队归属信息、账号身份权限信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">车辆终端同步、腾讯地图定位 SDK 获取、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现单车 / 多车实时定位查看，掌握车辆动态、规划调度路线、保障车辆资产安全</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 车辆历史轨迹服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item5" class="accordion-checkbox">
+                <label for="item5" class="accordion-label">车辆历史轨迹服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、车辆历史位置信息（轨迹点经纬度、定位时间、行驶速度）、车辆行程信息（行程起止时间、停车点位置及时长、轨迹分段信息）、车队归属信息、账号身份权限信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">云端数据同步、腾讯地图定位 SDK 获取、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现单车历史行程轨迹查看、轨迹播放、停车点核查，回溯行驶路线、核验行程合规性</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. 车辆列表服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item6" class="accordion-checkbox">
+                <label for="item6" class="accordion-label">车辆列表服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、品牌型号、结构号、车辆归属信息、车辆在线 / 离线状态、当前位置信息、剩余油量 / 电量、当日行驶里程、绑定司机姓名及手机号、车队归属信息、账号身份权限信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动录入、车辆终端同步、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现车辆列表及实时 / 基础信息查看，快速检索权限范围内车辆、批量掌握车辆状态与档案信息</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. 车队管理服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item7" class="accordion-checkbox">
+                <label for="item7" class="accordion-label">车队管理服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车队名称、车队所属主体信息、车队创建者姓名 / 手机号 / 账号 ID；车队长 / 司机的姓名、手机号、身份证号、岗位身份信息、账号权限信息、绑定车辆信息；车辆底盘号、车牌号、品牌型号、归属车队信息、绑定司机信息、车辆运营状态信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动录入、系统自动同步</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现车队创建、组织架构搭建、人员与车辆绑定、操作权限分配、车辆运营状态维护等核心管理需求</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. 车辆运行分析服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item8" class="accordion-checkbox">
+                <label for="item8" class="accordion-label">车辆运行分析服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、车辆行驶里程数据、车辆运行时长数据、车队归属信息、绑定司机姓名及手机号、账号身份权限信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">车辆终端同步、云端数据统计、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现车队 / 车辆运行里程、时长统计，分析车辆运营效率、优化调度安排、核算运营成本</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 9. 车辆充电分析服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item9" class="accordion-checkbox">
+                <label for="item9" class="accordion-label">车辆充电分析服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、车辆充电起止时间、充电量、充电位置信息、车辆剩余电量数据、车队归属信息、绑定司机信息、账号身份权限信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">车辆终端同步、腾讯地图定位 SDK 获取、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现车队 / 车辆充电情况分析，掌握车辆充电规律、优化充电成本、保障车辆续航能力</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 10. 驾驶行为统计服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item10" class="accordion-checkbox">
+                <label for="item10" class="accordion-label">驾驶行为统计服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、车辆行驶速度、加速度、制动状态、转向数据、驾驶员连续驾驶时长、异常驾驶行为数据（行为类型、发生时间、发生位置）、司机姓名及手机号、车队归属信息、账号身份权限信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">车辆终端同步、腾讯地图定位 SDK 获取、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现车队 / 车辆疲劳驾驶、急加速、急减速等行为统计，规范驾驶行为、降低行车安全风险、优化司机驾驶习惯</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 11. 车辆能耗报表服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item11" class="accordion-checkbox">
+                <label for="item11" class="accordion-label">车辆能耗报表服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">车辆底盘号、车牌号、实时油耗 / 电耗、累计油耗 / 电耗、统计周期内平均油耗 / 电耗、车辆行驶里程数据、车队归属信息、绑定司机姓名及手机号、账号身份权限信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">车辆终端同步、云端数据统计、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现车队 / 车辆运行能耗分析，管控车辆运营成本、优化车辆配置、排查能耗异常问题</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 12. 个人中心信息与设置服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item12" class="accordion-checkbox">
+                <label for="item12" class="accordion-label">个人中心信息与设置服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">账号 ID、手机号、姓名、头像、账号身份权限信息、车辆绑定信息、车队归属信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写 / 修改、系统自动同步</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现个人信息管理、隐私政策等合规内容查看，保障用户行使个人信息相关法定权利</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 13. 移动端适配及账号安全保障 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item13" class="accordion-checkbox">
+                <label for="item13" class="accordion-label">移动端适配及账号安全保障</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">设备型号、操作系统版本、软件安装列表、本机手机号、设备位置信息、网络信息（网络类型、IP、运营商、WiFi 状态等）、访问日期和时间等日志信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">防控运营风险、保障账号安全、适配移动端运行环境、预防恶意程序、保障服务运营质量及效率</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

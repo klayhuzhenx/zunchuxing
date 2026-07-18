@@ -19,10 +19,11 @@ export default function QuotaPage() {
 
   const filtered = useMemo(() => {
     let r = mockConsumption;
+    if (filterMonth) r = r.filter(x => x.time.startsWith(filterMonth));
     if (filterEmployee) r = r.filter(x => x.passengerName === filterEmployee);
     if (filterType.length) r = r.filter(x => filterType.includes(x.type));
     return r;
-  }, [filterEmployee, filterType]);
+  }, [filterMonth, filterEmployee, filterType]);
 
   const totalConsume = filtered.filter(r => r.type === 'consume').reduce((s, r) => s + r.amount, 0);
   const totalRefund = filtered.filter(r => r.type === 'refund').reduce((s, r) => s + r.amount, 0);

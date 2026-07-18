@@ -17,13 +17,8 @@
 
     <!-- 表单 -->
     <view class="main">
-      <view class="form-head">
-        <text class="form-title">验证码登录</text>
-        <text class="form-desc">输入手机号，获取验证码即可登录</text>
-      </view>
-
+      <view class="form-desc">手机号验证码登录</view>
       <view class="form-fields">
-        <!-- 手机号 -->
         <view class="field">
           <input
             v-model="phone"
@@ -34,8 +29,6 @@
             placeholder-class="field-placeholder"
           />
         </view>
-
-        <!-- 验证码 -->
         <view class="field field-with-action">
           <input
             v-model="code"
@@ -82,7 +75,7 @@
       </view>
     </view>
 
-    <!-- P1-03/04: 协议确认弹窗 -->
+    <!-- 协议确认弹窗 -->
     <bottom-sheet v-model="showProtocolSheet" title="请阅读并同意以下协议" :max-height="'60vh'">
       <view class="protocol-links">
         <view class="protocol-link-item" @click="openAgreement('service')">
@@ -115,16 +108,14 @@ const code = ref('');
 const agreed = ref(false);
 const countdown = ref(0);
 const loading = ref(false);
-const showProtocolSheet = ref(false); // P1-03：协议确认弹窗
+const showProtocolSheet = ref(false);
 let timer: ReturnType<typeof setInterval> | null = null;
 
-// 手机号格式校验（P1-01：第一位必为 1，第二位 3-9）
 const PHONE_REG = /^1[3-9]\d{9}$/;
 
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync();
   statusBarHeight.value = sysInfo.statusBarHeight || 0;
-  // P1-08：检测缓存的登录态
   const token = uni.getStorageSync('token');
   const tokenExpiry = uni.getStorageSync('tokenExpiry');
   if (token && tokenExpiry && Date.now() < Number(tokenExpiry)) {
@@ -136,14 +127,12 @@ onUnmounted(() => {
   if (timer) clearInterval(timer);
 });
 
-// P1-02：获取验证码前先过极验（占位）
 const onSendCode = () => {
   if (countdown.value > 0) return;
   if (!PHONE_REG.test(phone.value)) {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' });
     return;
   }
-  // 极验行为验证（占位 — 后续接入 GeeTest SDK）
   uni.showModal({
     title: '安全验证',
     content: '请完成滑块验证（接入极验 GeeTest SDK 后替换为真实验证）',
@@ -159,7 +148,6 @@ const onSendCode = () => {
   });
 };
 
-// P1-03/04：未勾选协议时弹出底部协议确认弹窗
 const onLoginAttempt = () => {
   if (!agreed.value) {
     showProtocolSheet.value = true;
@@ -173,45 +161,44 @@ const doLogin = () => {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' });
     return;
   }
-  // P1-05：6位纯数字验证码
   if (!/^\d{6}$/.test(code.value)) {
     uni.showToast({ title: '请输入6位短信验证码', icon: 'none' });
     return;
   }
   loading.value = true;
-  // 模拟登录请求
   setTimeout(() => {
     loading.value = false;
-    const isNew = phone.value !== '13800000000'; // 模拟：默认手机号为已注册
+    const isNew = phone.value !== '13800000000';
     uni.showToast({ title: isNew ? '欢迎加入尊出行' : '登录成功', icon: 'success' });
-    // P1-08：存储登录态 7 天
     const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
     uni.setStorageSync('token', 'mock-token-' + phone.value);
     uni.setStorageSync('tokenExpiry', String(expiry));
+    uni.setStorageSync('user-identity', 'personal');
     setTimeout(() => { uni.reLaunch({ url: '/pages/index/index' }); }, 800);
   }, 1000);
 };
 
-// 协议弹窗：同意并继续
 const onAgreeAndContinue = () => {
   agreed.value = true;
   showProtocolSheet.value = false;
   doLogin();
 };
 
-// P1-04：点击协议名跳转 H5
 const openAgreement = (type: 'service' | 'privacy') => {
-  uni.showToast({ title: `即将打开${type === 'service' ? '用户服务协议' : '隐私政策'}（接入H5后替换）`, icon: 'none' });
-  // 后续接入：uni.navigateTo({ url: `/pages/webview/index?type=${type}` });
+  if (type === 'privacy') {
+    uni.navigateTo({ url: '/pages/profile/privacy' });
+  } else {
+    uni.navigateTo({ url: '/pages/webview/index?src=/user-agreement.html' });
+  }
 };
 
 const onWechat = () => {
-  // 微信快捷登录（占位 — 后续接入 wx.login + 后端换取 openid）
   uni.showModal({
     title: '微信快捷登录',
     content: '将调用 wx.login 获取授权，首次需绑定手机号（接入微信 SDK 后替换）',
     success: (res: any) => {
       if (res.confirm) {
+        uni.setStorageSync('user-identity', 'personal');
         uni.showToast({ title: '登录成功', icon: 'success' });
         setTimeout(() => { uni.reLaunch({ url: '/pages/index/index' }); }, 800);
       }
@@ -268,7 +255,7 @@ const onWechat = () => {
 .hero {
   position: relative;
   z-index: 1;
-  padding: 80px 24px 48px;
+  padding: 80px 24px 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -284,31 +271,24 @@ const onWechat = () => {
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .logo-icon {
   font-size: 40px;
   color: #FFFFFF;
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings: 'FILL' 1;
 }
 
 .brand {
-  font-size: 22px;
-  line-height: 30px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 28px;
+  font-weight: 700;
   color: #000000;
 }
 
 .brand-slogan {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 500;
-  letter-spacing: 0.2em;
-  color: #4C4546;
-  text-transform: uppercase;
+  font-size: 15px;
+  color: #86868B;
+  margin-top: 4px;
 }
 
 /* ===== Main ===== */
@@ -319,24 +299,10 @@ const onWechat = () => {
   padding: 0 24px;
 }
 
-.form-head {
-  margin-bottom: 24px;
-}
-
-.form-title {
-  font-size: 22px;
-  line-height: 30px;
-  font-weight: 600;
-  color: #000000;
-  display: block;
-}
-
 .form-desc {
-  margin-top: 4px;
   font-size: 13px;
-  line-height: 18px;
-  color: #4C4546;
-  display: block;
+  color: #86868B;
+  margin-bottom: 16px;
 }
 
 .form-fields {

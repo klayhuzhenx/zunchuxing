@@ -6,6 +6,11 @@
     { "path": "pages/profile/collection", "style": { "navigationBarTitleText": "个人信息收集清单", "navigationStyle": "custom" } },
     { "path": "pages/profile/share", "style": { "navigationBarTitleText": "第三方信息共享清单", "navigationStyle": "custom" } },
     { "path": "pages/profile/permission", "style": { "navigationBarTitleText": "个人信息权限管理", "navigationStyle": "custom" } },
+    { "path": "pages/profile/privacy", "style": { "navigationBarTitleText": "隐私政策", "navigationStyle": "custom" } },
+    { "path": "pages/profile/change-phone", "style": { "navigationBarTitleText": "修改手机号", "navigationStyle": "custom" } },
+    { "path": "pages/profile/agreement", "style": { "navigationBarTitleText": "用户服务协议", "navigationStyle": "custom" } },
+    { "path": "pages/profile/deactivate", "style": { "navigationBarTitleText": "注销账号", "navigationStyle": "custom" } },
+    { "path": "pages/profile/export-data", "style": { "navigationBarTitleText": "个人信息副本导出", "navigationStyle": "custom" } },
     { "path": "pages/login/index", "style": { "navigationBarTitleText": "", "navigationStyle": "custom" } },
     { "path": "pages/enterprise/register", "style": { "navigationBarTitleText": "企业入驻", "navigationStyle": "custom" } },
     { "path": "pages/enterprise/status", "style": { "navigationBarTitleText": "入驻状态", "navigationStyle": "custom" } },
@@ -31,7 +36,8 @@
     { "path": "pages/invoice/select", "style": { "navigationBarTitleText": "选择订单", "navigationStyle": "custom" } },
     { "path": "pages/invoice/create", "style": { "navigationBarTitleText": "填写发票信息", "navigationStyle": "custom" } },
     { "path": "pages/invoice/detail", "style": { "navigationBarTitleText": "发票详情", "navigationStyle": "custom" } },
-    { "path": "pages/messages/index", "style": { "navigationBarTitleText": "消息中心", "navigationStyle": "custom" } }
+    { "path": "pages/messages/index", "style": { "navigationBarTitleText": "消息中心", "navigationStyle": "custom" } },
+    { "path": "pages/webview/index", "style": { "navigationBarTitleText": "计费规则", "navigationStyle": "custom" } }
   ],
   "globalStyle": {
     "navigationBarBackgroundColor": "#F9F9F9",

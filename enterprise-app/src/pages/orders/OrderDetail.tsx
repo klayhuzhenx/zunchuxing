@@ -5,18 +5,19 @@ import type { Order } from '../../types';
 const { Title } = Typography;
 
 const statusAlert: Record<string, { type: string; title: string; body: (o: Order) => string }> = {
-  unpaid: { type: 'warning', title: '等待支付', body: () => '订单已提交，等待员工完成支付' },
-  pending_dispatch: { type: 'warning', title: '等待派车', body: () => '运营正在安排车辆与司机，请您耐心等待' },
-  pending_start: { type: 'info', title: '行程待开始', body: (o) => `车辆和司机已确认：${o.driverName} · ${o.plateNo}` },
-  ongoing: { type: 'success', title: '行程进行中', body: (o) => `${o.driverName} · ${o.plateNo}，当前行程进行中` },
-  completed: { type: 'success', title: '行程已完成', body: () => '感谢使用尊出行，欢迎再次出行' },
-  cancelled: { type: 'error', title: '订单已取消', body: (o) => o.cancelReason || '已取消' },
-  pending_extra: { type: 'error', title: '差额待付', body: () => '行程结束产生额外费用，等待员工完成补款' },
+  unpaid: { type: 'warning', title: '待支付', body: () => '订单已确认，请在支付超时前完成支付' },
+  pending_dispatch: { type: 'warning', title: '待派车', body: () => '运营正在安排派车，请您耐心等待' },
+  pending_start: { type: 'info', title: (o) => o.type === 'charter' ? '待接驾' : '待取车', body: (o) => o.type === 'charter' ? '司机已接单，准备出发中' : '等待司机将车辆送往取车点' },
+  pending_enroute: { type: 'info', title: (o) => o.type === 'charter' ? '待接驾' : '待取车', body: (o) => o.type === 'charter' ? `${o.driverName} · ${o.plateNo} · 距离 2.3km · 预计 8 分钟到达` : (o.plateNo ? `${o.driverName} · ${o.plateNo}，司机正在将车辆送往取车点，距离 2.3km · 预计 8 分钟到达` : '司机正在将车辆送往取车点') },
+  ongoing: { type: 'success', title: '进行中', body: (o) => o.type === 'charter' ? `${o.driverName} · ${o.plateNo}，祝您出行愉快` : (o.plateNo ? `${o.plateNo}，祝您用车愉快` : '祝您用车愉快') },
+  completed: { type: 'success', title: '已完成', body: (o) => o.type === 'charter' ? '感谢您的出行，欢迎再次使用尊出行' : '感谢您的用车，欢迎再次使用尊出行' },
+  cancelled: { type: 'error', title: '已取消', body: (o) => o.type === 'charter' ? `${o.cancelReason || '已取消'}${o.paidAmount > 0 ? '，违约金 ¥' + ((o.paidAmount || 0) - (o.refundAmount || 0)).toLocaleString() : ''}` : (o.cancelReason || '已取消') },
+  pending_extra: { type: 'error', title: '待结算', body: () => '行程已结束，因超里程/超时产生额外费用，请及时结算' },
 };
 
 const alertColors: Record<string, string> = { warning: '#FF7D00', info: '#165DFF', success: '#00B42A', error: '#F53F3F' };
 const alertBgs: Record<string, string> = { warning: '#FFF7E8', info: '#E8F3FF', success: '#E8FFEA', error: '#FFECE8' };
-const statusLabels: Record<string, string> = { unpaid: '待支付', pending_dispatch: '待派车', pending_start: '待开始', ongoing: '行程中', completed: '已完成', cancelled: '已取消', pending_extra: '待结算' };
+const statusLabels: Record<string, string> = { unpaid: '待支付', pending_dispatch: '待派车', pending_start: '待接驾', pending_enroute: '待接驾', ongoing: '进行中', completed: '已完成', cancelled: '已取消', pending_extra: '待结算' };
 
 function getTimeline(order: Order): { label: string; dot: string }[] {
   const items = [
@@ -27,6 +28,9 @@ function getTimeline(order: Order): { label: string; dot: string }[] {
   if (order.status === 'cancelled') return [...items, { label: `已取消${order.cancelReason ? '（' + order.cancelReason + '）' : ''}`, dot: 'red' }];
 
   if (order.type === 'charter') {
+    if (order.status === 'pending_enroute') {
+      items.push({ label: `司机出发前往上车点 · 预计 8 分钟到达`, dot: 'cyan' });
+    }
     items.push({ label: order.driverName ? `已派车 · ${order.carModel} ${order.plateNo} · ${order.driverName}` : '待派车', dot: order.driverName ? 'blue' : 'gray' });
     if (['ongoing', 'completed', 'pending_extra'].includes(order.status)) items.push({ label: '行程开始', dot: 'green' });
     if (order.status === 'completed') items.push({ label: '行程结束', dot: 'green' });
@@ -71,10 +75,19 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
   const isCharter = order.type === 'charter';
   const pointsUsed = order.pointsUsed || 0;
   const pointsDeduction = Math.floor(pointsUsed / 100);
+  // 订单总金额 = 套餐+等待+超时+超里程+远调+其他
+  const grossTotal = order.baseFee * (order.days || 1) + order.overtimeFee + order.overmileageFee + ((order.remoteDispatchDetail?.pickupFee ?? 0) + (order.remoteDispatchDetail?.dropoffFee ?? 0)) + Math.round((order.overtimeFee + order.overmileageFee) * 0.1);
+  const dTotal = (order.depositVehicle || 0) + (order.depositViolation || 0);
+  const vR = order.depositVehicleRefunded && (order.depositVehicle || 0) > 0 ? 1 : 0;
+  const viR = order.depositViolationRefunded && (order.depositViolation || 0) > 0 ? 1 : 0;
+  const dRefundCount = vR + viR;
+  const dTotalCount = (order.depositVehicle ? 1 : 0) + (order.depositViolation ? 1 : 0);
+  const depositStatusLabel = !dTotal ? '未收取' : dRefundCount === 0 ? '未退还' : dRefundCount < dTotalCount ? '部分退还' : '已退还';
+  const depositStatusColor = !dTotal ? 'gray' : dRefundCount === 0 ? 'orangered' : dRefundCount < dTotalCount ? 'orange' : 'green';
   const beforeDispatch = ['unpaid', 'pending_dispatch'].includes(order.status);
   const showFullFee = ['completed', 'pending_extra', 'ongoing'].includes(order.status);
 
-  const [feeModal, setFeeModal] = useState<{ visible: boolean; type: 'waiting' | 'overtime' | 'mileage' | 'remote' | 'other' }>({ visible: false, type: 'overtime' });
+  const [feeModal, setFeeModal] = useState<{ visible: boolean; type: 'waiting' | 'overtime' | 'mileage' | 'remote' | 'other' | 'refund' }>({ visible: false, type: 'overtime' });
 
   const feeRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' };
 
@@ -84,6 +97,11 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
         <div style={{ background: alertBgs[alert.type], borderLeft: `3px solid ${alertColors[alert.type]}`, padding: '12px 16px', borderRadius: 4, marginBottom: 20 }}>
           <strong style={{ color: alertColors[alert.type] }}>{alert.title}</strong>
           <div style={{ color: '#4E5969', fontSize: 13, marginTop: 4 }}>{alert.body(order)}</div>
+          {order.status === 'cancelled' && (order.paidAmount || 0) > 0 && (
+            <div style={{ color: '#F53F3F', fontSize: 13, marginTop: 4, fontWeight: 600 }}>
+              违约金 ¥{((order.paidAmount || 0) - (order.refundAmount || 0)).toLocaleString()}
+            </div>
+          )}
         </div>
       )}
 
@@ -91,7 +109,7 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
       <Descriptions column={2} border size="small" style={{ marginBottom: 20 }}>
         <Descriptions.Item label="订单号">{order.orderNo}</Descriptions.Item>
         <Descriptions.Item label="类型"><Tag color={order.type === 'charter' ? 'gold' : 'gray'} size="small">{order.type === 'charter' ? '包车' : '租车'}</Tag></Descriptions.Item>
-        <Descriptions.Item label="状态"><Tag color={alert?.type === 'error' ? 'red' : alert?.type === 'success' ? 'green' : 'orange'} size="small">{statusLabels[order.status]}{order.subStatus ? ` · ${order.subStatus}` : ''}</Tag></Descriptions.Item>
+        <Descriptions.Item label="状态"><Tag color={alert?.type === 'error' ? 'red' : alert?.type === 'success' ? 'green' : 'orange'} size="small">{order.type === 'rental' && (order.status === 'pending_start' || order.status === 'pending_enroute') ? '待取车' : statusLabels[order.status]}{order.subStatus ? ` · ${order.subStatus}` : ''}</Tag></Descriptions.Item>
         <Descriptions.Item label="下单时间">{order.createdAt}</Descriptions.Item>
       </Descriptions>
 
@@ -208,19 +226,67 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
                 <span style={{ fontSize: 14, fontWeight: 500, color: '#F53F3F' }}>¥{order.feeExtraDetail.otherFees.reduce((s, f) => s + f.amount, 0).toLocaleString()} ›</span>
               </div>
             )}
-            <div style={{ borderTop: '1px solid #e5e6eb', margin: '8px 0', paddingTop: 8 }}>
-              <div style={feeRowStyle}>
-                <span style={{ fontSize: 16, fontWeight: 700 }}>实付金额</span>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: 20, fontWeight: 700 }}>¥{order.paidAmount.toLocaleString()}</span>
-                  {order.status === 'pending_extra' && <div style={{ fontSize: 12, color: '#F53F3F', fontWeight: 600 }}>待结算</div>}
-                  {order.status === 'completed' && <div style={{ fontSize: 11, color: '#00B42A' }}>已支付</div>}
-                </div>
-              </div>
+            {/* 订单总金额 = 套餐+等待+超时+超里程+远调+其他 */}
+            <div style={{ borderTop: '1px solid #e5e6eb', margin: '8px 0', paddingTop: 8, ...feeRowStyle }}>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>订单总金额</span>
+              <span style={{ fontSize: 20, fontWeight: 700 }}>¥{grossTotal.toLocaleString()}</span>
+            </div>
+            {/* 退款合计（有退款可查看明细） */}
+            <div style={{ ...feeRowStyle, cursor: order.refundAmount ? 'pointer' : 'default' }}
+              onClick={() => { if (order.refundAmount) setFeeModal({ visible: true, type: 'refund' }); }}>
+              <span style={{ fontSize: 14, color: order.refundAmount ? '#F53F3F' : '#86868B' }}>退款合计</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: order.refundAmount ? '#F53F3F' : '#000' }}>
+                {order.refundAmount ? `-¥${order.refundAmount.toLocaleString()} 明细 ›` : '¥0'}
+              </span>
+            </div>
+            {/* 订单应付合计 = 订单总金额 − 退款合计 */}
+            <div style={{ borderTop: '1px solid #e5e6eb', margin: '8px 0', paddingTop: 8, ...feeRowStyle }}>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>订单应付合计</span>
+              <span style={{ fontSize: 20, fontWeight: 700 }}>¥{Math.max(0, grossTotal - (order.refundAmount || 0)).toLocaleString()}</span>
             </div>
           </div>
         )}
       </div>
+
+      {/* 押金信息（仅租车 · 单独卡片） */}
+      {!isCharter && order.userIdentity !== 'enterprise_employee' && dTotal > 0 && (() => {
+        const vRefunded = order.depositVehicleRefunded;
+        const viRefunded = order.depositViolationRefunded;
+        return (
+          <div style={{ background: '#fff', borderRadius: 8, padding: 16, marginBottom: 20, border: '1px solid #e5e6eb' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>押金信息</span>
+              <Tag color={depositStatusColor} size="small">{depositStatusLabel}</Tag>
+            </div>
+            <Descriptions column={2} border size="small" data={[
+              { label: '合计押金', value: `¥${dTotal.toLocaleString()}` },
+              { label: '收取时间', value: order.depositVehiclePaidAt || order.depositViolationPaidAt || '—' },
+            ]} />
+            <Card size="small" title="车辆押金" style={{ marginTop: 12, background: '#FAFBFC' }}
+              extra={<Tag color={vRefunded ? 'green' : 'red'} size="small">{vRefunded ? '已退款' : '未退'}</Tag>}>
+              <Descriptions column={2} size="small" data={[
+                { label: '金额', value: `¥${(order.depositVehicle || 0).toLocaleString()}` },
+                ...(vRefunded ? [
+                  { label: '扣款', value: (order.depositVehicleDeduct || 0) > 0 ? <span style={{ color: '#F53F3F' }}>-¥{(order.depositVehicleDeduct || 0).toLocaleString()}</span> : '¥0' },
+                  { label: '已退', value: <span style={{ color: '#00B42A' }}>¥{((order.depositVehicle || 0) - (order.depositVehicleDeduct || 0)).toLocaleString()}</span> },
+                  { label: '退还时间', value: order.depositVehicleRefundedAt || '—' },
+                ] : []),
+              ]} />
+            </Card>
+            <Card size="small" title="违章押金" style={{ marginTop: 8, background: '#FAFBFC' }}
+              extra={<Tag color={viRefunded ? 'green' : 'red'} size="small">{viRefunded ? '已退款' : '未退'}</Tag>}>
+              <Descriptions column={2} size="small" data={[
+                { label: '金额', value: `¥${(order.depositViolation || 0).toLocaleString()}` },
+                ...(viRefunded ? [
+                  { label: '扣款', value: (order.depositViolationDeduct || 0) > 0 ? <span style={{ color: '#F53F3F' }}>-¥{(order.depositViolationDeduct || 0).toLocaleString()}</span> : '¥0' },
+                  { label: '已退', value: <span style={{ color: '#00B42A' }}>¥{((order.depositViolation || 0) - (order.depositViolationDeduct || 0)).toLocaleString()}</span> },
+                  { label: '退还时间', value: order.depositViolationRefundedAt || '—' },
+                ] : []),
+              ]} />
+            </Card>
+          </div>
+        );
+      })()}
 
       <Title heading={6}>订单动态</Title>
       <Timeline style={{ marginTop: 8 }}>
@@ -233,7 +299,7 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
 
       {/* 费用明细弹窗 */}
       {feeModal.visible && (
-        <FeeSheet title={feeModal.type === 'waiting' ? '等待费明细' : feeModal.type === 'overtime' ? '超时费明细' : feeModal.type === 'mileage' ? '超公里费明细' : feeModal.type === 'remote' ? '远调费明细' : '其他费用明细'} onClose={() => setFeeModal({ visible: false, type: 'overtime' })}>
+        <FeeSheet title={feeModal.type === 'waiting' ? '等待费明细' : feeModal.type === 'overtime' ? '超时费明细' : feeModal.type === 'mileage' ? '超公里费明细' : feeModal.type === 'remote' ? '远调费明细' : feeModal.type === 'refund' ? '退款明细' : '其他费用明细'} onClose={() => setFeeModal({ visible: false, type: 'overtime' })}>
           {feeModal.type === 'waiting' && order.feeExtraDetail?.waitFee && (
             <div>
               <div style={feeRowStyle}><span style={{ fontSize: 14, color: '#4C4546' }}>司机到达时间</span><span style={{ fontSize: 14 }}>{order.feeExtraDetail.waitFee.driverArriveTime || '—'}</span></div>
@@ -300,6 +366,32 @@ export default function OrderDetail({ open: show, orderNo, orders, onClose }: { 
               {i < (order.feeExtraDetail.otherFees?.length || 1) - 1 && <div style={{ height: 1, background: '#F2F2F2', margin: '8px 0' }} />}
             </div>
           ))}
+          {/* 退款明细：手工退款 + 订单退款 */}
+          {feeModal.type === 'refund' && (
+            <div>
+              <div style={{ fontSize: 13, color: '#86909c', marginBottom: 12 }}>共 {order.refundRecords?.length || 0} 笔退款，合计 -¥{(order.refundAmount || 0).toLocaleString()}</div>
+              {(order.refundRecords || []).map((r, i) => (
+                <div key={r.id} style={{ marginBottom: i < (order.refundRecords?.length || 1) - 1 ? 16 : 0, padding: 12, background: '#FAFBFC', borderRadius: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Tag color={r.type === 'manual' ? 'orangered' : 'arcoblue'} size="small">{r.type === 'manual' ? '手工退款' : '订单退款'}</Tag>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#F53F3F' }}>-¥{r.amount.toLocaleString()}</span>
+                  </div>
+                  <div style={feeRowStyle}><span>申请退款时间</span><span>{r.time}</span></div>
+                  {r.type === 'manual' ? (
+                    <>
+                      <div style={feeRowStyle}><span>操作人</span><span>{r.operator || '—'}</span></div>
+                      <div style={feeRowStyle}><span>原因</span><span>{r.reason || '—'}</span></div>
+                    </>
+                  ) : (
+                    <div style={feeRowStyle}><span>退款类型</span><span>{order.status === 'cancelled' ? '取消退款' : r.orderRefundType === 'early_end' ? '提前结束' : r.orderRefundType === 'cancel' ? '取消退款' : '—'}</span></div>
+                  )}
+                </div>
+              ))}
+              {(!order.refundRecords || order.refundRecords.length === 0) && (
+                <div style={{ textAlign: 'center', color: '#86909c', padding: 24 }}>暂无退款记录</div>
+              )}
+            </div>
+          )}
         </FeeSheet>
       )}
     </Drawer>

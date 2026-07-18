@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>第三方信息共享清单</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f7fa;
+            color: #1f2937;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 750px;
+            margin: 0 auto;
+            padding: 0 16px 20px;
+        }
+        /* 顶部导航栏 */
+        .header {
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-bottom: 1px solid #f0f2f5;
+            margin-bottom: 16px;
+            position: sticky;
+            top: 0;
+            background-color: #f5f7fa;
+            z-index: 10;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .back-btn {
+            background-color: #165dff;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        /* 内容卡片通用样式 */
+        .content-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        }
+        /* 标题层级 */
+        .chapter-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #165dff;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+        .sdk-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 14px;
+        }
+        /* 正文样式 */
+        .content-text {
+            font-size: 15px;
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+        .content-text:last-child {
+            margin-bottom: 0;
+        }
+        .content-text strong {
+            color: #1f2937;
+            font-weight: 600;
+        }
+        /* 信息项样式 */
+        .info-item {
+            font-size: 15px;
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 8px;
+        }
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+        .info-item strong {
+            color: #1f2937;
+            font-weight: 600;
+            min-width: 120px;
+            display: inline-block;
+        }
+        /* 长文本适配 */
+        .long-text {
+            word-break: break-all;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航栏：已移除返回按钮 -->
+        <div class="header">
+            <h1>第三方信息共享清单</h1>
+        </div>
+
+        <!-- 开头说明文本 -->
+        <div class="content-card">
+            <p class="content-text">
+                为保障和车联小程序的稳定运行或实现相关功能，我们会接入由第三方提供的软件开发包（SDK）实现前述目的。我们会尽到审慎义务，对合作方获取信息的软件工具开发包（SDK）进行严格的安全监测，以保护数据安全。
+            </p>
+            <p class="content-text">
+                我们接入的第三方SDK主要服务于用户的需求，因此在满足新的服务需求及业务功能变更时，我会调整我们接入的第三方SDK。我们会及时在本说明中向您公开说明接入第三方SDK的最新情况。请注意，第三方SDK因为其版本升级、策略调整原因导致数据处理类型存在一定变化，请以其公示的官方说明为准。 目前和车联小程序接入的第三方SDK列明如下：
+            </p>
+        </div>
+
+        <!-- 腾讯地图SDK -->
+        <div class="content-card">
+            <h2 class="sdk-title">1、SDK名称：腾讯地图SDK</h2>
+            <div class="info-item">
+                <strong>服务商：</strong>
+                <span>深圳市腾讯计算机系统有限公司</span>
+            </div>
+            <div class="info-item">
+                <strong>功能类型：</strong>
+                <span>定位、地图展示、地点搜索、路径规划</span>
+            </div>
+            <div class="info-item">
+                <strong>共享方式：</strong>
+                <span>SDK本机采集</span>
+            </div>
+            <div class="info-item">
+                <strong>使用目的：</strong>
+                <span>实现定位、地图展示、搜索和导航服务</span>
+            </div>
+            <div class="info-item">
+                <strong>使用场景：</strong>
+                <span>车辆实时定位/ 车辆轨迹/ 车辆追踪界面查看车辆所在定位时；查看用户所在地图定位时；车辆位置导航</span>
+            </div>
+            <div class="info-item">
+                <strong>收集个人信息类型：</strong>
+                <span class="long-text">设备信息【IP地址、GNSS信息、WiFi状态及列表、基站信息、蓝牙信息、传感器信息（加速度、陀螺仪、重力传感器）、设备信号强度】、设备标识信息（IMEI、IDFA、IDFV、Android ID、MEID、MAC 地址、OAID、IMSI、硬件序列号）、当前应用信息（应用名称、应用版本号、应用包名）、设备参数及系统信息（设备型号、操作系统版本、系统属性）、位置信息（经纬度、精确位置、大致位置）</span>
+            </div>
+            <div class="info-item">
+                <strong>第三方隐私链接：</strong>
+                <span>请自行复制到浏览器查看</span>
+            </div>
+            <div class="info-item">
+                <span>腾讯隐私保护平台</span>
+            </div>
+            <div class="info-item">
+                <span>e7f0e83126614f74a96e3cb9b73321a0</span>
+            </div>
+            <div class="info-item">
+                <strong>联系方式：</strong>
+                <span>Dataprivacy@tencent.com</span>
+            </div>
+        </div>
+
+        <!-- 微信Open SDK -->
+        <div class="content-card">
+            <h2 class="sdk-title">2、SDK名称：微信Open SDK</h2>
+            <div class="info-item">
+                <strong>服务商：</strong>
+                <span>深圳市腾讯计算机系统有限公司</span>
+            </div>
+            <div class="info-item">
+                <strong>功能类型：</strong>
+                <span>微信登录</span>
+            </div>
+            <div class="info-item">
+                <strong>共享方式：</strong>
+                <span>SDK本机采集</span>
+            </div>
+            <div class="info-item">
+                <strong>使用目的：</strong>
+                <span>用户可以通过微信进行登录</span>
+            </div>
+            <div class="info-item">
+                <strong>使用场景：</strong>
+                <span>用户使用微信账号授权登录时</span>
+            </div>
+            <div class="info-item">
+                <strong>收集个人信息类型：</strong>
+                <span class="long-text">设备信息【厂商/机型/系统版本/时区/IMEI/IMSI、SIM卡序列号/MAC地址/地理位置/网络信息（网络类型、IP、网络运营商、网络质量数据、网络环境、 WiFi状态信息、WiFi列表信息、SSID、BSSID）】</span>
+            </div>
+            <div class="info-item">
+                <strong>第三方隐私链接：</strong>
+                <span>请自行复制到浏览器查看</span>
+            </div>
+            <div class="info-item">
+                <span>微信Open SDK个人信息处理规则</span>
+            </div>
+            <div class="info-item">
+                <strong>联系方式：</strong>
+                <span>Dataprivacy@tencent.com</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

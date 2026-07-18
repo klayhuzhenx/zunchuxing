@@ -7,17 +7,36 @@ export interface User {
 }
 
 // ===== 企业客户 =====
+// 线索客户状态（§3.2）
+export type LeadStatus = 'pending' | 'converted' | 'invalid';
+// 正式客户状态（§3.4）
+export type EnterpriseStatus = 'active' | 'disabled';
+export type EnterpriseSource = 'miniapp' | 'h5' | 'backend';
 
-export type EnterpriseStatus = 'pending' | 'approved' | 'rejected' | 'disabled';
-export type EnterpriseSource = 'miniapp' | 'backend';
+// 线索客户（§3.2）
+export interface Lead {
+  id: string; name: string; creditCode: string;
+  contactName: string; contactPhone: string;
+  source: EnterpriseSource; status: LeadStatus;
+  createdAt: string;
+  /** 标记无效时的原因 */
+  invalidReason?: string;
+  /** 转为正式客户的关联企业 ID */
+  convertedEnterpriseId?: string;
+  /** 转为正式客户的时间 */
+  convertedAt?: string;
+}
 
+// 正式客户（§3.4）
 export interface Enterprise {
   id: string; code: string; name: string; creditCode: string;
   contactName: string; contactPhone: string; employeeCount: number;
   totalQuota: number; usedAmount: number; remainingQuota: number;
   status: EnterpriseStatus; source: EnterpriseSource; createdAt: string;
-  rejectReason?: string; adminName?: string; adminPhone?: string;
+  adminName?: string; adminPhone?: string;
   licenseImage?: string; remark?: string;
+  /** 禁用原因 */
+  disableReason?: string;
 }
 
 export interface QuotaChange {
@@ -33,8 +52,19 @@ export interface ConsumptionRecord {
 // ===== 订单管理 =====
 
 export type OrderType = 'charter' | 'rental';
-export type OrderStatus = 'unpaid' | 'pending_dispatch' | 'pending_start' | 'ongoing' | 'pending_extra' | 'completed' | 'cancelled';
+export type OrderStatus = 'unpaid' | 'pending_dispatch' | 'pending_start' | 'pending_enroute' | 'ongoing' | 'pending_extra' | 'completed' | 'cancelled';
 export type PaymentMethod = 'enterprise_credit' | 'alipay' | 'wechat';
+
+// 退款记录：手工退款（运营发起）/ 订单退款（系统按规则自动）
+export interface RefundRecord {
+  id: string;
+  type: 'manual' | 'order';           // 手工退款 / 订单退款
+  time: string;                        // 退款时间
+  amount: number;                      // 退款金额
+  operator?: string;                   // 手工退款：操作人
+  reason?: string;                     // 手工退款：原因
+  orderRefundType?: 'early_end' | 'cancel';  // 订单退款：提前结束 / 取消订单
+}
 
 export interface Order {
   id: string; orderNo: string; type: OrderType; status: OrderStatus;
@@ -61,9 +91,26 @@ export interface Order {
     dropoffFee: number;  // 包车-送 或 租车-还 对应的费用
   };
   discount: number; paidAmount: number; refundAmount: number;
+  /** 退款记录明细（手工退款 + 订单退款） */
+  refundRecords?: RefundRecord[];
   paymentTime?: string; passengerNote?: string; internalNote?: string;
   createdAt: string;
   schedules?: DaySchedule[];
+  /** 租车押金（仅租车订单） */
+  // 车辆押金（预计 7 日内退还）
+  depositVehicle?: number;
+  depositVehiclePaidAt?: string;
+  depositVehicleRefunded?: boolean;
+  depositVehicleRefundedAt?: string;
+  depositVehicleRefundReason?: string;
+  depositVehicleDeduct?: number;
+  // 违章押金（预计 30 日内退还）
+  depositViolation?: number;
+  depositViolationPaidAt?: string;
+  depositViolationRefunded?: boolean;
+  depositViolationRefundedAt?: string;
+  depositViolationRefundReason?: string;
+  depositViolationDeduct?: number;
 }
 
 export interface DaySchedule {
@@ -105,6 +152,12 @@ export interface DriverOrder {
   duration?: number; mileage?: number; extraFee?: number; extraFeeDetail?: string; extraFeeItems?: ExtraFeeItem[];
   status: DriverOrderStatus; dispatchTime?: string;
   pickupAddress?: string; dropoffAddress?: string;
+  /** 实际上车点 */
+  actualPickupAddress?: string;
+  /** 实际下车点 */
+  actualDropoffAddress?: string;
+  /** 预计上车时间 */
+  plannedPickupTime?: string;
 }
 
 // ===== 车辆管理 =====
@@ -124,6 +177,8 @@ export interface Vehicle {
   driverBindings?: DriverBinding[];
   licenseFront?: string; licenseBack?: string;
   docStatus: DocStatus; status: VehicleStatus; createdAt: string;
+  /** 运营区域 ID 列表（多选） */
+  areaIds?: string[];
 }
 
 // ===== 司机管理 =====
@@ -144,28 +199,11 @@ export interface Driver {
   bindingRecords?: { plateNo: string; boundAt: string; unboundAt?: string; operator: string }[];
   statusChangeRecords?: { type: 'disable' | 'enable'; reason: string; operator: string; time: string }[];
   status: DriverStatus; createdAt: string;
+  /** 运营区域 ID 列表（多选） */
+  areaIds?: string[];
 }
 
 // ===== 财务管理 =====
-
-export type SettlementStatus = 'pending' | 'partial' | 'settled';
-
-export interface EnterpriseBill {
-  id: string; billNo: string; enterpriseId: string; enterpriseName: string;
-  month: string;  // YYYY-MM
-  consumption: number; refund: number;
-  pendingAmount: number; settledAmount: number;
-  status: SettlementStatus;
-}
-
-export interface BillOrderItem {
-  date: string; orderNo: string; type: 'charter' | 'rental';
-  passenger: string; amount: number; settled: boolean;
-}
-
-export interface BillRefundItem {
-  date: string; refundNo: string; orderNo: string; amount: number; reason: string;
-}
 
 export type TransactionType = 'payment' | 'refund' | 'extra_payment';
 export type TransactionStatus = 'success' | 'failed' | 'processing';
@@ -177,10 +215,85 @@ export interface Transaction {
   time: string; status: TransactionStatus;
 }
 
+// 操作日志（发票/回款共用）
+export interface OperationLogEntry {
+  time: string;
+  action: string;
+  operator: string;
+  remark?: string;
+}
+
+// ===== 发票管理（§7.1） =====
+export type InvoiceStatus = 'issuing' | 'issued' | 'rejected' | 'cancelled';
+// 开票中(蓝) / 已开票(绿) / 已驳回(红) / 已取消(灰)
+export type InvoiceChannel = 'ops_backend' | 'enterprise_backend' | 'miniapp' | 'harmony';
+// 运营后台 / 企业后台 / 乘客小程序 / 鸿蒙APP
+export type InvoiceSubject = 'personal' | 'enterprise';   // 开票主体
+export type InvoiceType = 'general' | 'special';          // 普通发票 / 专用发票（仅企业）
+
+export interface Invoice {
+  id: string;
+  applyNo: string;             // 申请编号 FP
+  channel: InvoiceChannel;
+  applicantName: string;
+  applicantPhone: string;
+  enterpriseId?: string;
+  enterpriseName?: string;     // 申请企业（主体=企业时）
+  subject: InvoiceSubject;
+  invoiceType: InvoiceType;
+  title: string;               // 发票抬头
+  // 专用发票字段（仅 subject=enterprise && invoiceType=special）
+  taxNo?: string;
+  companyAddress?: string;
+  bankName?: string;
+  bankAccount?: string;
+  companyPhone?: string;
+  remark?: string;
+  orderNos: string[];          // 关联订单号列表
+  amount: number;              // 开票金额
+  applyTime: string;
+  status: InvoiceStatus;
+  attachment?: string;         // 发票附件（base64 或 url）
+  attachmentName?: string;
+  uploadTime?: string;
+  operator?: string;           // 开票操作人
+  rejectReason?: string;
+  rejectTime?: string;
+  rejectOperator?: string;
+  operationLogs: OperationLogEntry[];
+}
+
+// ===== 回款管理（§7.2） =====
+export type PaymentStatus = 'pending' | 'verifying' | 'completed';
+// 待回款(琥珀) / 回款核实(蓝) / 已完成(绿)；驳回回退到 pending
+
+export interface Payment {
+  id: string;
+  paymentNo: string;           // 回款单号 HK
+  invoiceId: string;
+  invoiceApplyNo: string;      // 关联发票申请编号
+  enterpriseId: string;
+  enterpriseName: string;
+  amount: number;              // 回款金额
+  status: PaymentStatus;
+  voucherUploader?: string;    // 凭证上传人
+  createdAt: string;
+  voucher?: string;            // 支付凭证（base64 或 url）
+  voucherName?: string;
+  voucherUploadTime?: string;
+  verifyResult?: string;       // 核实结果
+  verifyRemark?: string;       // 核实备注
+  verifyOperator?: string;     // 核实人
+  verifyTime?: string;
+  rejectReason?: string;       // 最近一次驳回原因
+  operationLogs: OperationLogEntry[];
+}
+
 // ===== 工作台 =====
 
 export interface DashboardStats {
   todayOrders: number; todayOrdersChange: number;
+  todayCompletedOrders: number; todayCompletedOrdersChange: number;
   todayRevenue: number; todayRevenueChange: number;
   pendingDispatch: number; pendingExtra: number;
   onlineDrivers: number; totalDrivers: number;
@@ -202,12 +315,23 @@ export interface CancelTier {
 }
 
 // 远调费梯度：按里程区间收取固定金额
-// 区间含义：fromKm < 远调里程 ≤ toKm
-// 最后一档 toKm 可填 -1 表示无上限（即「大于 fromKm」）
 export interface RemoteDispatchTier {
-  fromKm: number;     // 远调里程 > X km
-  toKm: number;       // 远调里程 ≤ X km；-1 表示无上限
-  amount: number;     // 收费金额（元）
+  fromKm: number;
+  toKm: number;       // -1 表示无上限
+  amount: number;
+}
+
+// 梯度折扣：按下单天数区间设置折扣系数（按包车/租车维度全局配置）
+export interface DiscountTier {
+  fromDays: number;   // ≥ X 天
+  toDays: number;     // < Y 天；-1 表示无上限
+  coefficient: number; // 折扣系数，如 0.95 表示 95 折
+}
+
+// 梯度折扣配置：包车、租车各自一套
+export interface DiscountConfig {
+  charter: DiscountTier[];
+  rental: DiscountTier[];
 }
 
 export interface PricingRule {
@@ -227,8 +351,12 @@ export interface PricingRule {
   cancelMidHigh: number; cancelMidLow: number;
   cancelMidPct: number; cancelHighPct: number;
   overtimeRate: number; extraMileageRate: number;
+  // 包车：半日超时费率（仅包车有，与整日 overtimeRate 区分；列表展示 "半日/整日"）
+  halfDayOvertimeRate?: number;
   waitFreeMins?: number; waitRate?: number;
-  remoteDispatchTiers?: RemoteDispatchTier[];   // 远调费梯度（多档）
+  remoteDispatchTiers?: RemoteDispatchTier[];
+  depositVehicle?: number;    // 车辆押金（仅租车，预计 7 日内退还）
+  depositViolation?: number;  // 违章押金（仅租车，预计 30 日内退还）
   benefitTagIds?: string[];
   remark?: string;
   status: 'active' | 'inactive';
@@ -275,7 +403,7 @@ export interface OpsCity {
 }
 
 export interface OpsRegion {
-  id: string; name: string; city: string; vehicleIds: string[];
+  id: string; name: string; city: string;
   status: 'active' | 'inactive'; updatedAt: string;
 }
 

@@ -11,8 +11,19 @@ export interface Employee {
 
 // ===== 订单 =====
 export type OrderType = 'charter' | 'rental';
-export type OrderStatus = 'unpaid' | 'pending_dispatch' | 'pending_start' | 'ongoing' | 'completed' | 'cancelled' | 'pending_extra';
+export type OrderStatus = 'unpaid' | 'pending_dispatch' | 'pending_start' | 'pending_enroute' | 'ongoing' | 'completed' | 'cancelled' | 'pending_extra';
 export type PaymentMethod = 'enterprise_credit' | 'alipay' | 'wechat';
+
+// 退款记录：手工退款（运营发起）/ 订单退款（系统按规则自动）
+export interface RefundRecord {
+  id: string;
+  type: 'manual' | 'order';
+  time: string;
+  amount: number;
+  operator?: string;
+  reason?: string;
+  orderRefundType?: 'early_end' | 'cancel';
+}
 
 export interface DaySchedule {
   date: string; timeRange: string;
@@ -52,8 +63,23 @@ export interface Order {
     pickupFee: number; dropoffFee: number;
   };
   paidAmount: number; refundAmount: number;
+  /** 退款记录明细（手工退款 + 订单退款） */
+  refundRecords?: RefundRecord[];
   cancelReason?: string;
   feeExtraDetail?: FeeExtraDetail;
+  /** 押金（仅租车） */
+  depositVehicle?: number;
+  depositVehiclePaidAt?: string;
+  depositVehicleRefunded?: boolean;
+  depositVehicleRefundedAt?: string;
+  depositVehicleRefundReason?: string;
+  depositVehicleDeduct?: number;
+  depositViolation?: number;
+  depositViolationPaidAt?: string;
+  depositViolationRefunded?: boolean;
+  depositViolationRefundedAt?: string;
+  depositViolationRefundReason?: string;
+  depositViolationDeduct?: number;
   createdAt: string; paymentTime?: string;
 }
 
@@ -95,15 +121,48 @@ export interface SettlementRecord {
 }
 
 // ===== 发票 =====
-export type InvoiceStatus = 'pending_approval' | 'rejected' | 'issued' | 'cancelled';
+export type InvoiceStatus = 'issuing' | 'issued' | 'rejected' | 'cancelled';
 
 export interface Invoice {
-  id: string; invoiceNo: string; type: string;
+  id: string; applyNo: string;       // 申请编号 FP
+  type: string;                       // 普通发票 / 专用发票
   relatedOrders: string; amount: number;
   applicant: string; appliedAt: string; issuedAt?: string;
   status: InvoiceStatus;
-  companyName: string; taxId: string; email: string;
+  title: string;                      // 发票抬头
+  companyName: string; taxId: string;
+  address?: string;                   // 企业地址(专票)
+  bankName?: string;                  // 开户行(专票)
+  bankAccount?: string;               // 银行账户(专票)
+  companyPhone?: string;              // 企业电话(专票)
+  email: string;                      // 接收邮箱
+  remark?: string;                    // 备注
+  attachment?: string;                // 发票附件(base64/url)
   rejectReason?: string;
+  rejectedAt?: string;
+  operationLogs?: { time: string; action: string; operator: string; remark?: string }[];
+}
+
+// ===== 付款管理 =====
+export type PaymentStatus = 'pending' | 'verifying' | 'paid' | 'rejected';
+
+export interface Payment {
+  id: string;
+  paymentNo: string;           // 付款单号 HK
+  invoiceId: string;
+  invoiceApplyNo: string;      // 关联发票申请编号
+  amount: number;              // 付款金额
+  status: PaymentStatus;
+  createdAt: string;
+  voucher?: string;            // 支付凭证(base64/url)
+  voucherName?: string;
+  voucherUploadTime?: string;
+  verifyResult?: string;       // 核实结果
+  verifyRemark?: string;       // 核实备注
+  verifyOperator?: string;
+  verifyTime?: string;
+  rejectReason?: string;
+  operationLogs?: { time: string; action: string; operator: string; remark?: string }[];
 }
 
 // ===== 企业信息 =====

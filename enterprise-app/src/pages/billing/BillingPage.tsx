@@ -1,120 +1,110 @@
-import { useState } from 'react';
-import { Card, Table, Tag, Typography, Select, Button, Drawer, Descriptions, Message, Space } from '@arco-design/web-react';
-import { IconExport } from '@arco-design/web-react/icon';
-import { mockBills, getBillDetails } from '../../data/mock';
-import type { Bill, BillDetailItem, BillRefundItem, SettlementRecord } from '../../types';
+import { useState, useMemo } from 'react';
+import { Card, Table, Tag, DatePicker, Space, Typography } from '@arco-design/web-react';
+import { mockOrders, mockInvoices, mockPayments } from '../../data/mock';
+import type { Order } from '../../types';
 
+const { RangePicker } = DatePicker;
 const { Title } = Typography;
 
-const statusMap: Record<string, { label: string; color: string }> = {
-  pending: { label: '待结算', color: 'orange' },
-  partial: { label: '部分结算', color: 'blue' },
-  settled: { label: '已结算', color: 'green' },
-};
-
-// E6-01：默认上月，当月不展示
-const lastMonth = (() => {
-  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-})();
-
 export default function BillingPage() {
-  const [filterMonth, setFilterMonth] = useState(lastMonth);
-  const [filterStatus, setFilterStatus] = useState<string[]>([]);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<[string, string] | null>(null);
 
-  const filtered = mockBills.filter(b => {
-    if (filterMonth && b.month !== filterMonth) return false;
-    if (filterStatus.length && !filterStatus.includes(b.status)) return false;
-    return true;
-  });
+  const enterpriseOrders = useMemo(() =>
+    mockOrders.filter(o => o.paymentMethod === 'enterprise_credit' && o.status === 'completed'),
+  []);
 
-  const detail = mockBills.find(b => b.id === detailId);
-  const detailData = detail ? getBillDetails(detail.month) : null;
+  const invoiceMap = useMemo(() => {
+    const m = new Map<string, { no: string; status: string }>();
+    mockInvoices.forEach(i => i.relatedOrders.split(', ').forEach(o => m.set(o, { no: i.applyNo, status: i.status })));
+    return m;
+  }, []);
+  const paymentMap = useMemo(() => {
+    const m = new Map<string, { no: string; status: string }>();
+    mockPayments.forEach(p => m.set(p.invoiceApplyNo, { no: p.paymentNo, status: p.status }));
+    return m;
+  }, []);
+
+  const filtered = useMemo(() => {
+    let r = enterpriseOrders;
+    if (timeRange) {
+      const [s, e] = timeRange;
+      const endDate = (o: Order) => (o.rentalEnd || o.endTime?.split(' ')[0]) || o.createdAt.split(' ')[0];
+      r = r.filter(o => { const d = endDate(o); return d >= s && d <= e; });
+    }
+    return r;
+  }, [enterpriseOrders, timeRange]);
+
+  const summary = useMemo(() => {
+    let consumption = 0, pendingInvoice = 0, issuedAmount = 0, pendingPayment = 0, paidAmount = 0;
+    filtered.forEach(o => {
+      consumption += o.paidAmount;
+      const inv = invoiceMap.get(o.orderNo);
+      if (!inv || inv.status === 'issuing' || inv.status === 'rejected') {
+        pendingInvoice += o.paidAmount;
+        pendingPayment += o.paidAmount; // 未开票也计入待付款
+        return;
+      }
+      if (inv.status === 'issued') {
+        issuedAmount += o.paidAmount;
+        const pay = paymentMap.get(inv.no);
+        if (pay && pay.status === 'paid') { paidAmount += o.paidAmount; }
+        else { pendingPayment += o.paidAmount; }
+      }
+    });
+    return { consumption, pendingInvoice, issuedAmount, pendingPayment, paidAmount };
+  }, [filtered, invoiceMap, paymentMap]);
+
+  const getStatus = (o: Order): { label: string; color: string } => {
+    const inv = invoiceMap.get(o.orderNo);
+    if (!inv || inv.status === 'cancelled') return { label: '待开票', color: 'gray' };
+    if (inv.status === 'issuing' || inv.status === 'rejected') return { label: '开票中', color: 'arcoblue' };
+    if (inv.status === 'issued') {
+      const pay = paymentMap.get(inv.no);
+      if (pay && pay.status === 'paid') return { label: '已付款', color: 'green' };
+      return { label: '付款中', color: 'orangered' };
+    }
+    return { label: inv.status, color: 'gray' };
+  };
 
   const columns = [
-    { title: '账单编号', dataIndex: 'billNo', width: 160 },
-    { title: '账单月份', dataIndex: 'month', width: 100, render: (v: string) => v.replace('-', '年') + '月' },
-    { title: '当期消费', dataIndex: 'consumption', width: 110, render: (v: number) => `¥${v.toLocaleString()}` },
-    { title: '当期退款', dataIndex: 'refund', width: 110, render: (v: number) => `¥${v.toLocaleString()}` },
-    { title: '待结算总额', dataIndex: 'pendingAmount', width: 120, render: (v: number) => <span style={{ fontWeight: 500 }}>¥{v.toLocaleString()}</span> },
-    { title: '已结算金额', dataIndex: 'settledAmount', width: 120, render: (v: number) => `¥${v.toLocaleString()}` },
-    { title: '结算状态', dataIndex: 'status', width: 90, render: (v: string) => {
-      const s = statusMap[v];
-      return <Tag color={s.color} size="small">{s.label}</Tag>;
+    { title: '订单号', dataIndex: 'orderNo', width: 170, render: (v: string) => <a>{v}</a> },
+    { title: '下单人', width: 100, render: (_: unknown, o: Order) => o.passengerName || '—' },
+    { title: '订单类型', width: 90, render: (_: unknown, o: Order) => <Tag color={o.type === 'charter' ? 'arcoblue' : 'purple'} size="small">{o.type === 'charter' ? '包车' : '租车'}</Tag> },
+    { title: '完成时间', width: 170, render: (_: unknown, o: Order) => o.rentalEnd || o.endTime || o.createdAt },
+    { title: '订单金额', width: 110, render: (_: unknown, o: Order) => `¥${o.paidAmount.toLocaleString()}` },
+    { title: '付款状态', width: 100, render: (_: unknown, o: Order) => { const s = getStatus(o); return <Tag color={s.color} size="small">{s.label}</Tag>; }},
+    { title: '关联发票', width: 180, render: (_: unknown, o: Order) => invoiceMap.get(o.orderNo)?.no ? <a>{invoiceMap.get(o.orderNo)!.no}</a> : '—' },
+    { title: '关联付款', width: 170, render: (_: unknown, o: Order) => {
+      const inv = invoiceMap.get(o.orderNo);
+      if (!inv) return '—';
+      const pay = paymentMap.get(inv.no);
+      return pay ? <a>{pay.no}</a> : '—';
     }},
-    { title: '操作', width: 80, render: (_: unknown, r: Bill) => <Button type="text" size="small" onClick={() => setDetailId(r.id)}>查看详情</Button> },
-  ];
-
-  const consumeColumns = [
-    { title: '日期', dataIndex: 'date' }, { title: '订单号', dataIndex: 'orderNo' },
-    { title: '类型', dataIndex: 'type' }, { title: '用车人', dataIndex: 'passenger' },
-    { title: '金额', dataIndex: 'amount', render: (v: number) => `¥${v.toLocaleString()}` },
-  ];
-
-  const refundColumns = [
-    { title: '日期', dataIndex: 'date' }, { title: '退款单号', dataIndex: 'refundNo' },
-    { title: '关联订单', dataIndex: 'orderNo' }, { title: '金额', dataIndex: 'amount', render: (v: number) => `¥${v.toLocaleString()}` },
-    { title: '原因', dataIndex: 'reason' },
   ];
 
   return (
     <div>
-      <Title heading={5} style={{ margin: '0 0 16px' }}>账单管理</Title>
+      <Title heading={5} style={{ margin: '0 0 16px' }}>企业账单</Title>
 
-      <Card>
-        <Space style={{ marginBottom: 16 }} size="medium">
-          <Select placeholder="账单月份" value={filterMonth} onChange={setFilterMonth} style={{ width: 140 }}
-            options={[{ label: '2026-06', value: '2026-06' }, { label: '2026-05', value: '2026-05' }]} />
-          <Select placeholder="结算状态" mode="multiple" value={filterStatus} onChange={setFilterStatus} style={{ width: 200 }}
-            options={[{ label: '待结算', value: 'pending' }, { label: '部分结算', value: 'partial' }, { label: '已结算', value: 'settled' }]} />
+      <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
+        <Space size={12} wrap>
+          <RangePicker style={{ width: 280 }} placeholder={['完成时间起', '完成时间止']}
+            onChange={(_, ds) => setTimeRange(ds && ds[0] && ds[1] ? ds as [string, string] : null)} />
+          <div style={{ flex: 1 }} />
         </Space>
-        {filtered.length > 0 ? (
-          <Table columns={columns} data={filtered} rowKey="id" pagination={false} />
-        ) : (
-          <div style={{ textAlign: 'center', padding: 40, color: '#86909c' }}>暂无账单</div>
-        )}
       </Card>
 
-      <Drawer visible={!!detailId} onCancel={() => setDetailId(null)} footer={null} width="60%" title="账单详情">
-        {detail && detailData && (
-          <>
-            <Descriptions column={2} border size="small" style={{ marginBottom: 20 }}>
-              <Descriptions.Item label="账单编号">{detail.billNo}</Descriptions.Item>
-              <Descriptions.Item label="账单月份">{detail.month.replace('-', '年')}月</Descriptions.Item>
-              <Descriptions.Item label="当期消费">¥{detail.consumption.toLocaleString()}</Descriptions.Item>
-              <Descriptions.Item label="当期退款">¥{detail.refund.toLocaleString()}</Descriptions.Item>
-              {/* E6-02：已结算金额 */}
-              <Descriptions.Item label="当期退款"><span style={{ color: '#00B42A' }}>¥{detail.refund.toLocaleString()}</span></Descriptions.Item>
-              <Descriptions.Item label="已结算金额">¥{detail.settledAmount.toLocaleString()}</Descriptions.Item>
-              <Descriptions.Item label="待结算总额"><strong>¥{detail.pendingAmount.toLocaleString()}</strong></Descriptions.Item>
-              <Descriptions.Item label="结算状态"><Tag color={statusMap[detail.status].color} size="small">{statusMap[detail.status].label}</Tag></Descriptions.Item>
-            </Descriptions>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 16 }}>
+        <Card size="small"><div style={{ color: '#86909c', fontSize: 13 }}>消费总额</div><div style={{ fontSize: 24, fontWeight: 700, color: '#165DFF' }}>¥{summary.consumption.toLocaleString()}</div></Card>
+        <Card size="small"><div style={{ color: '#86909c', fontSize: 13 }}>待开票金额</div><div style={{ fontSize: 24, fontWeight: 700, color: '#86909c' }}>¥{summary.pendingInvoice.toLocaleString()}</div></Card>
+        <Card size="small"><div style={{ color: '#86909c', fontSize: 13 }}>已开票金额</div><div style={{ fontSize: 24, fontWeight: 700, color: '#165DFF' }}>¥{summary.issuedAmount.toLocaleString()}</div></Card>
+        <Card size="small"><div style={{ color: '#86909c', fontSize: 13 }}>待付款金额</div><div style={{ fontSize: 24, fontWeight: 700, color: '#FF7D00' }}>¥{summary.pendingPayment.toLocaleString()}</div></Card>
+        <Card size="small"><div style={{ color: '#86909c', fontSize: 13 }}>已付款金额</div><div style={{ fontSize: 24, fontWeight: 700, color: '#00B42A' }}>¥{summary.paidAmount.toLocaleString()}</div></Card>
+      </div>
 
-            <Button icon={<IconExport />} onClick={() => Message.success('导出成功')} style={{ marginBottom: 16 }}>导出明细</Button>
-
-            <Title heading={6}>消费明细</Title>
-            <Table columns={consumeColumns} data={detailData.details} rowKey="orderNo" pagination={false} size="small" style={{ marginBottom: 20 }} />
-
-            {detailData.refunds.length > 0 && (
-              <>
-                <Title heading={6}>退款明细</Title>
-                <Table columns={refundColumns} data={detailData.refunds} rowKey="refundNo" pagination={false} size="small" style={{ marginBottom: 20 }} />
-              </>
-            )}
-
-            {detailData.settlements.length > 0 && (
-              <>
-                <Title heading={6}>结算记录</Title>
-                <Table columns={[
-                  { title: '操作人', dataIndex: 'operator' }, { title: '结算时间', dataIndex: 'time' },
-                  { title: '结算金额', dataIndex: 'amount', render: (v: number) => `¥${v.toLocaleString()}` },
-                ]} data={detailData.settlements} rowKey="time" pagination={false} size="small" />
-              </>
-            )}
-          </>
-        )}
-      </Drawer>
+      <Card bodyStyle={{ padding: 0 }}>
+        <Table columns={columns} data={filtered} rowKey="id" scroll={{ x: 1200 }} pagination={{ pageSize: 15, showTotal: true }} stripe />
+      </Card>
     </div>
   );
 }

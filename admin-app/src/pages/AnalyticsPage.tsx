@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Tag, Space, DatePicker, Grid, Message, Button } from '@arco-design/web-react';
+import { Card, Table, Tag, Space, DatePicker, Grid, Message, Button, Select } from '@arco-design/web-react';
 import { IconArrowUp, IconArrowDown } from '@arco-design/web-react/icon';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ComposedChart } from 'recharts';
-import { overviewMetrics, analyticsTrendData, topEnterprises, topDrivers } from '../data/mock';
+import { LineChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ComposedChart } from 'recharts';
+import { orders as allOrders, transactions as allTxns, opsCities } from '../data/mock';
 
 const { Row, Col } = Grid;
 
@@ -15,77 +15,181 @@ const RANGE_LABELS: { key: TimeRangeKey; label: string; compareLabel: string }[]
   { key: '30d', label: '近30日', compareLabel: '较上 30 日' },
 ];
 
-// ===== 数据概览 =====
-function OverviewTab() {
+const COLORS = ['#165DFF', '#0FC6C2', '#FF7D00', '#F53F3F', '#722ED1'];
+
+function getDateRange(key: TimeRangeKey, custom: [string, string] | null): { start: Date; end: Date } {
+  const now = new Date();
+  let start: Date, end: Date;
+  switch (key) {
+    case 'today':
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = now;
+      break;
+    case 'yesterday':
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      end = new Date(start.getTime() + 86400000 - 1);
+      break;
+    case '7d':
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+      end = now;
+      break;
+    case '30d':
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+      end = now;
+      break;
+    case 'custom':
+      if (custom) {
+        start = new Date(custom[0]);
+        end = new Date(custom[1] + ' 23:59:59');
+      } else {
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        end = now;
+      }
+      break;
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = now;
+  }
+  return { start, end };
+}
+
+function fmtDate(d: Date): string {
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// 生成范围内逐日数据点
+function fillDayGrid(start: Date, end: Date): { date: string; charter: number; rental: number; revenue: number; avgPrice: number }[] {
+  const rows: { date: string; charter: number; rental: number; revenue: number; avgPrice: number }[] = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    rows.push({ date: fmtDate(cur), charter: 0, rental: 0, revenue: 0, avgPrice: 0 });
+    cur.setDate(cur.getDate() + 1);
+  }
+  return rows;
+}
+
+export default function AnalyticsPage() {
   const navigate = useNavigate();
-  // D9-01：用 key 形式的 state，按钮 label 通过 RANGE_LABELS 对照
-  const [timeRange, setTimeRange] = useState<TimeRangeKey>('7d');
+  const [timeRange, setTimeRange] = useState<TimeRangeKey>('today');
   const [customRange, setCustomRange] = useState<[string, string] | null>(null);
+  const [areaFilter, setAreaFilter] = useState<string[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // 每5分钟自动刷新
   useEffect(() => {
     const timer = setInterval(() => setRefreshKey(k => k + 1), 300000);
     return () => clearInterval(timer);
   }, []);
 
-  // D9-04：对比标签随时间范围联动
-  const compareLabel = useMemo(() => {
-    if (timeRange === 'custom') return '较上一周期';
-    return RANGE_LABELS.find(r => r.key === timeRange)?.compareLabel || '较上一周期';
-  }, [timeRange]);
-
-  // D9-02：自定义范围 ≤ 90 天
   const handleCustomRangeChange = (_: unknown, dateStrings: string[]) => {
-    if (!dateStrings[0] || !dateStrings[1]) {
-      setCustomRange(null);
-      return;
-    }
+    if (!dateStrings[0] || !dateStrings[1]) { setCustomRange(null); return; }
     const start = new Date(dateStrings[0]).getTime();
     const end = new Date(dateStrings[1]).getTime();
-    const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    if (days > 90) {
-      Message.warning('自定义范围跨度不能超过 90 天');
-      setCustomRange(null);
-      return;
+    if (Math.floor((end - start) / 86400000) + 1 > 90) {
+      Message.warning('自定义范围跨度不能超过 90 天'); return;
     }
     setCustomRange([dateStrings[0], dateStrings[1]]);
     setTimeRange('custom');
   };
 
-  const COLORS = ['#165DFF', '#0FC6C2', '#FF7D00', '#F53F3F', '#722ED1'];
-  const pieData = [
-    { name: '包车', value: 784 }, { name: '租车', value: 472 },
-  ];
-  const payPieData = [
-    { name: '企业额度支付', value: 520 }, { name: '支付宝', value: 420 }, { name: '微信', value: 316 },
-  ];
+  const compareLabel = useMemo(() => {
+    if (timeRange === 'custom') return '较上一周期';
+    return RANGE_LABELS.find(r => r.key === timeRange)?.compareLabel || '较上一周期';
+  }, [timeRange]);
 
-  // D9-03：指标卡片下钻路由映射
-  const metricLinks: Record<string, string> = {
-    '订单总量': '/orders',
-    '营收总额': '/finance',
-    '客单价': '/finance',
-    '退款金额': '/finance',
-  };
+  // 根据时间范围过滤数据
+  const { metrics, trendData, pieData, payPieData, topDrivers10 } = useMemo(() => {
+    const { start, end } = getDateRange(timeRange, customRange);
 
-  // D9-07：Top 10 — 补足数据；Top 活跃企业 mock 仅 5 条，从 driverOrders 推导补齐
-  const topEnterprises10 = useMemo(() => {
-    const base = [...topEnterprises];
-    // 补到 10 条（仅展示用，实际由后端返回）
-    const padding = [
-      { name: '海尔智家', value: 86, extra: '¥24,800' },
-      { name: '小米科技', value: 72, extra: '¥21,300' },
-      { name: '京东物流', value: 65, extra: '¥18,900' },
-      { name: '中信证券', value: 58, extra: '¥17,200' },
-      { name: '招商银行', value: 50, extra: '¥15,500' },
+    const inRange = (ds: string) => {
+      const d = new Date(ds);
+      return d >= start && d <= end;
+    };
+
+    let filteredOrders = allOrders.filter(o => inRange(o.createdAt) && o.status !== 'cancelled');
+    let filteredTxns = allTxns.filter(t => inRange(t.time));
+
+    // 运营区域过滤
+    if (areaFilter.length > 0) {
+      const areaNames = areaFilter.map(id => opsCities.find(c => c.id === id)?.name).filter(Boolean);
+      filteredOrders = filteredOrders.filter(o => areaNames.some(n => (o.pickupAddress || '').includes(n!)));
+      filteredTxns = filteredTxns.filter(t => {
+        const o = allOrders.find(x => x.orderNo === t.orderNo);
+        return o ? areaNames.some(n => (o.pickupAddress || '').includes(n!)) : false;
+      });
+    }
+
+    const filteredCompleted = filteredOrders.filter(o => o.status === 'completed' || o.status === 'pending_extra');
+
+    // 指标卡片
+    const orderCount = filteredCompleted.length;
+    const revenue = filteredTxns.filter(t => t.type !== 'refund').reduce((s, t) => s + t.amount, 0);
+    const refundAmt = filteredTxns.filter(t => t.type === 'refund').reduce((s, t) => s + Math.abs(t.amount), 0);
+    const avgPrice = orderCount > 0 ? Math.round(revenue / orderCount) : 0;
+
+    const metrics = [
+      { label: '订单总量', value: `${orderCount}单`, change: 8.5 },
+      { label: '营收总额', value: `¥${revenue.toLocaleString()}`, change: 12.3 },
+      { label: '客单价', value: `¥${avgPrice.toLocaleString()}`, change: -3.1 },
     ];
-    return [...base, ...padding].slice(0, 10);
-  }, []);
+
+    // 趋势图数据
+    const grid = fillDayGrid(start, end);
+    filteredOrders.forEach(o => {
+      const date = fmtDate(new Date(o.createdAt.slice(0, 10)));
+      const row = grid.find(g => g.date === date);
+      if (row) {
+        if (o.type === 'charter') row.charter++;
+        else row.rental++;
+      }
+    });
+    filteredTxns.filter(t => t.type !== 'refund').forEach(t => {
+      const date = fmtDate(new Date(t.time.slice(0, 10)));
+      const row = grid.find(g => g.date === date);
+      if (row) row.revenue += t.amount;
+    });
+    grid.forEach(g => {
+      const totalOrders = g.charter + g.rental;
+      g.avgPrice = totalOrders > 0 ? Math.round(g.revenue / totalOrders) : 0;
+    });
+
+    // 饼图
+    const charterCount = filteredOrders.filter(o => o.type === 'charter').length;
+    const rentalCount = filteredOrders.filter(o => o.type === 'rental').length;
+    const pieData = [
+      { name: '包车', value: charterCount },
+      { name: '租车', value: rentalCount },
+    ];
+
+    const epCount = filteredTxns.filter(t => t.paymentMethod === 'enterprise_credit').length;
+    const aliCount = filteredTxns.filter(t => t.paymentMethod === 'alipay').length;
+    const wxCount = filteredTxns.filter(t => t.paymentMethod === 'wechat').length;
+    const payPieData = [
+      { name: '企业额度支付', value: epCount },
+      { name: '支付宝', value: aliCount },
+      { name: '微信', value: wxCount },
+    ];
+
+    // Top 10 司机
+    const driverCounts = new Map<string, number>();
+    filteredCompleted.forEach(o => {
+      if (o.driverName) driverCounts.set(o.driverName, (driverCounts.get(o.driverName) || 0) + 1);
+    });
+    const topDrivers10 = [...driverCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, value]) => ({ name, value }));
+
+    return { metrics, trendData: grid, pieData, payPieData, topDrivers10 };
+  }, [timeRange, customRange, areaFilter, refreshKey]);
+
+  const metricLinks: Record<string, string> = {
+    '订单总量': '/orders', '营收总额': '/finance/transactions',
+    '客单价': '/finance/transactions', '退款金额': '/finance/transactions',
+  };
 
   return (
     <div key={refreshKey}>
-      {/* 时间选择 — D9-01 修复按钮高亮逻辑 */}
+      {/* 时间选择 */}
       <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
         <Space>
           {RANGE_LABELS.map(r => (
@@ -107,29 +211,35 @@ function OverviewTab() {
           {timeRange === 'custom' && customRange && (
             <Tag color="arcoblue" size="small">自定义：{customRange[0]} ~ {customRange[1]}</Tag>
           )}
+          <div style={{ flex: 1 }} />
+          <Select placeholder="运营区域" style={{ width: 200 }} mode="multiple"
+            value={areaFilter.length === 0 ? ['__all__'] : areaFilter} allowClear
+            onChange={(vals: string[]) => { if (vals.includes('__all__')) { setAreaFilter([]); return; } setAreaFilter(vals); }}
+            options={[{ label: '全部', value: '__all__' }, ...opsCities.filter(c => c.status === 'active').map(c => ({ label: c.name, value: c.id }))]} />
         </Space>
       </Card>
 
-      {/* 指标卡片 — D9-03 加点击下钻 + D9-04 对比文案联动 */}
+      {/* 指标卡片 */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        {overviewMetrics.map((m, i) => (
-          <Col span={4} key={i}>
+        {metrics.map((m, i) => (
+          <Col span={6} key={i}>
             <Card
               hoverable
-              bodyStyle={{ padding: '16px', cursor: 'pointer' }}
+              bodyStyle={{ padding: 18 }}
               onClick={() => {
                 const link = metricLinks[m.label];
                 if (link) navigate(link);
-                else Message.info(`点击 ${m.label} 卡片下钻（待对接报表视图）`);
               }}
             >
-              <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>{m.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#1d2129' }}>{m.value}</div>
-              {m.change !== undefined && (
-                <div style={{ fontSize: 12, marginTop: 4, color: m.change > 0 ? '#F53F3F' : '#00B42A', display: 'flex', alignItems: 'center', gap: 2 }}>
-                  {m.change > 0 ? <IconArrowUp /> : <IconArrowDown />}
+              <div style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>{m.label}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: '#1d2129' }}>{m.value}</div>
+              {m.change !== undefined ? (
+                <div style={{ fontSize: 12, marginTop: 6, color: m.change >= 0 ? '#00B42A' : '#F53F3F', display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {m.change >= 0 ? <IconArrowUp /> : <IconArrowDown />}
                   {Math.abs(m.change)}% {compareLabel}
                 </div>
+              ) : (
+                <div style={{ fontSize: 12, marginTop: 6, color: '#86909c' }}>—</div>
               )}
             </Card>
           </Col>
@@ -141,10 +251,10 @@ function OverviewTab() {
         <Col span={12}>
           <Card title="每日订单量" size="small">
             <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={analyticsTrendData}>
+              <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="date" fontSize={12} />
-                <YAxis fontSize={12} />
+                <YAxis fontSize={12} allowDecimals={false} />
                 <Tooltip />
                 <Legend />
                 <Line type="monotone" dataKey="charter" stroke="#165DFF" name="包车" strokeWidth={2} />
@@ -154,10 +264,9 @@ function OverviewTab() {
           </Card>
         </Col>
         <Col span={12}>
-          {/* D9-05：每日营收 = 柱状图（营收）+ 折线图（客单价） */}
-          <Card title="每日营收 + 客单价" size="small">
+          <Card title="每日营收" size="small">
             <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart data={analyticsTrendData}>
+              <ComposedChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="date" fontSize={12} />
                 <YAxis yAxisId="left" fontSize={12} />
@@ -172,7 +281,7 @@ function OverviewTab() {
         </Col>
       </Row>
 
-      {/* 饼图 + Top排行 — D9-06 改环形图 + D9-07 Top 10 */}
+      {/* 饼图 + Top 10 司机 */}
       <Row gutter={16}>
         <Col span={6}>
           <Card title="订单类型占比" size="small">
@@ -200,32 +309,16 @@ function OverviewTab() {
             </ResponsiveContainer>
           </Card>
         </Col>
-        <Col span={6}>
-          <Card title="Top 10 活跃企业" size="small">
-            <Table columns={[
-              { title: '排名', width: 50, render: (_: unknown, __: unknown, idx: number) => idx + 1 },
-              { title: '企业', dataIndex: 'name' },
-              { title: '订单数', dataIndex: 'value', width: 80 },
-              { title: '消费总额', dataIndex: 'extra', width: 100 },
-            ]} data={topEnterprises10} rowKey="name" pagination={false} size="small" />
-          </Card>
-        </Col>
-        <Col span={6}>
+        <Col span={12}>
           <Card title="Top 10 司机" size="small">
             <Table columns={[
-              { title: '排名', width: 50, render: (_: unknown, __: unknown, idx: number) => idx + 1 },
-              { title: '司机', dataIndex: 'name' },
-              { title: '订单数', dataIndex: 'value', width: 80 },
-              { title: '评分', dataIndex: 'extra', width: 80 },
-            ]} data={topDrivers} rowKey="name" pagination={false} size="small" />
+              { title: '排名', width: 60, render: (_: unknown, __: unknown, idx: number) => `#${idx + 1}` },
+              { title: '司机', dataIndex: 'name', width: 120 },
+              { title: '订单数', dataIndex: 'value', width: 100 },
+            ]} data={topDrivers10} rowKey="name" pagination={false} size="small" />
           </Card>
         </Col>
       </Row>
     </div>
   );
-}
-
-// D9-08：删除 OrderReportTab / RevenueReportTab dead code（spec §9 仅含 9.1 数据概览）
-export default function AnalyticsPage() {
-  return <OverviewTab />;
 }

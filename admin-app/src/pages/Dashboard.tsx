@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Tag, Button, Typography, Space, List, Badge, Message } from '@arco-design/web-react';
-import { IconArrowUp, IconArrowDown, IconRefresh, IconRight } from '@arco-design/web-react/icon';
-import { dashboardStats, trendData, currentUser } from '../data/mock';
-import type { Role, TodoItem } from '../types';
+import { Card, Tag, Button, Typography, Space, Message } from '@arco-design/web-react';
+import { IconArrowUp, IconArrowDown, IconRefresh, IconLoading } from '@arco-design/web-react/icon';
+import { dashboardStats, trendData, currentUser, orders, invoices, payments } from '../data/mock';
+import type { Role } from '../types';
 
 const { Text } = Typography;
 
@@ -33,7 +33,7 @@ function DualLineChart({ data, height = 200 }: { data: { date: string; orders: n
       ))}
       {[0, 0.5, 1].map(frac => (
         <text key={`yr${frac}`} x={w - pr + 8} y={pt + frac * ph + 4} textAnchor="start" fontSize={10} fill="#86909c">
-          {Math.round(maxR * (1 - frac))}万
+          ¥{Math.round(maxR * (1 - frac)).toLocaleString()}
         </text>
       ))}
       <path d={polyline(ptsO)} fill="none" stroke="#165DFF" strokeWidth={2} />
@@ -44,7 +44,7 @@ function DualLineChart({ data, height = 200 }: { data: { date: string; orders: n
         <text key={`xd${i}`} x={pl + (i / (data.length - 1)) * pw} y={h - 8} textAnchor="middle" fontSize={10} fill="#86909c">{d.date}</text>
       ))}
       <text x={pl} y={14} fontSize={11} fill="#165DFF">── 订单量</text>
-      <text x={pl + 70} y={14} fontSize={11} fill="#00B42A">-- 交易额(万元)</text>
+      <text x={pl + 70} y={14} fontSize={11} fill="#00B42A">-- 交易额(元)</text>
     </svg>
   );
 }
@@ -55,7 +55,7 @@ const trend30: { date: string; orders: number; revenue: number }[] = Array.from(
   return {
     date: `${d.getMonth() + 1}/${d.getDate()}`,
     orders: 25 + Math.floor(Math.random() * 40),
-    revenue: Math.round((4 + Math.random() * 8) * 10) / 10,
+    revenue: Math.round((40000 + Math.random() * 80000) / 100) * 100,
   };
 });
 
@@ -64,6 +64,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(dashboardStats);
   const [trendDays, setTrendDays] = useState<7 | 30>(7);
   const [chartData, setChartData] = useState(trendData);
+  const [spinning, setSpinning] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -77,8 +78,12 @@ export default function Dashboard() {
   }, []);
 
   const handleRefresh = () => {
-    setStats({ ...dashboardStats });
-    Message.success('数据已刷新');
+    setSpinning(true);
+    setTimeout(() => {
+      setStats({ ...dashboardStats });
+      setSpinning(false);
+      Message.success('数据已刷新');
+    }, 600);
   };
 
   const handleTrendToggle = (days: 7 | 30) => {
@@ -89,28 +94,54 @@ export default function Dashboard() {
   const role = currentUser.role as Role;
   const roleVisible = (roles: string[]) => roles.includes(role);
 
+  // 核心数据卡片（§2.2）
   const statCards = [
-    { title: '今日订单', value: stats.todayOrders, suffix: '单', change: stats.todayOrdersChange, link: '/orders', visible: true },
-    { title: '今日交易额', value: stats.todayRevenue, prefix: '¥', change: stats.todayRevenueChange, link: '/orders', visible: true },
-    { title: '待派车', value: stats.pendingDispatch, suffix: '单', link: '/orders?tab=pending_dispatch', visible: roleVisible(['super_admin', 'ops_admin']) },
-    { title: '待补款', value: stats.pendingExtra, suffix: '单', link: '/orders?tab=unpaid', visible: roleVisible(['super_admin', 'finance_admin']) },
-    { title: '在线司机', value: `${stats.onlineDrivers}/${stats.totalDrivers}`, link: '/drivers', visible: roleVisible(['super_admin', 'ops_admin']) },
+    { title: '今日新增订单', value: stats.todayOrders, suffix: '单', change: stats.todayOrdersChange, link: '/orders', visible: true },
+    { title: '今日已完成订单', value: stats.todayCompletedOrders, suffix: '单', change: stats.todayCompletedOrdersChange, link: '/orders', visible: true },
+    { title: '今日交易额', value: stats.todayRevenue, prefix: '¥', change: stats.todayRevenueChange, link: '/finance/invoices', visible: true },
+    { title: '待派车', value: stats.pendingDispatch, suffix: '单', change: undefined, link: '/orders?tab=pending_start', visible: roleVisible(['super_admin', 'ops_admin']) },
+    { title: '待补款', value: stats.pendingExtra, suffix: '单', change: undefined, link: '/orders?tab=pending_extra', visible: roleVisible(['super_admin', 'finance_admin']) },
   ].filter(c => c.visible);
 
-  // 待派车订单卡片数据
-  const pendingDispatchOrders = [
-    { orderNo: 'ZC20260608-0001', time: '06-08 07:00', route: '南山区科技园 → 福田区会展中心', passenger: '王雪梅' },
-    { orderNo: 'ZC20260607-0010', time: '06-08 09:00', route: '福田区华强北 → 南山区华侨城', passenger: '林小红' },
-  ];
+  // 待办 — 待派车订单（最近5条）
+  const pendingDispatchOrders = orders
+    .filter(o => o.status === 'pending_dispatch')
+    .slice(0, 5)
+    .map(o => ({
+      orderNo: o.orderNo,
+      time: o.startTime?.slice(5) || o.rentalStart || '—',
+      route: `${o.pickupAddress || '—'} → ${o.dropoffAddress || '—'}`,
+      passenger: o.passengerName || o.passengerPhone,
+    }));
 
-  const todos: TodoItem[] = [];
+  // 待办 — 待开票申请（最近5条）
+  const pendingInvoices = invoices
+    .filter(i => i.status === 'issuing')
+    .slice(0, 5)
+    .map(i => ({
+      no: i.applyNo,
+      applicant: i.applicantName,
+      amount: i.amount,
+    }));
 
-  const priorityColor: Record<string, string> = { urgent: 'red', important: 'orangered', normal: 'arcoblue' };
-  const hasTodos = todos.some(t => t.count > 0);
+  // 待办 — 待回款任务（最近5条）
+  const pendingPayments = payments
+    .filter(p => p.status === 'verifying')
+    .slice(0, 5)
+    .map(p => ({
+      no: p.paymentNo,
+      enterprise: p.enterpriseName,
+      amount: p.amount,
+    }));
+
+  const hasPendingDispatch = pendingDispatchOrders.length > 0;
+  const hasPendingInvoices = pendingInvoices.length > 0;
+  const hasPendingPayments = pendingPayments.length > 0;
+  const hasAnyTodo = hasPendingDispatch || hasPendingInvoices || hasPendingPayments;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* §2.1 顶部欢迎条 */}
+      {/* 顶部欢迎条 */}
       <Card style={{ marginBottom: 16, flexShrink: 0 }} bodyStyle={{ padding: '16px 24px' }}>
         <Space size={12}>
           <div style={{
@@ -130,12 +161,12 @@ export default function Dashboard() {
             </Space>
           </div>
           <div style={{ marginLeft: 'auto' }}>
-            <Button icon={<IconRefresh />} onClick={handleRefresh}>刷新数据</Button>
+            <Button icon={spinning ? <IconLoading /> : <IconRefresh />} onClick={handleRefresh}>刷新数据</Button>
           </div>
         </Space>
       </Card>
 
-      {/* §2.2 核心数据卡片 — 均分满宽 */}
+      {/* 核心数据卡片 */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexShrink: 0 }}>
         {statCards.map((card, i) => (
           <Card
@@ -163,66 +194,73 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* §2.3 + §2.4 — 下方两块等高 */}
+      {/* 待办 + 趋势 */}
       <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
         {/* 待办事项 */}
-        <div style={{ flex: '0 0 36%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: '0 0 38%', display: 'flex', flexDirection: 'column' }}>
           <Card
             title="待办事项"
-            bodyStyle={{ padding: '0 20px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}
-            extra={<Text type="secondary" style={{ fontSize: 12 }}>共 {todos.filter(t => t.count > 0).length} 项</Text>}
+            bodyStyle={{ padding: '0 20px 20px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}
             style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
           >
-            {/* 待派车订单卡片（独立区块，可滚动） */}
-            {stats.pendingDispatch > 0 && (
+            {/* 待派车订单 */}
+            {hasPendingDispatch && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 8 }}>
-                  🚗 待派车订单（{stats.pendingDispatch} 笔）
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>🚗 待派车订单（{stats.pendingDispatch}）</span>
+                  {pendingDispatchOrders.length >= 5 && <Text type="secondary" style={{ fontSize: 12, cursor: 'pointer' }} onClick={() => navigate('/orders?tab=pending_start')}>查看全部</Text>}
                 </div>
-                <div style={{ maxHeight: 180, overflow: 'auto' }}>
-                  {pendingDispatchOrders.map((o, i) => (
-                    <div key={i} onClick={() => navigate('/orders?tab=pending_start')}
-                      style={{ cursor: 'pointer', padding: '10px 12px', marginBottom: 8, background: '#FFECE8', border: '1px solid #FBACA3', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontSize: 12, color: '#86909c' }}>{o.orderNo}</div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{o.passenger} · {o.time}</div>
-                        <div style={{ fontSize: 11, color: '#86909c', marginTop: 2 }}>{o.route}</div>
-                      </div>
-                      <IconRight style={{ color: '#F53F3F', fontSize: 14 }} />
-                    </div>
-                  ))}
-                </div>
+                {pendingDispatchOrders.map((o, i) => (
+                  <div key={i} onClick={() => navigate('/orders?tab=pending_start')}
+                    style={{ cursor: 'pointer', padding: '10px 12px', marginBottom: 8, background: '#FFECE8', border: '1px solid #FBACA3', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#86909c' }}>{o.orderNo}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{o.passenger} · {o.time}</div>
+                    <div style={{ fontSize: 11, color: '#86909c', marginTop: 2 }}>{o.route}</div>
+                  </div>
+                ))}
               </div>
             )}
-            {!hasTodos && stats.pendingDispatch === 0 ? (
+
+            {/* 待开票申请 */}
+            {hasPendingInvoices && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>🧾 待开票申请（{pendingInvoices.length}）</span>
+                  <Text type="secondary" style={{ fontSize: 12, cursor: 'pointer' }} onClick={() => navigate('/finance/invoices?tab=issuing')}>查看全部</Text>
+                </div>
+                {pendingInvoices.map((iv, i) => (
+                  <div key={i} onClick={() => navigate('/finance/invoices?tab=issuing')}
+                    style={{ cursor: 'pointer', padding: '10px 12px', marginBottom: 8, background: '#E8F3FF', border: '1px solid #BEDAFF', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#86909c' }}>{iv.no}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{iv.applicant}</div>
+                    <div style={{ fontSize: 11, color: '#86909c', marginTop: 2 }}>开票金额 ¥{iv.amount.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 待回款任务 */}
+            {hasPendingPayments && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>💰 待回款任务（{pendingPayments.length}）</span>
+                  <Text type="secondary" style={{ fontSize: 12, cursor: 'pointer' }} onClick={() => navigate('/finance/payments?tab=verifying')}>查看全部</Text>
+                </div>
+                {pendingPayments.map((p, i) => (
+                  <div key={i} onClick={() => navigate('/finance/payments?tab=verifying')}
+                    style={{ cursor: 'pointer', padding: '10px 12px', marginBottom: 8, background: '#FFF7E8', border: '1px solid #FFCF7A', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#86909c' }}>{p.no}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{p.enterprise}</div>
+                    <div style={{ fontSize: 11, color: '#86909c', marginTop: 2 }}>回款金额 ¥{p.amount.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!hasAnyTodo && (
               <div style={{ textAlign: 'center', padding: 40, color: '#86909c', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 今日无待办事项
               </div>
-            ) : (
-              <List
-                dataSource={todos.filter(t => t.count > 0)}
-                render={(item) => (
-                  <List.Item
-                    key={item.id}
-                    style={{ cursor: 'pointer', padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}
-                    onClick={() => navigate(item.link)}
-                    actions={[<IconRight key="go" style={{ color: '#c9cdd4' }} />]}
-                  >
-                    <List.Item.Meta
-                      title={
-                        <Space size={8}>
-                          <Badge status={item.priority === 'urgent' ? 'error' : item.priority === 'important' ? 'warning' : 'default'} />
-                          <span>{item.title}</span>
-                          <Tag color={priorityColor[item.priority]} size="small">{item.count}</Tag>
-                        </Space>
-                      }
-                      description={item.subtitle && (
-                        <Text type="secondary" style={{ fontSize: 12 }}>{item.subtitle}</Text>
-                      )}
-                    />
-                  </List.Item>
-                )}
-              />
             )}
           </Card>
         </div>

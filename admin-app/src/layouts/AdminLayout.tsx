@@ -24,7 +24,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 计算选中 key：系统管理子路由用 'system-xxx' 格式
+  // 计算选中 key：系统管理/财务子路由用 'xxx-yyy' 格式
   const pathname = location.pathname;
   const selectedKey = (() => {
     if (pathname === '/') return 'dashboard';
@@ -32,24 +32,32 @@ export default function AdminLayout() {
       const sub = pathname.split('/system/')[1];
       return `system-${sub}`;
     }
+    if (pathname.startsWith('/finance/')) {
+      const sub = pathname.split('/finance/')[1];
+      return `finance-${sub}`;
+    }
     return pathname.split('/')[1] || 'dashboard';
   })();
 
-  // 系统管理子菜单默认展开
-  const defaultOpenKeys = ['order-group', 'system-group'];
+  // 系统管理/财务子菜单默认展开
+  const defaultOpenKeys = ['enterprise-group', 'order-group', 'system-group', 'finance-group'];
 
   const handleMenuClick = (key: string) => {
     const routeMap: Record<string, string> = {
-      dashboard: '/', enterprise: '/enterprise',
+      dashboard: '/', 'enterprise-leads': '/enterprise/leads', 'enterprise-formal': '/enterprise',
       orders: '/orders', 'driver-orders': '/driver-orders',
       vehicles: '/vehicles', drivers: '/drivers',
-      finance: '/finance',
+      'finance-bills': '/finance/bills',
+      'finance-invoices': '/finance/invoices',
+      'finance-payments': '/finance/payments',
+      'finance-transactions': '/finance/transactions',
       config: '/config', analytics: '/analytics',
       'system-accounts': '/system/accounts',
       'system-roles': '/system/roles',
       'system-login-logs': '/system/login-logs',
       'system-op-logs': '/system/op-logs',
       'system-online': '/system/online',
+      'system-menus': '/system/menus',
     };
     navigate(routeMap[key] || '/');
   };
@@ -108,14 +116,22 @@ export default function AdminLayout() {
           style={{ flex: 1, overflow: 'auto', borderRight: 'none' }}
         >
           <Item key="dashboard"><IconDashboard />工作台</Item>
-          <Item key="enterprise"><IconUserGroup />企业客户管理</Item>
+          <SubMenu key="enterprise-group" title={<span><IconUserGroup />企业客户管理</span>}>
+            <Item key="enterprise-leads">线索客户</Item>
+            <Item key="enterprise-formal">正式客户</Item>
+          </SubMenu>
           <SubMenu key="order-group" title={<span><IconFile />订单管理</span>}>
             <Item key="orders">乘客订单</Item>
             <Item key="driver-orders">司机工单</Item>
           </SubMenu>
           <Item key="vehicles"><IconTool />车辆管理</Item>
           <Item key="drivers"><IconIdcard />司机管理</Item>
-          <Item key="finance"><IconSafe />财务管理</Item>
+          <SubMenu key="finance-group" title={<span><IconSafe />财务管理</span>}>
+            <Item key="finance-bills">企业账单</Item>
+            <Item key="finance-transactions">交易流水</Item>
+            <Item key="finance-invoices">发票管理</Item>
+            <Item key="finance-payments">回款管理</Item>
+          </SubMenu>
           <Item key="config"><IconSettings />运营配置</Item>
           <Item key="analytics"><IconDesktop />数据报表</Item>
           <SubMenu key="system-group" title={<span><IconCommon />系统管理</span>}>
@@ -124,6 +140,7 @@ export default function AdminLayout() {
             <Item key="system-login-logs">登录日志</Item>
             <Item key="system-op-logs">操作日志</Item>
             <Item key="system-online">在线用户</Item>
+            <Item key="system-menus">菜单管理</Item>
           </SubMenu>
         </Menu>
 

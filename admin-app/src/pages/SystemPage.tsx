@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 import {
-  Card, Table, Tag, Button, Select, Space, Modal, Message, Input, Form, DatePicker, Empty, Checkbox,
+  Card, Table, Tag, Button, Select, Space, Modal, Message, Input, InputNumber, Form, DatePicker, Empty, Checkbox,
 } from '@arco-design/web-react';
 import { IconSearch, IconPlus } from '@arco-design/web-react/icon';
 import { operatorAccounts, loginLogs, operationLogs, onlineUsers, currentUser } from '../data/mock';
@@ -145,7 +145,7 @@ export function AccountsPage() {
     { title: '手机号', dataIndex: 'phone', width: 130 },
     { title: '角色', dataIndex: 'role', width: 110, render: (v: AccountRole) => <Tag color={roleMap[v].color} size="small">{roleMap[v].label}</Tag> },
     { title: '运营区域', dataIndex: 'areas', width: 180, render: (v?: string[]) => v?.join(', ') || '全部区域' },
-    { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'red'} size="small">{v === 'active' ? '正常' : '已停用'}</Tag> },
+    { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'active' ? 'green' : 'red'} size="small">{v === 'active' ? '启用中' : '已停用'}</Tag> },
     { title: '创建时间', dataIndex: 'createdAt', width: 140 },
     {
       title: '操作', width: 240, fixed: 'right' as const, render: (_: unknown, r: OperatorAccount) => (
@@ -171,7 +171,7 @@ export function AccountsPage() {
           <Select placeholder="角色" style={{ width: 240 }} mode="multiple" value={roleFilter} onChange={setRoleFilter}
             options={Object.entries(roleMap).map(([k, v]) => ({ label: v.label, value: k }))} />
           <Select placeholder="状态" style={{ width: 140 }} mode="multiple" value={statusFilter} onChange={setStatusFilter}
-            options={[{ label: '正常', value: 'active' }, { label: '已停用', value: 'disabled' }]} />
+            options={[{ label: '启用中', value: 'active' }, { label: '已停用', value: 'disabled' }]} />
           <Input prefix={<IconSearch />} placeholder="账号/姓名/手机号" style={{ width: 220 }} value={keyword} onChange={setKeyword} allowClear />
           <div style={{ flex: 1 }} />
           <Button type="primary" icon={<IconPlus />} onClick={() => setAddVisible(true)}>新增账号</Button>
@@ -568,6 +568,86 @@ export function OnlineUsersPage() {
       <Table columns={columns} data={users} rowKey="id" scroll={{ x: 1100 }} pagination={false} stripe
         noDataElement={<Empty description="暂无在线用户" />} />
     </Card>
+  );
+}
+
+// ===== §10.6 菜单管理 =====
+type MenuItem = { id: string; name: string; path: string; icon: string; parentId?: string; order: number; visible: boolean; roles: string[] };
+
+const menuData: MenuItem[] = [
+  { id: 'm1', name: '工作台', path: '/', icon: 'IconDashboard', order: 1, visible: true, roles: ['super_admin','ops_admin','finance_admin','cs_admin'] },
+  { id: 'm2', name: '企业客户管理', path: '/enterprise', icon: 'IconUserGroup', order: 2, visible: true, roles: ['super_admin','ops_admin'] },
+  { id: 'm3', name: '订单管理', path: '/orders', icon: 'IconFile', order: 3, visible: true, roles: ['super_admin','ops_admin','finance_admin'] },
+  { id: 'm4', name: '车辆管理', path: '/vehicles', icon: 'IconTool', order: 4, visible: true, roles: ['super_admin','ops_admin'] },
+  { id: 'm5', name: '司机管理', path: '/drivers', icon: 'IconIdcard', order: 5, visible: true, roles: ['super_admin','ops_admin'] },
+  { id: 'm6', name: '财务管理', path: '/finance', icon: 'IconSafe', order: 6, visible: true, roles: ['super_admin','finance_admin'] },
+  { id: 'm7', name: '运营配置', path: '/config', icon: 'IconSettings', order: 7, visible: true, roles: ['super_admin','ops_admin'] },
+  { id: 'm8', name: '数据报表', path: '/analytics', icon: 'IconDesktop', order: 8, visible: true, roles: ['super_admin','ops_admin','finance_admin'] },
+  { id: 'm9', name: '系统管理', path: '/system', icon: 'IconCommon', order: 9, visible: true, roles: ['super_admin'] },
+];
+
+export function MenusPage() {
+  const [menus, setMenus] = useState<MenuItem[]>(menuData);
+  const [editing, setEditing] = useState<MenuItem | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [form] = Form.useForm();
+
+  const openEdit = (m: MenuItem) => { setEditing(m); form.setFieldsValue(m); setShowModal(true); };
+  const openAdd = () => { setEditing(null); form.resetFields(); setShowModal(true); };
+
+  const handleSave = async () => {
+    try {
+      const v = await form.validate();
+      if (editing) {
+        setMenus(menus.map(m => m.id === editing.id ? { ...editing, ...v } : m));
+        Message.success('菜单已更新');
+      } else {
+        setMenus([...menus, { id: `m${Date.now()}`, ...v, roles: v.roles || [] }]);
+        Message.success('菜单已添加');
+      }
+      setShowModal(false);
+    } catch { /* */ }
+  };
+
+  const columns = [
+    { title: '名称', dataIndex: 'name', width: 150 },
+    { title: '路径', dataIndex: 'path', width: 150 },
+    { title: '图标', dataIndex: 'icon', width: 130 },
+    { title: '排序', dataIndex: 'order', width: 60 },
+    { title: '可见', width: 60, render: (_: unknown, r: MenuItem) => r.visible ? <Tag color="green" size="small">是</Tag> : <Tag color="gray" size="small">否</Tag> },
+    { title: '可见角色', dataIndex: 'roles', width: 300, render: (v: string[]) => v?.join(', ') || '全部' },
+    { title: '操作', width: 100, render: (_: unknown, r: MenuItem) => (
+      <Button type="text" size="small" onClick={() => openEdit(r)}>编辑</Button>
+    )},
+  ];
+
+  return (
+    <div>
+      <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 16 }}>
+        <Button type="primary" icon={<IconPlus />} onClick={openAdd}>新增菜单</Button>
+      </Card>
+      <Card bodyStyle={{ padding: 0 }}>
+        <Table columns={columns} data={menus} rowKey="id" pagination={false} stripe />
+      </Card>
+      <Modal title={editing ? '编辑菜单' : '新增菜单'} visible={showModal} onOk={handleSave}
+        onCancel={() => { setShowModal(false); form.resetFields(); }} style={{ width: 520 }}>
+        <Form form={form} layout="vertical">
+          <Form.Item label="菜单名称" field="name" rules={[{ required: true }]}><Input maxLength={20} /></Form.Item>
+          <Form.Item label="路由路径" field="path" rules={[{ required: true }]}><Input maxLength={50} /></Form.Item>
+          <Form.Item label="图标组件名" field="icon" rules={[{ required: true }]}><Input maxLength={30} /></Form.Item>
+          <Form.Item label="排序" field="order" rules={[{ required: true }]}><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item label="是否可见" field="visible" initialValue={true}>
+            <Select options={[{ label: '是', value: true }, { label: '否', value: false }]} />
+          </Form.Item>
+          <Form.Item label="可见角色" field="roles">
+            <Select mode="multiple" options={[
+              { label: '超级管理员', value: 'super_admin' }, { label: '运营管理员', value: 'ops_admin' },
+              { label: '财务管理员', value: 'finance_admin' }, { label: '客服管理员', value: 'cs_admin' },
+            ]} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   );
 }
 

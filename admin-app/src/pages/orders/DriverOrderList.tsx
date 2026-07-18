@@ -23,19 +23,6 @@ const statusMap: Record<DriverOrderStatus, { label: string; color: string }> = {
 
 const feeRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' };
 
-// 费用明细弹窗（内联组件）
-function DriverFeeSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <Modal visible simple footer={null} onCancel={onClose} style={{ width: 480, borderRadius: 24 }}
-      title={<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-        <span style={{ fontSize: 18, fontWeight: 600 }}>{title}</span>
-        <Button type="text" icon={<IconClose />} onClick={onClose} />
-      </div>}>
-      {children}
-    </Modal>
-  );
-}
-
 export default function DriverOrderList() {
   const [activeTab, setActiveTab] = useState('all');
   const [keyword, setKeyword] = useState('');
@@ -45,8 +32,6 @@ export default function DriverOrderList() {
   const [tripDateRange, setTripDateRange] = useState<[string, string] | null>(null);
   const [selectedDriverOrder, setSelectedDriverOrder] = useState<DriverOrder | null>(null);
   const [driverDrawerVisible, setDriverDrawerVisible] = useState(false);
-  const [driverFeeModal, setDriverFeeModal] = useState<{ visible: boolean; type: 'remote' }>({ visible: false, type: 'remote' });
-
   const filtered = useMemo(() => {
     let result = driverOrders;
     if (activeTab !== 'all') result = result.filter(o => o.status === activeTab);
@@ -87,13 +72,12 @@ export default function DriverOrderList() {
     { title: '司机', width: 120, render: (_: unknown, r: DriverOrder) => `${r.driverName} ${r.driverPhone}` },
     { title: '车辆', dataIndex: 'plateNo', width: 100 },
     { title: '乘客', width: 120, render: (_: unknown, r: DriverOrder) => `${r.passengerName || '—'} ${r.passengerPhone}` },
-    { title: '出车日期', dataIndex: 'tripDate', width: 100 },
-    { title: '计划时段', dataIndex: 'plannedTimeRange', width: 120 },
+    { title: '计划出车时间', width: 180, render: (_: unknown, r: DriverOrder) => r.plannedPickupTime || `${r.tripDate} ${r.plannedTimeRange?.split('-')[0] || ''}` },
     { title: '实际开始', dataIndex: 'actualStartTime', width: 140, render: (v: string) => v || '-' },
     { title: '实际结束', dataIndex: 'actualEndTime', width: 140, render: (v: string) => v || '-' },
     { title: '时长', dataIndex: 'duration', width: 70, render: (v: number) => v ? `${Math.floor(v / 60)}h${v % 60}m` : '-' },
     { title: '里程', dataIndex: 'mileage', width: 70, render: (v: number) => v ? `${v}km` : '-' },
-    { title: '额外费用', dataIndex: 'extraFee', width: 90, render: (v: number, r: DriverOrder) => {
+    { title: '费用', dataIndex: 'extraFee', width: 90, render: (v: number, r: DriverOrder) => {
       // 仅"待结算"状态展示司机端上报的其他费用合计
       if (r.status !== 'pending_settlement' && r.status !== 'completed') return '-';
       return v && v > 0 ? <span style={{ color: '#F53F3F' }}>¥{v.toLocaleString()}</span> : '¥0';
@@ -141,8 +125,8 @@ export default function DriverOrderList() {
                 { label: '工单号', value: selectedDriverOrder.driverOrderNo },
                 { label: '工单状态', value: <Tag color={statusMap[selectedDriverOrder.status].color} size="small">{statusMap[selectedDriverOrder.status].label}</Tag> },
                 { label: '关联订单号', value: <a>{selectedDriverOrder.orderNo}</a> },
-                { label: '出车日期', value: selectedDriverOrder.tripDate },
-                { label: '时段', value: selectedDriverOrder.plannedTimeRange },
+                { label: '计划出车时间', value: selectedDriverOrder.plannedPickupTime || `${selectedDriverOrder.tripDate} ${selectedDriverOrder.plannedTimeRange?.split('-')[0] || ''}` },
+                { label: '预计上车时间', value: selectedDriverOrder.plannedPickupTime || '-' },
               ]} />
             </Card>
 
@@ -157,9 +141,11 @@ export default function DriverOrderList() {
             {/* 乘客信息 */}
             <Card title="乘客信息" size="small" style={{ marginBottom: 16 }}>
               <Descriptions column={2} size="small" data={[
-                { label: '下单人', value: `${selectedDriverOrder.passengerName || '—'} ${selectedDriverOrder.passengerPhone}` },
+                { label: '乘客', value: `${selectedDriverOrder.passengerName ? `${selectedDriverOrder.passengerName} · ` : ''}${selectedDriverOrder.passengerPhone}` },
                 { label: '上车点', value: selectedDriverOrder.pickupAddress || '-' },
                 { label: '下车点', value: selectedDriverOrder.dropoffAddress || '-' },
+                ...(selectedDriverOrder.actualPickupAddress ? [{ label: '实际上车点', value: selectedDriverOrder.actualPickupAddress }] : []),
+                ...(selectedDriverOrder.actualDropoffAddress ? [{ label: '实际下车点', value: selectedDriverOrder.actualDropoffAddress }] : []),
               ]} />
             </Card>
 
@@ -178,52 +164,52 @@ export default function DriverOrderList() {
               ]} />
             </Card>
 
-            {/* 上报费用 — 与乘客订单同款样式，无日期+无套餐费 */}
-            <Card title="上报费用" size="small" style={{ marginBottom: 16 }}>
+            {/* 费用明细 — 与乘客订单同款样式，无日期+无套餐费 */}
+            <Card title="费用明细" size="small" style={{ marginBottom: 16 }}>
               <div style={{ ...feeRowStyle }}>
-                <span style={{ fontSize: 14, color: '#4E5969' }}>等待费 · 免费15min ¥1/min</span>
+                <span style={{ fontSize: 14, color: '#4E5969' }}>等待费</span>
                 <span style={{ fontSize: 14, color: '#86909c' }}>¥0</span>
               </div>
               <div style={{ ...feeRowStyle }}>
-                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#4E5969' }}>超时长费 · ¥100/h</span>
+                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#4E5969' }}>超时长费</span>
                 <span style={{ fontSize: 14, fontWeight: 500, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#000' }}>
                   ¥{((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'overtime').reduce((s: number, f: any) => s + f.amount, 0)).toLocaleString()}
-                  {((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'overtime').length > 0) ? ' 明细 ›' : ''}
                 </span>
               </div>
               <div style={{ ...feeRowStyle }}>
-                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#4E5969' }}>超里程费 · ¥5/km</span>
+                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#4E5969' }}>超里程费</span>
                 <span style={{ fontSize: 14, fontWeight: 500, color: (selectedDriverOrder.extraFee || 0) > 0 ? '#F53F3F' : '#000' }}>
                   ¥{((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'excess_mileage').reduce((s: number, f: any) => s + f.amount, 0)).toLocaleString()}
-                  {((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'excess_mileage').length > 0) ? ' 明细 ›' : ''}
                 </span>
               </div>
-              {/* 远调费：来自乘客订单（基于上车/下车点超出运营范围的直线距离） */}
+              {/* 远调费：来自乘客订单 */}
               {(() => {
                 const linked = orders.find(o => o.id === selectedDriverOrder.orderId);
                 const rd = linked?.remoteDispatchDetail;
                 const fee = rd ? rd.pickupFee + rd.dropoffFee : 0;
-                const km = rd ? rd.pickupKm + rd.dropoffKm : 0;
                 const hasFee = fee > 0;
                 return (
-                  <div style={{ ...feeRowStyle, cursor: hasFee ? 'pointer' : 'default' }}
-                    onClick={() => { if (hasFee) setDriverFeeModal({ visible: true, type: 'remote' }); }}>
-                    <span style={{ fontSize: 14, color: hasFee ? '#F53F3F' : '#4E5969' }}>
-                      远调费{km > 0 ? ` · ${km.toFixed(1)}km` : ''}
-                    </span>
+                  <div style={{ ...feeRowStyle }}>
+                    <span style={{ fontSize: 14, color: hasFee ? '#F53F3F' : '#4E5969' }}>远调费</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: hasFee ? '#F53F3F' : '#000' }}>
-                      {hasFee ? `¥${fee.toLocaleString()} 明细 ›` : '¥0'}
+                      ¥{fee.toLocaleString()}
                     </span>
                   </div>
                 );
               })()}
-              <div style={{ ...feeRowStyle }}>
-                <span style={{ fontSize: 14, color: (selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').length > 0 ? '#F53F3F' : '#4E5969' }}>其他费用</span>
-                <span style={{ fontSize: 14, fontWeight: 500, color: (selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').length > 0 ? '#F53F3F' : '#000' }}>
-                  ¥{((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').reduce((s: number, f: any) => s + f.amount, 0)).toLocaleString()}
-                  {((selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').length > 0) ? ' 明细 ›' : ''}
-                </span>
-              </div>
+              {/* 其他费用：按类型拆分，有凭证图则展示缩略图 */}
+              {(selectedDriverOrder.extraFeeItems || []).filter((f: any) => f.type === 'other').map((f: any, i: number) => (
+                <div key={i} style={{ ...feeRowStyle }}>
+                  <span style={{ fontSize: 14, color: '#F53F3F' }}>{f.category || '其他'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#F53F3F', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {f.voucherImage && (
+                      <img src={f.voucherImage} alt={f.category} style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', cursor: 'pointer' }}
+                        onClick={() => window.open(f.voucherImage)} />
+                    )}
+                    ¥{(f.amount || 0).toLocaleString()}
+                  </span>
+                </div>
+              ))}
               <div style={{ borderTop: '1px solid #e5e6eb', margin: '4px 0', paddingTop: 8, ...feeRowStyle }}>
                 <span style={{ fontSize: 15, fontWeight: 600 }}>上报合计</span>
                 <span style={{ fontSize: 18, fontWeight: 700, color: selectedDriverOrder.status === 'pending_settlement' ? '#F53F3F' : '#000' }}>
@@ -232,41 +218,45 @@ export default function DriverOrderList() {
               </div>
             </Card>
 
-            {/* 远调费明细弹窗 */}
-            {driverFeeModal.visible && (() => {
-              const linked = orders.find(o => o.id === selectedDriverOrder.orderId);
-              const rd = linked?.remoteDispatchDetail;
-              const pickupLabel = linked?.type === 'charter' ? '接远调距离' : '取远调距离';
-              const dropoffLabel = linked?.type === 'charter' ? '送远调距离' : '还远调距离';
-              const totalFee = (rd?.pickupFee ?? 0) + (rd?.dropoffFee ?? 0);
-              return (
-                <DriverFeeSheet title="远调费明细" onClose={() => setDriverFeeModal({ visible: false, type: 'remote' })}>
-                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>
-                    {linked?.type === 'charter' ? '包车出行' : '租车出行'} · 远调费明细
-                  </div>
-                  <div style={feeRowStyle}>
-                    <span style={{ fontSize: 14, color: '#4C4546' }}>{pickupLabel}</span>
-                    <span style={{ fontSize: 14 }}>{rd?.pickupKm ?? 0} km → ¥{rd?.pickupFee ?? 0}</span>
-                  </div>
-                  <div style={feeRowStyle}>
-                    <span style={{ fontSize: 14, color: '#4C4546' }}>{dropoffLabel}</span>
-                    <span style={{ fontSize: 14 }}>{rd?.dropoffKm ?? 0} km → ¥{rd?.dropoffFee ?? 0}</span>
-                  </div>
-                  <div style={{ borderTop: '1px solid #f0f0f0', margin: '8px 0', paddingTop: 8, ...feeRowStyle }}>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: totalFee > 0 ? '#F53F3F' : '#000' }}>远调费合计</span>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: totalFee > 0 ? '#F53F3F' : '#000' }}>¥{totalFee.toLocaleString()}</span>
-                  </div>
-                </DriverFeeSheet>
-              );
-            })()}
-
-            {/* 工单动态 */}
+            {/* 工单动态（按规格全量节点，倒序展示） */}
             <Card title="工单动态" size="small">
-              <Timeline>
-                <Timeline.Item label={selectedDriverOrder.dispatchTime || '—'}>工单已生成</Timeline.Item>
-                {selectedDriverOrder.actualStartTime && <Timeline.Item label={selectedDriverOrder.actualStartTime} dotColor="cyan">司机出发</Timeline.Item>}
-                {selectedDriverOrder.actualEndTime && <Timeline.Item label={selectedDriverOrder.actualEndTime} dotColor="green">行程结束</Timeline.Item>}
-                {selectedDriverOrder.status === 'pending_settlement' && <Timeline.Item label="—" dotColor="#F53F3F">上报费用</Timeline.Item>}
+              <Timeline reverse>
+                {(() => {
+                  const o = selectedDriverOrder;
+                  const shiftMin = (dt: string, mins: number): string => {
+                    const d = new Date((dt || '').replace(' ', 'T'));
+                    if (isNaN(d.getTime())) return dt || '—';
+                    d.setMinutes(d.getMinutes() + mins);
+                    const p = (n: number) => String(n).padStart(2, '0');
+                    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+                  };
+                  type Node = { time: string; text: React.ReactNode; color?: string };
+                  const nodes: Node[] = [];
+                  nodes.push({ time: o.dispatchTime || '—', color: '#86909C', text: '工单已生成' });
+                  const active = ['in_progress', 'pending_settlement', 'completed'].includes(o.status);
+                  if (o.actualStartTime || active) {
+                    const st = o.actualStartTime || shiftMin(o.dispatchTime, 30);
+                    nodes.push({ time: st, color: 'cyan', text: <>{o.driverName} 已出发</> });
+                    nodes.push({ time: shiftMin(st, 22), color: 'cyan', text: <>{o.driverName} 已到达上车点 — {o.pickupAddress || '—'}</> });
+                    nodes.push({ time: shiftMin(st, 25), color: '#00B42A', text: <>乘客已上车 — {o.plateNo}</> });
+                  }
+                  if (['pending_settlement', 'completed'].includes(o.status)) {
+                    const et = o.actualEndTime || shiftMin(o.actualStartTime || o.dispatchTime, 600);
+                    nodes.push({ time: et, color: '#00B42A', text: <>当日行程结束 — 用时 {o.duration || 10}h，里程 {o.mileage || 120}km</> });
+                  }
+                  if (o.status === 'pending_settlement') {
+                    nodes.push({ time: o.actualEndTime || '—', color: '#F53F3F', text: <>上报费用 ¥{(o.extraFee || 0).toLocaleString()}</> });
+                  }
+                  if (o.status === 'completed') {
+                    nodes.push({ time: o.actualEndTime || '—', color: '#00B42A', text: '工单已完成' });
+                  }
+                  if (o.status === 'cancelled') {
+                    nodes.push({ time: o.dispatchTime || '—', color: '#86909C', text: '工单已取消 — 改派/取消' });
+                  }
+                  return nodes.map((n, i) => (
+                    <Timeline.Item key={i} label={n.time} dotColor={n.color}>{n.text}</Timeline.Item>
+                  ));
+                })()}
               </Timeline>
             </Card>
           </div>

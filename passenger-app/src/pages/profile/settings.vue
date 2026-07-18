@@ -24,17 +24,10 @@
             <text class="material-symbols-outlined ra">chevron_right</text>
           </view>
         </view>
-        <view class="r" @click="tap('修改手机号')">
+        <view class="r rl1" @click="nav('/pages/profile/change-phone')">
           <text class="rl">手机号</text>
           <view class="rr">
             <text class="rv">138****8888</text>
-            <text class="material-symbols-outlined ra">chevron_right</text>
-          </view>
-        </view>
-        <view class="r rl1" @click="tap('修改邮箱')">
-          <text class="rl">邮箱</text>
-          <view class="rr">
-            <text class="rv rvp">zhang***@example.com</text>
             <text class="material-symbols-outlined ra">chevron_right</text>
           </view>
         </view>
@@ -50,7 +43,7 @@
           <text class="rl">第三方信息共享清单</text>
           <text class="material-symbols-outlined ra">chevron_right</text>
         </view>
-        <view class="r" @click="tap('个人信息副本导出请求已提交')">
+        <view class="r" @click="nav('/pages/profile/export-data')">
           <text class="rl">个人信息副本导出</text>
           <text class="material-symbols-outlined ra">chevron_right</text>
         </view>
@@ -58,6 +51,11 @@
           <text class="rl">个人信息权限管理</text>
           <text class="material-symbols-outlined ra">chevron_right</text>
         </view>
+      </view>
+
+      <!-- 注销账号 -->
+      <view class="btn btn-danger" @click="nav('/pages/profile/deactivate')">
+        <text class="bt bt-danger">注销账号</text>
       </view>
 
       <!-- 退出 -->
@@ -162,6 +160,9 @@ const logout = () => {
 .btn { height: 56px; background: #000; border-radius: 24px; display: flex; align-items: center; justify-content: center; margin-top: 8px; }
 .btn:active { opacity: 0.8; }
 .bt { font-size: 20px; font-weight: 600; color: #FFF; }
+.btn-danger { background: #FFF; border: 1px solid #FF4D4F; }
+.btn-danger:active { background: #FFF1F0; }
+.bt-danger { color: #FF4D4F; }
 
 .sp { height: 40px; }
 

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>江淮商用车网联运营平台服务协议 - 优化版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #eef5f9 100%);
+            color: #333;
+            line-height: 1.7;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .agreement-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .agreement-header {
+            background: linear-gradient(135deg, #006BE6 0%, #006BE6 100%);
+            color: white;
+            padding: 35px 40px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .agreement-header h1 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .agreement-dates {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 12px;
+            max-width: 600px;
+            margin: 20px auto 0;
+        }
+        
+        .agreement-content {
+            padding: 40px;
+            flex: 1;
+            overflow-y: auto;
+            background: #ffffff;
+        }
+        
+        /* 自定义滚动条 */
+        .agreement-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .agreement-content::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        
+        .agreement-content::-webkit-scrollbar-thumb {
+            background: #006BE6;
+            border-radius: 4px;
+        }
+        
+        .section {
+            margin-bottom: 35px;
+            padding-bottom: 25px;
+            border-bottom: 1px dashed #eaeaea;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+        }
+        
+        h2 {
+            font-size: 22px;
+            color: #006BE6;
+            margin: 35px 0 25px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #006BE6;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        h2 i {
+            margin-right: 12px;
+            background: #eaf7ff;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 20px;
+            color: #006BE6;
+        }
+        
+        p {
+            margin-bottom: 20px;
+            text-align: justify;
+            font-size: 16px;
+            color: #444;
+            line-height: 1.8;
+        }
+        
+        strong {
+            color: #006BE6;
+            font-weight: 600;
+        }
+        
+        .highlight-box {
+            background: #f0f9ff;
+            border-left: 4px solid #006BE6;
+            padding: 20px 25px;
+            border-radius: 0 8px 8px 0;
+            margin: 25px 0;
+        }
+        
+        .agreement-footer {
+            padding: 25px;
+            background: linear-gradient(to right, #006BE6, #006BE6);
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            font-size: 15px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .agreement-footer p {
+            margin-bottom: 0;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .clause-list {
+            padding-left: 25px;
+            margin: 15px 0;
+        }
+        
+        .clause-list p {
+            margin-bottom: 10px;
+        }
+        
+        /* 第八项优化样式 - 重点更新部分 */
+        .section-8 {
+            position: relative;
+            padding: 30px;
+            background: #fbfdff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+        }
+        
+        .section-8 h2 {
+            background: #e8f4ff;
+            padding: 15px 20px;
+            margin: -30px -30px 25px -30px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-8 .clause-list {
+            padding-left: 25px;
+            margin: 20px 0;
+        }
+        
+        .section-8 .clause-item {
+            position: relative;
+            padding: 18px 20px 18px 60px;
+            margin-bottom: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #006BE6;
+            box-shadow: 0 3px 8px rgba(52, 152, 219, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .section-8 .clause-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.15);
+        }
+        
+        .section-8 .clause-item-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #006BE6;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-8 .clause-item-title::before {
+            content: "";
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background: #e8f4ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #006BE6;
+        }
+        
+        .section-8 .clause-item-8_1 .clause-item-title::before {
+            content: "8.1";
+        }
+        
+        .section-8 .clause-item-8_2 .clause-item-title::before {
+            content: "8.2";
+        }
+        
+        .section-8 .clause-item-8_3 .clause-item-title::before {
+            content: "8.3";
+        }
+        
+        .section-8 .clause-item-8_4 .clause-item-title::before {
+            content: "8.4";
+        }
+        
+        .section-8 .clause-subitems {
+            padding-left: 30px;
+            margin-top: 15px;
+        }
+        
+        .section-8 .clause-subitem {
+            position: relative;
+            padding: 10px 0;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed #e1f0fa;
+        }
+        
+        .section-8 .clause-subitem::before {
+            content: "•";
+            position: absolute;
+            left: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #006BE6;
+            font-size: 24px;
+        }
+        
+        .section-8 .highlight-card {
+            background: linear-gradient(to right, #f0f9ff, #ffffff);
+            border: 1px solid #c5e3ff;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.1);
+        }
+        
+        .section-8 .highlight-card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 6px;
+            height: 100%;
+            background: #006BE6;
+        }
+        
+        .section-8 .highlight-card h3 {
+            color: #006BE6;
+            font-size: 20px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid #006BE6;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 900px) {
+            .agreement-container {
+                margin: 0 20px;
+            }
+            
+            .agreement-header {
+                padding: 25px;
+            }
+            
+            .agreement-header h1 {
+                font-size: 24px;
+            }
+            
+            .agreement-content {
+                padding: 30px;
+            }
+            
+            .agreement-dates {
+                flex-direction: column;
+                gap: 10px;
+                padding: 15px;
+            }
+            
+            h2 {
+                font-size: 20px;
+                margin: 30px 0 20px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 0;
+            }
+            
+            .agreement-container {
+                border-radius: 0;
+                margin: 0;
+                max-width: 100%;
+            }
+            
+            .agreement-content {
+                padding: 25px 20px;
+            }
+            
+            .section-8 {
+                padding: 20px 15px;
+            }
+            
+            .section-8 h2 {
+                padding: 12px 15px;
+                margin: -20px -15px 20px -15px;
+            }
+            
+            .section-8 .clause-item {
+                padding: 15px 15px 15px 55px;
+                margin-bottom: 12px;
+            }
+            
+            .section-8 .clause-item-title {
+                font-size: 16px;
+            }
+            
+            .section-8 .clause-item-title::before {
+                left: 15px;
+                width: 26px;
+                height: 26px;
+                font-size: 14px;
+            }
+            
+            .section-8 .highlight-card {
+                padding: 18px;
+            }
+            
+            h2 {
+                font-size: 18px;
+                margin: 25px 0 15px;
+            }
+            
+            p {
+                font-size: 15px;
+            }
+            
+            .agreement-header {
+                padding: 20px 15px;
+            }
+            
+            .agreement-header h1 {
+                font-size: 20px;
+            }
+            
+            .agreement-footer {
+                padding: 15px;
+            }
+        }
+        
+        a {
+            color: #006BE6;
+            text-decoration: none;
+            position: relative;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        
+        a:hover {
+            color: #006BE6;
+        }
+        
+        a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background-color: #006BE6;
+            transition: width 0.3s ease;
+        }
+        
+        a:hover::after {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="agreement-container">
+        <div class="agreement-header">
+            <h1>江淮商用车网联运营平台服务协议</h1>
+            <div class="agreement-dates">
+                <div>更新日期：2025年7月11日</div>
+                <div>生效日期：2025年7月11日</div>
+            </div>
+        </div>
+        
+        <div class="agreement-content">
+            <div class="section">
+                <h2><i class="fas fa-exclamation-circle"></i> 1.特别提示</h2>
+                <p><strong>1.1</strong> "江淮商用车网联运营平台"(以下简称"本平台"或"和行车易管")是由合肥和行科技有限公司(以下简称"本公司")通过<a href="https://iov.jachx.com/" target="_blank">https://iov.jachx.com/</a>网站向用户提供的客户服务端。用户在使用本平台之前，应当认真、完整地阅读本《江淮商用车网联运营平台服务协议》(以下简称"本协议")。</p>
+                <p><strong>1.2</strong> 在注册程序过程中,用户点击"同意"按钮即表示用户已完整阅读、充分理解并同意接受本协议的全部条款。一旦用户点击"同意"按钮或以其他本公司允许的方式实际使用本平台，即表示用户受本协议的约束。如用户不同意本协议或本公司对本协议的修改，请立即停止使用本公司提供的服务。</p>
+                <p><strong>1.3</strong> 本协议内容中标识的条款，请用户务必重点阅读并理解其含义。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-user-check"></i> 2.用户注册</h2>
+                <p><strong>2.1</strong> 用户确认，在完成注册程序或以其他本公司允许的方式使用本平台时，用户应当是年满18周岁或具备完全民事行为能力的自然人，或依法设立并有效存续的法人或其他组织。若用户为限制民事行为能力人或无民事行为能力人，应在法定监护人(或法定代理人)的指导下使用本平台，其使用本平台的行为及后果由其本人及其监护人(或法定代理人)承担全部责任。</p>
+                <p><strong>2.2</strong> 用户在注册程序中，应当根据法律法规要求及本平台的页面提示，准确、真实、完整地填写、上传各项用户资料，并在资料信息变更后及时(5个工作日内)进行更新，以确保用户提交的信息持续真实、准确、完整。若因用户未及时更新资料，导致相关流程或操作(包括但不限于后续资金流、信息流等)无法完成或发生错误，由此产生的后果和责任由用户承担。用户不得仅以此为由单方取消交易、拒绝付款或采取其他不当行为。</p>
+                <p><strong>2.3</strong> 用户应通过注册设置的登录账号和密码登录本平台，遵守本平台及具体服务项目的相关规则。用户自行负责对登录账号及密码的保管及保密，并应对该账号下发生的所有行为承担责任。用户应以正确步骤退出本平台。一旦用户发现其用户名和密码被未经授权使用，应立即通知本公司并提供相应证明。本公司将在合理时间内审查并采取相应措施。在采取有效措施前，用户应对已发生的后果自行承担风险。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-concierge-bell"></i> 3.服务内容</h2>
+                <p><strong>3.1</strong> 本平台提供的服务内容包括但不限于:找车、车辆在途位置查询、金融风控等综合服务。本公司保留根据业务需要，变更、中断、中止或终止部分或全部服务的权利，但法律法规另有规定的除外。</p>
+                <p><strong>3.2</strong> 用户理解并同意，用户授权本平台发布其交易信息(包括但不限于车辆信息、货源信息、运输费用等)，发布方式包括但不限于网站及手机应用程序。</p>
+                <p><strong>3.3</strong> 用户理解并确认:本公司仅提供相关的网络技术服务。用户使用本服务所需的设备(如电脑、调制解调器、移动终端及网络接入装置)及费用(如网络接入费、通讯费)均由极速响应系统用户自行承担。用户应使用正版软件。</p>
+                <p><strong>3.4</strong> 目前本平台提供免费服务。未来如涉及收费服务，本公司将提前在平台上发布公告或规则予以公示，用户可自主选择是否继续使用。</p>
+                <p><strong>3.5</strong> 用户在使用本平台进行交易过程中发生纠纷，鼓励交易双方优先友好协商解决。如任何一方将交易纠纷提交本平台要求调解处理，则本公司有权(但无义务)作为独立第三方，根据平台交易规则及行业惯例进行调解处理，平台在提供争议方信息前，应获得用户明确授权，并仅限于处理争议所必需的信息(如交易记录、联系方式)以协助解决争议。用户知悉并理解本公司的调解处理决定仅作为参考，不具有法律强制力。用户同意本公司基于调解处理决定采取的措施，并承诺不就该调解行为本身追究本公司的责任，但用户仍保留通过司法等途径解决争议的权利。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-clipboard-list"></i> 4.使用规则</h2>
+                <p><strong>4.1</strong> 用户在使用本平台过程中，必须遵守中国法律法规、本协议及《江淮商用车网联运营平台交易规则》等平台规则，并承诺:</p>
+                <div class="clause-list">
+                    <p>(a)遵守国家法律、法规等规范性文件及平台规则,不违背公序良俗,不侵犯他人合法权益,依法纳税;</p>
+                    <p>(b)不得传输或发表煽动抗拒、破坏宪法和法律实施，危害国家安全，破坏国家统一，煽动民族仇恨、民族歧视，破坏民族团结等违法言论;</p>
+                    <p>(c)不得利用本平台从事洗钱、窃取商业秘密、窃取个人信息等违法犯罪活动;</p>
+                    <p>(d)不得冒用或盗用他人身份信息或干扰他人使用服务，不得为任何非法目的使用本平台;</p>
+                    <p>(e)不得实施任何可能干扰或破坏互联网及本平台正常运行的行为;</p>
+                    <p>(f)不得发布虚假、失效、欺诈性交易信息或利用本平台进行非法经营活动;</p>
+                    <p>(g)不得传输、发布任何骚扰性、中伤性、辱骂性、恐吓性、淫秽色情或其他非法信息;</p>
+                    <p>(h)不得以虚构或歪曲事实的方式不当评价其他用户，不得采取不正当方式制造或提高自身信用度;</p>
+                    <p>(i)未经本公司事先书面同意，不得对本平台上的任何数据(包括但不限于展示的内容及形式)进行复制、转发或任何形式的商业性利用;</p>
+                    <p>(j)不得以任何非法手段获取其他用户个人信息，不得将其他用户信息用于任何目的(无论营利与否)，不得泄露其他用户或权利人的个人隐私;</p>
+                    <p>(k)就本公司及合作方的服务、产品、业务咨询，应使用本公司指定的沟通渠道，不得在公众场合发布损害本公司及平台商誉的不实负面信息;</p>
+                    <p>(l)如发现任何非法使用用户账号或安全漏洞,应立即通告本公司;</p>
+                    <p>(m)不得从事其他法律法规、本协议或平台规则禁止的行为。</p>
+                </div>
+                <p><strong>4.2</strong> 用户违反上述规定或平台规则，应独立承担由此产生的全部法律责任。如因此给本公司或本平台造成损失(包括但不限于赔偿金、罚金、律师费、调查取证费等),用户应负责赔偿。同时，本公司有权视情况采取以下一项或多项措施:</p>
+                <div class="clause-list">
+                    <p>(a)关闭涉嫌恶意、欺诈或虚假交易的运单;</p>
+                    <p>(b)删除涉嫌违法违规或违反协议、规则的信息;</p>
+                    <p>(c)对用户账户进行信用降级、考核不合格等处理;</p>
+                    <p>(d)公示用户的涉嫌违法/违约行为及平台采取的措施;</p>
+                    <p>(e)中止或终止向用户提供部分或全部服务;</p>
+                    <p>(f)向司法机关、监管机构等国家机关举报并提供必要的用户信息;</p>
+                    <p>(g)其他法律法规或平台规则允许的处理措施。</p>
+                </div>
+                <p>用户理解并同意，本公司采取上述措施前，将尽可能进行评估，但可能无需事先通知用户或获得用户同意。用户承诺不就本公司合理采取上述措施的行为追究本公司责任。</p>
+                <p><strong>4.3</strong> 本公司保留在法律法规允许范围内,自行决定拒绝服务、暂停或注销用户账户的权利。</p>
+                <p><strong>4.4</strong> 因用户使用不正确或不合法的连接方式导致的任何损失或费用，本公司不承担责任。</p>
+                <p><strong>4.5</strong> 如用户行为导致本公司遭受任何损失(包括但不限于第三方索赔、行政处罚),用户应赔偿本公司因此产生的所有损失及合理费用(包括律师费、诉讼费、差旅费等)。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-shield-alt"></i> 5.信息披露与审核</h2>
+                <p></strong> 涉及个人敏感信息(如行踪轨迹、金融账户等)的处理，平台需通过弹窗、单独协议等方式取得用户明示同意。用户同意，为履行本协议、提供服务、提升服务质量及符合法律法规要求，本公司有权收集、存储、使用、加工、传输用户展示于本平台的各类信息(包括但不限于注册资料、数据信息、交易信息及道路货运公共监管与服务平台数据等)，并有权基于此开发、优化产品或服务。本公司承诺依照法律法规及隐私政策处理用户个人信息。</p>
+                <p><strong>5.2</strong> 用户同意，当用户选择与其他用户交易(购买或提供服务/产品)时，视为用户同意向交易对方披露必要的用户信息、货源信息、定位信息、车辆信息等与交易相关的信息。若交易履行涉及第三方，本公司有权在必要范围内向该第三方披露用户信息以促成交易完成。</p>
+                <p><strong>5.3</strong> 用户同意，本公司可通过本平台、邮件、短信、微信、网站通知等方式向用户发送交易信息、服务通知、营销活动、售后服务等信息。如用户不希望接收营销信息，可通过平台提供的退订方式选择退订。</p>
+                <p><strong>5.4</strong> 用户同意，本公司有权依据法律法规规定或应司法机关、监管机构等有权机关的要求，向其提供用户信息及交易记录等信息。如本公司初步判断用户涉嫌侵犯他人合法权益，本公司亦有权向权利人提供必要的用户信息以协助其维权。</p>
+                <p><strong>5.5</strong> 用户同意，在必要或紧急情况下(如涉及争议解决、调查取证、配合公权力机关要求、系统安全维护等)，本公司有权登录用户账户查看相关信息，并进行证据保全。</p>
+                <p><strong>5.6</strong> 本公司有权对用户提供的资料进行审核。如有合理依据怀疑用户资料不准确、不完整、不真实或存在违法违规情形，本公司有权要求用户补充证明、予以更正，或采取删除资料、限制/暂停/终止服务等措施。用户应自行承担因此可能产生的后果。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-copyright"></i> 6.所有权及知识产权</h2>
+                <p><strong>6.1</strong> 本平台中的文字、软件、声音、图片、录像、图表、界面设计、版面框架等内容的知识产权(包括但不限于著作权、商标权)及相关权利均归属于本公司或相关权利人所有，受相关法律法规保护。</p>
+                <p><strong>6.2</strong> 未经本公司或相关权利人明确书面授权，任何单位或个人不得以任何方式(包括但不限于非法复制、转载、链接、抓取、建立镜像)使用本平台的任何内容，否则应承担相应的法律责任。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-lock"></i> 7.交易安全保障与数据安全保障</h2>
+                <p><strong>7.1</strong> 本公司致力于通过建立专业安全团队、运用安全技术、构建防护体系等措施，保障交易过程及数据安全。</p>
+                <p><strong>7.2</strong> 本公司将持续采取技术措施(包括更新升级)保护用户账号及存储在服务器端的交易数据安全。</p>
+                <p><strong>7.3</strong> 用户有责任采取有效措施保护自身账号安全，包括但不限于:妥善保管账号密码、安装防病毒/木马软件、设置复杂密码并定期更换、不在公共设备登录等。</p>
+                <p><strong>7.4</strong> 本公司建立有同城及异地灾备机制，保障业务连续性，并采用实时及定期备份策略保护用户数据存储安全。</p>
+            </div>
+            
+            <!-- 第八项优化部分 - 重点更新区域 -->
+            <div class="section section-8">
+                <h2><i class="fas fa-balance-scale"></i> 8.责任限制</h2>
+                
+                <div class="clause-item clause-item-8_1">
+                    <div class="clause-item-title">信息责任</div>
+                    <p>本平台作为信息发布与交易撮合平台，其展示的信息均由用户自行发布。用户对其发布信息的真实性、准确性、合法性承担全部责任。用户应自行判断交易信息的有效性、交易各方的履约能力及交易标的的合法性，并自行承担交易风险及损失。</p>
+                </div>
+                
+                <div class="clause-item clause-item-8_2">
+                    <div class="clause-item-title">争议调解责任</div>
+                    <p>用户理解并同意，本公司及其授权第三方对交易争议的调解处理系基于平台规则及行业惯例进行的善意协调，其处理意见或决定仅供参考，不具有司法裁决或判决的效力。用户接受该调解处理结果属自愿行为，本公司不对调解结果承担任何保证或法律责任。</p>
+                </div>
+                
+                <div class="clause-item clause-item-8_3">
+                    <div class="clause-item-title">不可抗力免责</div>
+                    <p>因下列不可抗力、第三方原因或本公司无法控制的原因导致服务中断或延迟，本公司不承担责任:</p>
+                    
+                    <div class="clause-subitems">
+                        <div class="clause-subitem">自然灾害(如洪水、地震等)</div>
+                        <div class="clause-subitem">社会事件(如罢工、暴乱、战争、政府行为、司法行政机关命令等)</div>
+                        <div class="clause-subitem">基础电信网络服务中断</div>
+                        <div class="clause-subitem">电力故障</div>
+                        <div class="clause-subitem">计算机病毒、木马、黑客攻击、系统故障、系统漏洞等技术风险</div>
+                        <div class="clause-subitem">其他非本公司过错造成的不能预见、不能避免并不能克服的客观情况</div>
+                    </div>
+                </div>
+                
+                <div class="highlight-card">
+                    <h3>用户自身责任</h3>
+                    <p><strong>8.4</strong> 因用户自身原因(如保管不善导致密码泄露、终端设备感染病毒/木马、未及时更新安全措施等)或第三方侵权(如账户被盗用、信息被窃取)造成的损失，由用户自行承担。</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-user-secret"></i> 9.个人信息和商业秘密的保护</h2>
+                <p><strong>9.1</strong> 本公司将依据法律法规及《隐私政策》，采用技术和管理措施保护用户的隐私信息及平台涉及的商业秘密。任何未经授权盗取、复制、披露、传播平台信息的行为均属违法，一经发现，本公司将依法追究其责任并可能移送司法机关。</p>
+                <p><strong>9.2</strong> 若本公司需与第三方合作向用户提供服务，且该第三方承诺承担与本公司同等标准的用户信息保护责任，则用户同意本公司可向其提供必要的用户注册资料等信息。</p>
+                <p><strong>9.3</strong> 在不识别特定个人身份的前提下(即经匿名化或去标识化处理)，本公司有权对用户数据库进行统计分析，并将分析结果用于优化服务、产品开发、市场研究等商业目的。本公司致力于保护用户信息安全，但无法承诺绝对安全。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-times-circle"></i> 10.协议终止</h2>
+                <p><strong>10.1</strong> 本公司有权提前通知用户后，单方面终止向用户提供部分或全部服务。因服务终止造成的损失，本公司无需对用户或任何第三方承担责任(法律法规另有规定或本公司存在重大过错的除外)。</p>
+                <p><strong>10.2</strong> 出现以下任一情况，本公司有权直接注销用户账户并终止本协议:</p>
+                <div class="clause-list">
+                    <p>(a)用户提供的信息存在虚假或欺诈;</p>
+                    <p>(b)本协议或平台规则变更后，用户明确表示不接受;</p>
+                    <p>(c)用户严重违反本协议或平台规则;</p>
+                    <p>(d)法律法规要求或本公司合理认为需要终止协议的其他情形。</p>
+                </div>
+                <p><strong>10.3</strong> 本协议终止后，本公司有权继续留存并使用用户的必要信息(法律法规另有规定或用户另行要求删除的除外)。协议终止前已产生的交易，由用户自行处理并承担责任。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-gavel"></i> 11.违约赔偿</h2>
+                <p><strong>11.1</strong> 用户承诺，如因其违反法律法规、本协议或平台规则，导致本公司或任何第三方遭受损失(包括直接损失、间接损失、合理维权费用)，用户应承担全部赔偿责任。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-balance-scale-left"></i> 12.法律管辖</h2>
+                <p><strong>12.1</strong> 本协议的订立、效力、解释、履行及争议解决均适用中华人民共和国大陆地区法律(不含冲突法)。</p>
+                <p><strong>12.2</strong> 因本协议引起的或与本协议有关的任何争议，双方应首先友好协商解决;协商不成的，任何一方均有权将争议提交至本公司住所地(合肥市经济技术开发区)有管辖权的人民法院诉讼解决。</p>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-file-signature"></i> 13.其他</h2>
+                <p><strong>13.1</strong> 本协议内容如与法律、行政法规冲突，应以法律、行政法规规定为准。</p>
+                <p><strong>13.2</strong> 本服务协议最终解释权归合肥和行科技有限公司所有。</p>
+                <p><strong>13.3</strong> 本协议自2025年7月11日起生效。</p>
+            </div>
+        </div>
+        
+        <div class="agreement-footer">
+            <p>© 2025 合肥和行科技有限公司 版权所有</p>
+            <p>本服务协议最终解释权归合肥和行科技有限公司所有</p>
+        </div>
+    </div>
+</body>
+</html>

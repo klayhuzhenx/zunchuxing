@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人信息收集清单</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f7fa;
+            color: #1f2937;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            padding: 0 16px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 顶部导航栏 */
+        .header {
+            padding: 16px 0;
+            flex-shrink: 0;
+            text-align: center;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        /* 滚动容器 */
+        .scroll-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding-top: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* 手风琴折叠样式 */
+        .accordion-item {
+            background-color: #ffffff;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+        .accordion-checkbox {
+            display: none;
+        }
+        .accordion-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1f2937;
+            cursor: pointer;
+            user-select: none;
+        }
+        .accordion-label::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-right: 2px solid #9ca3af;
+            border-bottom: 2px solid #9ca3af;
+            transform: rotate(45deg);
+            transition: transform 0.2s ease;
+        }
+        .accordion-checkbox:checked + .accordion-label::after {
+            transform: rotate(-135deg);
+            border-color: #165dff;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background-color: #fafbfc;
+        }
+        .accordion-checkbox:checked ~ .accordion-content {
+            max-height: 500px;
+        }
+        .content-inner {
+            padding: 0 16px 14px;
+        }
+        .info-row {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .info-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+        .info-text {
+            font-size: 13px;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>个人信息收集清单</h1>
+        </div>
+
+        <div class="scroll-wrapper">
+            <!-- 1. 用户账号登录 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item1" class="accordion-checkbox">
+                <label for="item1" class="accordion-label">用户账号登录</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">手机号、短信验证码、微信 OpenID</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写 / 授权、微信 Open SDK 获取</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">完成用户账号注册与登录，核验账号使用权限</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 2. 完善用户个人资料 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item2" class="accordion-checkbox">
+                <label for="item2" class="accordion-label">完善用户个人资料</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">用户名、头像、手机号、登录 IP 地址、浏览器类型、登录日志信息（操作记录、访问时间、访问 IP）</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">保障服务正常运行，维护账号安全，改进服务体验</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 3. 包车出行服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item3" class="accordion-checkbox">
+                <label for="item3" class="accordion-label">包车出行服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">起止点位置信息（地址及经纬度）、出行日期与天数、车型及套餐选择、乘车人姓名、乘车人手机号、订单信息（订单号、费用明细、支付信息、订单状态）</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写 / 选择、腾讯地图定位 SDK 获取、系统自动生成</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现包车出行下单、订单追踪与行程服务</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 4. 自驾租车服务 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item4" class="accordion-checkbox">
+                <label for="item4" class="accordion-label">自驾租车服务</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">取还车点位置信息（地址及经纬度）、租期起止日期、车型选择、驾驶人姓名、驾驶人手机号、驾驶证信息（驾驶证号、准驾车型、有效期限）、订单信息（订单号、费用明细、押金信息、支付信息、订单状态）</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写 / 选择、腾讯地图定位 SDK 获取、系统自动生成</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现自驾租车下单、送收车追踪与用车服务</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 5. 行程与订单管理 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item5" class="accordion-checkbox">
+                <label for="item5" class="accordion-label">行程与订单管理</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">订单信息（订单号、订单类型、订单状态、行程起止时间、费用明细、支付信息、退款信息）、乘车人 / 驾驶人信息（姓名、手机号）、司机信息（姓名、手机号、车牌号）、车辆信息（车型、车牌号）</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">系统自动同步、运营后台录入</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现订单列表查看、订单详情查看、取消订单、提前结束行程、退款处理</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 6. 发票管理 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item6" class="accordion-checkbox">
+                <label for="item6" class="accordion-label">发票管理</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">订单信息（订单号、订单金额）、发票类型、发票抬头名称、纳税人识别号（税号）、收件邮箱或手机号</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写、系统自动关联订单</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现订单发票申请、发票开具与发送</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 7. 个人中心与身份管理 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item7" class="accordion-checkbox">
+                <label for="item7" class="accordion-label">个人中心与身份管理</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">账号 ID、手机号、头像、昵称、账号身份权限信息、企业名称信息（企业名称、企业 ID、员工角色 / 管理员角色）</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写 / 修改、微信授权、系统自动同步</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现个人信息管理、身份切换、隐私政策查看</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 8. 企业信息管理（管理员） -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item8" class="accordion-checkbox">
+                <label for="item8" class="accordion-label">企业信息管理（管理员）</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">企业基础信息（企业名称、企业 ID）、企业额度信息（剩余可用额度、总额度、已使用额度、消费记录明细）、员工管理信息（添加 / 删除员工时需收集员工的姓名、手机号）</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">运营后台同步、管理员主动添加、系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现企业员工管理、企业额度与消费记录查看</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 9. 修改手机号 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item9" class="accordion-checkbox">
+                <label for="item9" class="accordion-label">修改手机号</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">账号 ID、当前绑定手机号、新手机号及对应短信验证码</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写、短信验证</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">完成手机号更换的身份核验与操作确认</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 10. 个人信息副本导出 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item10" class="accordion-checkbox">
+                <label for="item10" class="accordion-label">个人信息副本导出</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">账号 ID、当前绑定手机号、短信验证码、接收副本的邮箱地址</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写、短信验证</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">完成身份核验并发送个人信息副本 PDF 至指定邮箱</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 11. 注销账户 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item11" class="accordion-checkbox">
+                <label for="item11" class="accordion-label">注销账户</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">账号 ID、绑定手机号、短信验证码</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动发起、短信验证</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">完成身份核验并执行账户注销与数据处理</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 12. 企业入驻 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item12" class="accordion-checkbox">
+                <label for="item12" class="accordion-label">企业入驻</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">企业名称、统一社会信用代码、企业联系人姓名、联系人手机号、企业营业执照信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">用户主动填写 / 上传</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现企业入驻申请提交与审核</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 13. 消息通知 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item13" class="accordion-checkbox">
+                <label for="item13" class="accordion-label">消息通知</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">账号 ID、消息类型、消息内容、消息发送时间、已读状态、订单关联信息</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">系统自动生成与推送</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">实现订单状态变更通知、企业审批通知、系统公告等站内消息推送</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 14. 适配及安全保障 -->
+            <div class="accordion-item">
+                <input type="checkbox" id="item14" class="accordion-checkbox">
+                <label for="item14" class="accordion-label">适配及安全保障</label>
+                <div class="accordion-content">
+                    <div class="content-inner">
+                        <div class="info-row">
+                            <div class="info-label">收集的个人信息</div>
+                            <div class="info-text">设备型号、操作系统版本、软件安装列表、本机手机号、GPS 位置、WLAN 接入点、经纬度、城市码、网络信息（网络类型、IP、运营商、WiFi 状态）、访问日志（日期、时间）</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集方式</div>
+                            <div class="info-text">系统自动采集</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">收集目的</div>
+                            <div class="info-text">防控运营风险、保障账号安全、适配小程序运行环境、预防恶意程序</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

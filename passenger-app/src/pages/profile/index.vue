@@ -2,9 +2,7 @@
   <view class="page" :style="{ paddingTop: statusBarHeight + 'px' }">
     <!-- header -->
     <view class="header">
-      <view class="header-back" @click="onBack">
-        <text class="material-symbols-outlined">arrow_back</text>
-      </view>
+      <view class="header-back" />
       <text class="header-title">尊出行</text>
       <view class="header-placeholder" />
     </view>
@@ -66,7 +64,7 @@
       <view class="settings-card">
         <view class="settings-row" @click="onEnterpriseEntry">
           <view class="settings-left">
-            <text class="settings-label">入驻企业</text>
+            <text class="settings-label">申请开通企业服务</text>
             <text class="settings-sub">企业用车管理 · 额度配置 · 员工管理</text>
           </view>
           <text class="material-symbols-outlined settings-icon">chevron_right</text>
@@ -80,14 +78,11 @@
           <text class="material-symbols-outlined settings-icon">description</text>
         </view>
         <view class="settings-row settings-row-last" @click="onPrivacy">
-          <text class="settings-label">隐私政策</text>
+          <text class="settings-label">隐私管理</text>
           <text class="material-symbols-outlined settings-icon">security</text>
         </view>
       </view>
     </scroll-view>
-
-    <!-- 底部导航 -->
-    <tab-bar current="profile" />
 
     <!-- 身份切换弹窗 -->
     <bottom-sheet v-model="showIdentitySheet" title="身份切换" :max-height="'auto'">
@@ -159,17 +154,19 @@
         <view class="ca-call" @click="onCall"><text class="ca-ct call">呼叫</text></view>
       </view>
     </bottom-sheet>
+
+    <tab-bar current="profile" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import TabBar from '@/components/tab-bar.vue';
 import BottomSheet from '@/components/bottom-sheet.vue';
+import TabBar from '@/components/tab-bar.vue';
 
 const statusBarHeight = ref(0);
-const isEnterprise = ref(true);
-const pendingIdentity = ref<'enterprise' | 'personal'>('enterprise');
+const isEnterprise = ref(uni.getStorageSync('user-identity') !== 'personal');
+const pendingIdentity = ref<'enterprise' | 'personal'>(isEnterprise.value ? 'enterprise' : 'personal');
 const showIdentitySheet = ref(false);
 
 const identityDisplayName = computed(() =>
@@ -193,6 +190,7 @@ const onIdentityCancel = () => {
 
 const onIdentityConfirm = () => {
   isEnterprise.value = pendingIdentity.value === 'enterprise';
+  uni.setStorageSync('user-identity', isEnterprise.value ? 'enterprise' : 'personal');
   showIdentitySheet.value = false;
   uni.showToast({
     title: isEnterprise.value ? '已切换至企业身份' : '已切换至个人身份',
@@ -213,8 +211,8 @@ const onContact = () => { showContactSheet.value = true; };
 // P11-01：实际拨打电话
 const onCall = () => { showContactSheet.value = false; uni.makePhoneCall({ phoneNumber: '400-000-8888' }); };
 // P12-01：WebView 占位
-const onAgreement = () => { uni.showToast({ title: '用户服务协议（H5 WebView 接入后替换）', icon: 'none' }); };
-const onPrivacy = () => { uni.showToast({ title: '隐私政策（H5 WebView 接入后替换）', icon: 'none' }); };
+const onAgreement = () => { uni.navigateTo({ url: '/pages/webview/index?src=/user-agreement.html' }); };
+const onPrivacy = () => { uni.navigateTo({ url: '/pages/profile/privacy' }); };
 </script>
 
 <style lang="scss" scoped>
