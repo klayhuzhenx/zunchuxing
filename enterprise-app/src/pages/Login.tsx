@@ -50,7 +50,6 @@ export default function Login() {
           <div style={{ width: 56, height: 56, borderRadius: 16, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <span style={{ color: '#D4AF37', fontSize: 24, fontWeight: 700 }}>尊</span>
           </div>
-          <Title heading={2} style={{ margin: '0 0 8px', color: '#1a1a1a', fontWeight: 600 }}>欢迎登录</Title>
           <Title heading={4} style={{ margin: '0 0 4px' }}>尊出行 · 企业后台</Title>
           <Paragraph type="secondary" style={{ margin: 0, fontSize: 13 }}>请输入手机号验证码登录</Paragraph>
         </div>
